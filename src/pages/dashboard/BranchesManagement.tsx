@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { 
@@ -20,7 +20,8 @@ import {
   Edit,
   Trash2,
   Ticket,
-  Loader2
+  Loader2,
+  CheckCircle2
 } from "lucide-react";
 import {
   Dialog,
@@ -47,8 +48,11 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { useSupabaseCRUD } from "@/hooks/useSupabaseCRUD";
 import { Skeleton } from "@/components/ui/skeleton";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { usePartner } from "@/hooks/usePartner";
+import { toast } from "@/hooks/use-toast";
 
 // Sidebar navigation
 const sidebarLinks = [
@@ -77,18 +81,12 @@ interface BranchRecord {
 
 const BranchesManagement = () => {
   const location = useLocation();
-  const { 
-    data: branches, 
-    loading, 
-    create, 
-    update, 
-    remove 
-  } = useSupabaseCRUD<BranchRecord>({ 
-    tableName: 'branches',
-    primaryKey: 'branch_id',
-    initialFetch: true
-  });
+  const navigate = useNavigate();
+  const { signOut } = useAuth();
+  const { partnerId, partner } = usePartner();
 
+  const [branches, setBranches] = useState<BranchRecord[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingBranch, setEditingBranch] = useState<BranchRecord | null>(null);
@@ -101,13 +99,33 @@ const BranchesManagement = () => {
     phone: ""
   });
 
+  useEffect(() => {
+    fetchBranches();
+  }, [partnerId]);
+
+  const fetchBranches = async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from('branches')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      toast({ title: "خطأ", description: "فشل في تحميل الفروع", variant: "destructive" });
+    } else {
+      setBranches(data || []);
+    }
+    setLoading(false);
+  };
+
   const filteredBranches = branches.filter(branch => 
     branch.branch_name?.includes(searchTerm) || 
     branch.city?.includes(searchTerm)
   );
 
   const handleSubmit = async () => {
-    if (!formData.branch_name || !formData.city || !formData.address) {
+    if (!formData.branch_name || !formData.city) {
+      toast({ title: "خطأ", description: "يرجى ملء الحقول المطلوبة", variant: "destructive" });
       return;
     }
 
@@ -116,23 +134,34 @@ const BranchesManagement = () => {
     const branchData = {
       branch_name: formData.branch_name,
       city: formData.city,
-      address: formData.address,
+      address: formData.address || null,
       phone: formData.phone || null,
-      status: 'active'
+      status: 'active',
+      partner_id: partnerId
     };
 
     try {
       if (editingBranch) {
-        await update(editingBranch.branch_id, branchData);
+        const { error } = await supabase
+          .from('branches')
+          .update(branchData)
+          .eq('branch_id', editingBranch.branch_id);
+        if (error) throw error;
+        toast({ title: "تم التحديث", description: "تم تحديث الفرع بنجاح" });
       } else {
-        await create(branchData);
+        const { error } = await supabase
+          .from('branches')
+          .insert(branchData);
+        if (error) throw error;
+        toast({ title: "تمت الإضافة", description: "تم إضافة الفرع بنجاح" });
       }
 
       setFormData({ branch_name: "", city: "", address: "", phone: "" });
       setEditingBranch(null);
       setIsAddDialogOpen(false);
-    } catch (error) {
-      console.error('Submit error:', error);
+      fetchBranches();
+    } catch (error: any) {
+      toast({ title: "خطأ", description: error.message, variant: "destructive" });
     } finally {
       setIsSubmitting(false);
     }
@@ -151,9 +180,35 @@ const BranchesManagement = () => {
 
   const handleDelete = async () => {
     if (deleteId) {
-      await remove(deleteId);
+      const { error } = await supabase.from('branches').delete().eq('branch_id', deleteId);
+      if (error) {
+        toast({ title: "خطأ", description: error.message, variant: "destructive" });
+      } else {
+        toast({ title: "تم الحذف", description: "تم حذف الفرع بنجاح" });
+        fetchBranches();
+      }
       setDeleteId(null);
     }
+  };
+
+  const handleToggleStatus = async (branch: BranchRecord) => {
+    const newStatus = branch.status === 'active' ? 'inactive' : 'active';
+    const { error } = await supabase
+      .from('branches')
+      .update({ status: newStatus })
+      .eq('branch_id', branch.branch_id);
+    
+    if (error) {
+      toast({ title: "خطأ", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "تم التحديث", description: "تم تحديث حالة الفرع" });
+      fetchBranches();
+    }
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/login');
   };
 
   return (
@@ -166,7 +221,7 @@ const BranchesManagement = () => {
           </div>
           <div>
             <span className="text-lg font-bold">احجزلي</span>
-            <p className="text-xs text-sidebar-foreground/60">شركة السفر الذهبي</p>
+            <p className="text-xs text-sidebar-foreground/60">{partner?.company_name || "شركتي"}</p>
           </div>
         </div>
 
@@ -188,11 +243,13 @@ const BranchesManagement = () => {
         </nav>
 
         <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-sidebar-border">
-          <Button variant="ghost" className="w-full justify-start text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50" asChild>
-            <Link to="/">
-              <LogOut className="w-5 h-5 ml-2" />
-              تسجيل الخروج
-            </Link>
+          <Button 
+            variant="ghost" 
+            className="w-full justify-start text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
+            onClick={handleSignOut}
+          >
+            <LogOut className="w-5 h-5 ml-2" />
+            تسجيل الخروج
           </Button>
         </div>
       </aside>
@@ -238,7 +295,7 @@ const BranchesManagement = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>العنوان التفصيلي *</Label>
+                    <Label>العنوان التفصيلي</Label>
                     <Textarea 
                       placeholder="الشارع، الحي، رقم المبنى..."
                       value={formData.address}
@@ -269,6 +326,34 @@ const BranchesManagement = () => {
         </header>
 
         <div className="p-6">
+          {/* Stats */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
+            <div className="bg-card rounded-xl border border-border p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <Building2 className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-foreground">{branches.length}</p>
+                  <p className="text-sm text-muted-foreground">إجمالي الفروع</p>
+                </div>
+              </div>
+            </div>
+            <div className="bg-card rounded-xl border border-border p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-secondary/10 flex items-center justify-center">
+                  <CheckCircle2 className="w-5 h-5 text-secondary" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-foreground">
+                    {branches.filter(b => b.status === 'active').length}
+                  </p>
+                  <p className="text-sm text-muted-foreground">فروع نشطة</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Search */}
           <div className="mb-6">
             <div className="relative max-w-md">
@@ -283,7 +368,7 @@ const BranchesManagement = () => {
           </div>
 
           {/* Loading State */}
-          {loading && branches.length === 0 && (
+          {loading && (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
               {[1, 2, 3].map((i) => (
                 <div key={i} className="bg-card rounded-xl border border-border p-5">
@@ -343,6 +428,10 @@ const BranchesManagement = () => {
                         <Edit className="w-4 h-4 ml-2" />
                         تعديل
                       </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleToggleStatus(branch)}>
+                        <CheckCircle2 className="w-4 h-4 ml-2" />
+                        {branch.status === 'active' ? 'تعطيل' : 'تفعيل'}
+                      </DropdownMenuItem>
                       <DropdownMenuItem 
                         className="text-destructive focus:text-destructive"
                         onClick={() => setDeleteId(branch.branch_id)}
@@ -357,7 +446,7 @@ const BranchesManagement = () => {
                 <div className="space-y-3 text-sm">
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <MapPin className="w-4 h-4" />
-                    <span>{branch.city} - {branch.address}</span>
+                    <span>{branch.city}{branch.address && ` - ${branch.address}`}</span>
                   </div>
                   {branch.phone && (
                     <div className="flex items-center gap-2 text-muted-foreground">
