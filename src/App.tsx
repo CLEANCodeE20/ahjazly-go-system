@@ -18,6 +18,7 @@ import RoutesManagement from "./pages/dashboard/RoutesManagement";
 import PaymentsManagement from "./pages/dashboard/PaymentsManagement";
 import ReportsManagement from "./pages/dashboard/ReportsManagement";
 import SettingsPage from "./pages/dashboard/SettingsPage";
+import DriverDashboard from "./pages/dashboard/DriverDashboard";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 
@@ -87,6 +88,11 @@ const App = () => (
           <Route path="/dashboard/settings" element={
             <ProtectedRoute allowedRoles={['partner', 'employee']}>
               <SettingsPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/driver" element={
+            <ProtectedRoute allowedRoles={['partner', 'employee']}>
+              <DriverDashboard />
             </ProtectedRoute>
           } />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
