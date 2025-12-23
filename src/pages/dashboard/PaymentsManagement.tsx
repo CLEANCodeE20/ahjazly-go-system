@@ -18,12 +18,11 @@ import {
   TrendingUp,
   TrendingDown,
   DollarSign,
-  Calendar,
   Download,
-  Filter,
   CheckCircle2,
   Clock,
-  XCircle
+  XCircle,
+  Loader2
 } from "lucide-react";
 import {
   Select,
@@ -32,6 +31,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useSupabaseCRUD } from "@/hooks/useSupabaseCRUD";
 
 // Sidebar navigation
 const sidebarLinks = [
@@ -47,104 +47,85 @@ const sidebarLinks = [
   { href: "/dashboard/settings", label: "الإعدادات", icon: Settings }
 ];
 
-// Sample payments data
-const initialPayments = [
-  { 
-    id: "PAY-001", 
-    bookingId: "BK-001",
-    passengerName: "عبدالله محمد",
-    amount: 150,
-    method: "بطاقة ائتمان",
-    status: "completed",
-    date: "2024-01-15 10:30",
-    route: "الرياض - جدة"
-  },
-  { 
-    id: "PAY-002", 
-    bookingId: "BK-002",
-    passengerName: "سارة أحمد",
-    amount: 150,
-    method: "Apple Pay",
-    status: "pending",
-    date: "2024-01-15 11:45",
-    route: "الرياض - جدة"
-  },
-  { 
-    id: "PAY-003", 
-    bookingId: "BK-003",
-    passengerName: "خالد عمر",
-    amount: 80,
-    method: "بطاقة مدى",
-    status: "completed",
-    date: "2024-01-15 14:20",
-    route: "الرياض - الدمام"
-  },
-  { 
-    id: "PAY-004", 
-    bookingId: "BK-004",
-    passengerName: "نورة سعد",
-    amount: 50,
-    method: "نقداً",
-    status: "completed",
-    date: "2024-01-14 16:00",
-    route: "جدة - مكة"
-  },
-  { 
-    id: "PAY-005", 
-    bookingId: "BK-005",
-    passengerName: "فهد ناصر",
-    amount: 150,
-    method: "بطاقة ائتمان",
-    status: "failed",
-    date: "2024-01-14 09:15",
-    route: "الرياض - جدة"
-  },
-  { 
-    id: "PAY-006", 
-    bookingId: "BK-006",
-    passengerName: "محمد علي",
-    amount: 100,
-    method: "STC Pay",
-    status: "completed",
-    date: "2024-01-14 12:00",
-    route: "جدة - المدينة"
-  },
-  { 
-    id: "PAY-007", 
-    bookingId: "BK-007",
-    passengerName: "أحمد خالد",
-    amount: 70,
-    method: "بطاقة مدى",
-    status: "refunded",
-    date: "2024-01-13 08:30",
-    route: "الرياض - القصيم"
-  }
-];
+interface PaymentRecord {
+  payment_id: number;
+  booking_id: number | null;
+  user_id: number | null;
+  amount: number;
+  currency: string | null;
+  payment_method: string | null;
+  gateway_name: string | null;
+  gateway_ref: string | null;
+  status: string | null;
+  created_at: string | null;
+}
 
-const stats = [
-  { label: "إجمالي الإيرادات", value: "45,230", icon: DollarSign, color: "text-secondary", trend: "+12%", trendUp: true },
-  { label: "مدفوعات اليوم", value: "3,580", icon: CreditCard, color: "text-primary", trend: "+8%", trendUp: true },
-  { label: "قيد الانتظار", value: "1,200", icon: Clock, color: "text-accent", trend: "-5%", trendUp: false },
-  { label: "مسترجعة", value: "450", icon: TrendingDown, color: "text-destructive", trend: "+2%", trendUp: true }
-];
+interface BookingRecord {
+  booking_id: number;
+  trip_id: number | null;
+  user_id: number | null;
+  total_price: number;
+}
+
+interface UserRecord {
+  user_id: number;
+  full_name: string;
+}
 
 const PaymentsManagement = () => {
   const location = useLocation();
-  const [payments] = useState(initialPayments);
+  
+  const { data: payments, loading } = useSupabaseCRUD<PaymentRecord>({
+    tableName: 'payment_transactions',
+    primaryKey: 'payment_id',
+    initialFetch: true
+  });
+
+  const { data: bookings } = useSupabaseCRUD<BookingRecord>({
+    tableName: 'bookings',
+    primaryKey: 'booking_id',
+    initialFetch: true
+  });
+
+  const { data: users } = useSupabaseCRUD<UserRecord>({
+    tableName: 'users',
+    primaryKey: 'user_id',
+    initialFetch: true
+  });
+
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterMethod, setFilterMethod] = useState("all");
 
+  // Calculate stats
+  const totalRevenue = payments.filter(p => p.status === 'completed').reduce((sum, p) => sum + (p.amount || 0), 0);
+  const pendingAmount = payments.filter(p => p.status === 'pending').reduce((sum, p) => sum + (p.amount || 0), 0);
+  const refundedAmount = payments.filter(p => p.status === 'refunded').reduce((sum, p) => sum + (p.amount || 0), 0);
+  const todayPayments = payments.filter(p => {
+    const today = new Date().toISOString().split('T')[0];
+    return p.created_at?.startsWith(today) && p.status === 'completed';
+  }).reduce((sum, p) => sum + (p.amount || 0), 0);
+
+  const stats = [
+    { label: "إجمالي الإيرادات", value: totalRevenue.toLocaleString(), icon: DollarSign, color: "text-secondary", trend: "+12%", trendUp: true },
+    { label: "مدفوعات اليوم", value: todayPayments.toLocaleString(), icon: CreditCard, color: "text-primary", trend: "+8%", trendUp: true },
+    { label: "قيد الانتظار", value: pendingAmount.toLocaleString(), icon: Clock, color: "text-accent", trend: "-5%", trendUp: false },
+    { label: "مسترجعة", value: refundedAmount.toLocaleString(), icon: TrendingDown, color: "text-destructive", trend: "+2%", trendUp: true }
+  ];
+
   const filteredPayments = payments.filter(payment => {
-    const matchesSearch = payment.passengerName.includes(searchTerm) || 
-                         payment.id.includes(searchTerm) ||
-                         payment.bookingId.includes(searchTerm);
+    const user = users.find(u => u.user_id === payment.user_id);
+    const matchesSearch = user?.full_name?.includes(searchTerm) || 
+                         payment.payment_id.toString().includes(searchTerm) ||
+                         payment.gateway_ref?.includes(searchTerm) || false;
     const matchesStatus = filterStatus === "all" || payment.status === filterStatus;
-    const matchesMethod = filterMethod === "all" || payment.method === filterMethod;
+    const matchesMethod = filterMethod === "all" || payment.payment_method === filterMethod;
     return matchesSearch && matchesStatus && matchesMethod;
   });
 
-  const getStatusBadge = (status: string) => {
+  const getUserName = (userId: number | null) => users.find(u => u.user_id === userId)?.full_name || "-";
+
+  const getStatusBadge = (status: string | null) => {
     switch (status) {
       case "completed":
         return <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-secondary/10 text-secondary"><CheckCircle2 className="w-3 h-3" /> مكتمل</span>;
@@ -155,7 +136,18 @@ const PaymentsManagement = () => {
       case "refunded":
         return <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-muted text-muted-foreground"><TrendingDown className="w-3 h-3" /> مسترجع</span>;
       default:
-        return null;
+        return <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-muted text-muted-foreground">{status || "-"}</span>;
+    }
+  };
+
+  const getPaymentMethodLabel = (method: string | null) => {
+    switch (method) {
+      case "card": return "بطاقة ائتمان";
+      case "cash": return "نقداً";
+      case "wallet": return "محفظة";
+      case "bank_transfer": return "تحويل بنكي";
+      case "stc_pay": return "STC Pay";
+      default: return method || "-";
     }
   };
 
@@ -266,63 +258,76 @@ const PaymentsManagement = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">كل الطرق</SelectItem>
-                  <SelectItem value="بطاقة ائتمان">بطاقة ائتمان</SelectItem>
-                  <SelectItem value="بطاقة مدى">بطاقة مدى</SelectItem>
-                  <SelectItem value="Apple Pay">Apple Pay</SelectItem>
-                  <SelectItem value="STC Pay">STC Pay</SelectItem>
-                  <SelectItem value="نقداً">نقداً</SelectItem>
+                  <SelectItem value="card">بطاقة ائتمان</SelectItem>
+                  <SelectItem value="cash">نقداً</SelectItem>
+                  <SelectItem value="wallet">محفظة</SelectItem>
+                  <SelectItem value="bank_transfer">تحويل بنكي</SelectItem>
+                  <SelectItem value="stc_pay">STC Pay</SelectItem>
                 </SelectContent>
               </Select>
-              <Input type="date" className="w-40" />
             </div>
           </div>
 
           {/* Payments Table */}
           <div className="bg-card rounded-xl border border-border overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-muted/50 border-b border-border">
-                  <tr>
-                    <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">رقم العملية</th>
-                    <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">رقم الحجز</th>
-                    <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">المسافر</th>
-                    <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">الرحلة</th>
-                    <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">المبلغ</th>
-                    <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">طريقة الدفع</th>
-                    <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">الحالة</th>
-                    <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">التاريخ</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredPayments.map((payment) => (
-                    <tr key={payment.id} className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors">
-                      <td className="py-4 px-4">
-                        <span className="font-mono text-sm font-medium text-primary">{payment.id}</span>
-                      </td>
-                      <td className="py-4 px-4">
-                        <span className="font-mono text-sm text-muted-foreground">{payment.bookingId}</span>
-                      </td>
-                      <td className="py-4 px-4">
-                        <span className="font-medium text-foreground">{payment.passengerName}</span>
-                      </td>
-                      <td className="py-4 px-4">
-                        <span className="text-muted-foreground">{payment.route}</span>
-                      </td>
-                      <td className="py-4 px-4">
-                        <span className="font-bold text-foreground">{payment.amount} ر.س</span>
-                      </td>
-                      <td className="py-4 px-4">
-                        <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-muted text-foreground text-xs">
-                          {payment.method}
-                        </span>
-                      </td>
-                      <td className="py-4 px-4">{getStatusBadge(payment.status)}</td>
-                      <td className="py-4 px-4 text-sm text-muted-foreground">{payment.date}</td>
+            {loading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-muted/50 border-b border-border">
+                    <tr>
+                      <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">رقم العملية</th>
+                      <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">رقم الحجز</th>
+                      <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">المسافر</th>
+                      <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">المبلغ</th>
+                      <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">طريقة الدفع</th>
+                      <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">الحالة</th>
+                      <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">التاريخ</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {filteredPayments.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} className="py-12 text-center text-muted-foreground">
+                          لا توجد مدفوعات
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredPayments.map((payment) => (
+                        <tr key={payment.payment_id} className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors">
+                          <td className="py-4 px-4">
+                            <span className="font-mono text-sm font-medium text-primary">PAY-{payment.payment_id}</span>
+                          </td>
+                          <td className="py-4 px-4">
+                            <span className="font-mono text-sm text-muted-foreground">
+                              {payment.booking_id ? `BK-${payment.booking_id}` : "-"}
+                            </span>
+                          </td>
+                          <td className="py-4 px-4">
+                            <span className="font-medium text-foreground">{getUserName(payment.user_id)}</span>
+                          </td>
+                          <td className="py-4 px-4">
+                            <span className="font-bold text-foreground">{payment.amount} {payment.currency || "ر.س"}</span>
+                          </td>
+                          <td className="py-4 px-4">
+                            <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-muted text-foreground text-xs">
+                              {getPaymentMethodLabel(payment.payment_method)}
+                            </span>
+                          </td>
+                          <td className="py-4 px-4">{getStatusBadge(payment.status)}</td>
+                          <td className="py-4 px-4 text-sm text-muted-foreground">
+                            {payment.created_at ? new Date(payment.created_at).toLocaleDateString('ar-SA') : "-"}
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
 
             {/* Pagination */}
             <div className="flex items-center justify-between p-4 border-t border-border">
