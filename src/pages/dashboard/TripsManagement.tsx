@@ -18,10 +18,9 @@ import {
   Calendar,
   Clock,
   MapPin,
-  User,
-  Ticket
+  Ticket,
+  Loader2
 } from "lucide-react";
-import { toast } from "@/hooks/use-toast";
 import {
   Dialog,
   DialogContent,
@@ -38,63 +37,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-
-// Mock data for trips
-const mockTrips = [
-  { 
-    id: 1, 
-    route: "الرياض - جدة", 
-    date: "2024-01-15", 
-    departureTime: "08:00",
-    arrivalTime: "14:00",
-    bus: "ABC-1234", 
-    mainDriver: "أحمد محمد",
-    assistantDriver: "خالد سعد",
-    price: 150,
-    bookedSeats: 40,
-    totalSeats: 45,
-    status: "active" 
-  },
-  { 
-    id: 2, 
-    route: "الرياض - الدمام", 
-    date: "2024-01-15", 
-    departureTime: "10:30",
-    arrivalTime: "14:30",
-    bus: "XYZ-5678", 
-    mainDriver: "سعد عبدالله",
-    assistantDriver: "محمد علي",
-    price: 80,
-    bookedSeats: 35,
-    totalSeats: 40,
-    status: "active" 
-  },
-  { 
-    id: 3, 
-    route: "جدة - مكة", 
-    date: "2024-01-16", 
-    departureTime: "06:00",
-    arrivalTime: "07:30",
-    bus: "DEF-9012", 
-    mainDriver: "عمر حسن",
-    assistantDriver: "فهد ناصر",
-    price: 50,
-    bookedSeats: 28,
-    totalSeats: 50,
-    status: "scheduled" 
-  }
-];
-
-const routes = [
-  "الرياض - جدة",
-  "الرياض - الدمام",
-  "جدة - مكة",
-  "الرياض - القصيم",
-  "جدة - المدينة"
-];
-
-const buses = ["ABC-1234", "XYZ-5678", "DEF-9012", "GHI-3456"];
-const drivers = ["أحمد محمد", "سعد عبدالله", "عمر حسن", "خالد سعد", "محمد علي", "فهد ناصر"];
+import { Skeleton } from "@/components/ui/skeleton";
+import { useSupabaseCRUD } from "@/hooks/useSupabaseCRUD";
 
 // Sidebar navigation
 const sidebarLinks = [
@@ -110,52 +54,132 @@ const sidebarLinks = [
   { href: "/dashboard/settings", label: "الإعدادات", icon: Settings }
 ];
 
+interface TripRecord {
+  trip_id: number;
+  partner_id: number | null;
+  route_id: number | null;
+  bus_id: number | null;
+  driver_id: number | null;
+  departure_time: string;
+  arrival_time: string | null;
+  base_price: number;
+  status: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+interface RouteRecord {
+  route_id: number;
+  origin_city: string;
+  destination_city: string;
+}
+
+interface BusRecord {
+  bus_id: number;
+  license_plate: string;
+  capacity: number | null;
+}
+
+interface DriverRecord {
+  driver_id: number;
+  full_name: string;
+}
+
 const TripsManagement = () => {
-  const [trips, setTrips] = useState(mockTrips);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [newTrip, setNewTrip] = useState({
-    route: "",
-    date: "",
-    departureTime: "",
-    arrivalTime: "",
-    bus: "",
-    mainDriver: "",
-    assistantDriver: "",
-    price: ""
+  const { data: trips, loading, create } = useSupabaseCRUD<TripRecord>({ 
+    tableName: 'trips',
+    primaryKey: 'trip_id',
+    initialFetch: true
+  });
+  
+  const { data: routes } = useSupabaseCRUD<RouteRecord>({ 
+    tableName: 'routes',
+    primaryKey: 'route_id',
+    initialFetch: true
   });
 
-  const handleAddTrip = () => {
-    const trip = {
-      id: trips.length + 1,
-      ...newTrip,
-      price: parseInt(newTrip.price),
-      bookedSeats: 0,
-      totalSeats: 45,
-      status: "scheduled"
-    };
-    setTrips([...trips, trip]);
-    setNewTrip({
-      route: "",
-      date: "",
-      departureTime: "",
-      arrivalTime: "",
-      bus: "",
-      mainDriver: "",
-      assistantDriver: "",
-      price: ""
-    });
-    setIsDialogOpen(false);
-    toast({
-      title: "تمت الإضافة بنجاح",
-      description: "تم إضافة الرحلة الجديدة",
-    });
+  const { data: buses } = useSupabaseCRUD<BusRecord>({ 
+    tableName: 'buses',
+    primaryKey: 'bus_id',
+    initialFetch: true
+  });
+
+  const { data: drivers } = useSupabaseCRUD<DriverRecord>({ 
+    tableName: 'drivers',
+    primaryKey: 'driver_id',
+    initialFetch: true
+  });
+
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [newTrip, setNewTrip] = useState({
+    route_id: "",
+    bus_id: "",
+    driver_id: "",
+    departure_time: "",
+    arrival_time: "",
+    base_price: ""
+  });
+
+  const handleAddTrip = async () => {
+    if (!newTrip.route_id || !newTrip.departure_time || !newTrip.base_price) return;
+    
+    setIsSubmitting(true);
+    try {
+      await create({
+        route_id: parseInt(newTrip.route_id),
+        bus_id: newTrip.bus_id ? parseInt(newTrip.bus_id) : null,
+        driver_id: newTrip.driver_id ? parseInt(newTrip.driver_id) : null,
+        departure_time: newTrip.departure_time,
+        arrival_time: newTrip.arrival_time || null,
+        base_price: parseFloat(newTrip.base_price),
+        status: 'scheduled' as const
+      });
+      setNewTrip({
+        route_id: "",
+        bus_id: "",
+        driver_id: "",
+        departure_time: "",
+        arrival_time: "",
+        base_price: ""
+      });
+      setIsDialogOpen(false);
+    } catch (error) {
+      console.error('Add trip error:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const filteredTrips = trips.filter(trip => 
-    trip.route.includes(searchQuery) || 
-    trip.bus.includes(searchQuery)
-  );
+  const getRouteInfo = (routeId: number | null) => {
+    const route = routes.find(r => r.route_id === routeId);
+    return route ? `${route.origin_city} - ${route.destination_city}` : 'غير محدد';
+  };
+
+  const getBusInfo = (busId: number | null) => {
+    const bus = buses.find(b => b.bus_id === busId);
+    return bus ? bus.license_plate : 'غير محدد';
+  };
+
+  const getDriverInfo = (driverId: number | null) => {
+    const driver = drivers.find(d => d.driver_id === driverId);
+    return driver ? driver.full_name : 'غير محدد';
+  };
+
+  const filteredTrips = trips.filter(trip => {
+    const routeInfo = getRouteInfo(trip.route_id);
+    const busInfo = getBusInfo(trip.bus_id);
+    return routeInfo.includes(searchQuery) || busInfo.includes(searchQuery);
+  });
+
+  const formatDate = (dateStr: string) => {
+    return new Date(dateStr).toLocaleDateString('ar-SA');
+  };
+
+  const formatTime = (dateStr: string) => {
+    return new Date(dateStr).toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
+  };
 
   return (
     <div className="min-h-screen bg-muted/30">
@@ -223,45 +247,38 @@ const TripsManagement = () => {
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
                   <div className="space-y-2">
-                    <Label>المسار</Label>
-                    <Select onValueChange={(value) => setNewTrip({ ...newTrip, route: value })}>
+                    <Label>المسار *</Label>
+                    <Select value={newTrip.route_id} onValueChange={(v) => setNewTrip({ ...newTrip, route_id: v })}>
                       <SelectTrigger>
                         <SelectValue placeholder="اختر المسار" />
                       </SelectTrigger>
                       <SelectContent>
                         {routes.map((route) => (
-                          <SelectItem key={route} value={route}>{route}</SelectItem>
+                          <SelectItem key={route.route_id} value={route.route_id.toString()}>
+                            {route.origin_city} - {route.destination_city}
+                          </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
                   
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="date">التاريخ</Label>
+                      <Label htmlFor="departure_time">وقت المغادرة *</Label>
                       <Input
-                        id="date"
-                        type="date"
-                        value={newTrip.date}
-                        onChange={(e) => setNewTrip({ ...newTrip, date: e.target.value })}
+                        id="departure_time"
+                        type="datetime-local"
+                        value={newTrip.departure_time}
+                        onChange={(e) => setNewTrip({ ...newTrip, departure_time: e.target.value })}
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="departureTime">وقت المغادرة</Label>
+                      <Label htmlFor="arrival_time">وقت الوصول المتوقع</Label>
                       <Input
-                        id="departureTime"
-                        type="time"
-                        value={newTrip.departureTime}
-                        onChange={(e) => setNewTrip({ ...newTrip, departureTime: e.target.value })}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="arrivalTime">وقت الوصول</Label>
-                      <Input
-                        id="arrivalTime"
-                        type="time"
-                        value={newTrip.arrivalTime}
-                        onChange={(e) => setNewTrip({ ...newTrip, arrivalTime: e.target.value })}
+                        id="arrival_time"
+                        type="datetime-local"
+                        value={newTrip.arrival_time}
+                        onChange={(e) => setNewTrip({ ...newTrip, arrival_time: e.target.value })}
                       />
                     </div>
                   </div>
@@ -269,63 +286,53 @@ const TripsManagement = () => {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label>الحافلة</Label>
-                      <Select onValueChange={(value) => setNewTrip({ ...newTrip, bus: value })}>
+                      <Select value={newTrip.bus_id} onValueChange={(v) => setNewTrip({ ...newTrip, bus_id: v })}>
                         <SelectTrigger>
                           <SelectValue placeholder="اختر الحافلة" />
                         </SelectTrigger>
                         <SelectContent>
                           {buses.map((bus) => (
-                            <SelectItem key={bus} value={bus}>{bus}</SelectItem>
+                            <SelectItem key={bus.bus_id} value={bus.bus_id.toString()}>
+                              {bus.license_plate}
+                            </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="price">السعر (ريال)</Label>
+                      <Label htmlFor="base_price">السعر (ريال) *</Label>
                       <Input
-                        id="price"
+                        id="base_price"
                         type="number"
-                        value={newTrip.price}
-                        onChange={(e) => setNewTrip({ ...newTrip, price: e.target.value })}
+                        value={newTrip.base_price}
+                        onChange={(e) => setNewTrip({ ...newTrip, base_price: e.target.value })}
                         placeholder="150"
                       />
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>السائق الأساسي</Label>
-                      <Select onValueChange={(value) => setNewTrip({ ...newTrip, mainDriver: value })}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="اختر السائق" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {drivers.map((driver) => (
-                            <SelectItem key={driver} value={driver}>{driver}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>السائق المساعد</Label>
-                      <Select onValueChange={(value) => setNewTrip({ ...newTrip, assistantDriver: value })}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="اختر السائق المساعد" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {drivers.map((driver) => (
-                            <SelectItem key={driver} value={driver}>{driver}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
+                  <div className="space-y-2">
+                    <Label>السائق</Label>
+                    <Select value={newTrip.driver_id} onValueChange={(v) => setNewTrip({ ...newTrip, driver_id: v })}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="اختر السائق" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {drivers.map((driver) => (
+                          <SelectItem key={driver.driver_id} value={driver.driver_id.toString()}>
+                            {driver.full_name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
                 <DialogFooter>
                   <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
                     إلغاء
                   </Button>
-                  <Button onClick={handleAddTrip}>
+                  <Button onClick={handleAddTrip} disabled={isSubmitting}>
+                    {isSubmitting && <Loader2 className="w-4 h-4 ml-2 animate-spin" />}
                     إنشاء الرحلة
                   </Button>
                 </DialogFooter>
@@ -347,14 +354,43 @@ const TripsManagement = () => {
                   className="pr-10"
                 />
               </div>
-              <Input type="date" className="md:w-48" />
             </div>
           </div>
+
+          {/* Loading State */}
+          {loading && trips.length === 0 && (
+            <div className="space-y-4">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="bg-card rounded-xl border border-border p-5">
+                  <div className="flex items-center gap-4">
+                    <Skeleton className="w-10 h-10 rounded-lg" />
+                    <div className="flex-1 space-y-2">
+                      <Skeleton className="h-5 w-48" />
+                      <Skeleton className="h-4 w-32" />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Empty State */}
+          {!loading && trips.length === 0 && (
+            <div className="text-center py-12">
+              <Route className="w-16 h-16 mx-auto text-muted-foreground/50 mb-4" />
+              <h3 className="text-lg font-medium text-foreground mb-2">لا توجد رحلات</h3>
+              <p className="text-muted-foreground mb-4">ابدأ بإضافة رحلة جديدة</p>
+              <Button onClick={() => setIsDialogOpen(true)}>
+                <Plus className="w-4 h-4 ml-2" />
+                رحلة جديدة
+              </Button>
+            </div>
+          )}
 
           {/* Trips List */}
           <div className="space-y-4">
             {filteredTrips.map((trip) => (
-              <div key={trip.id} className="bg-card rounded-xl border border-border p-5 hover:shadow-elegant transition-shadow">
+              <div key={trip.trip_id} className="bg-card rounded-xl border border-border p-5 hover:shadow-elegant transition-shadow">
                 <div className="flex flex-col lg:flex-row lg:items-center gap-4">
                   {/* Route Info */}
                   <div className="flex-1">
@@ -363,15 +399,16 @@ const TripsManagement = () => {
                         <Route className="w-5 h-5 text-primary-foreground" />
                       </div>
                       <div>
-                        <h3 className="font-bold text-foreground text-lg">{trip.route}</h3>
+                        <h3 className="font-bold text-foreground text-lg">{getRouteInfo(trip.route_id)}</h3>
                         <div className="flex items-center gap-4 text-sm text-muted-foreground">
                           <span className="flex items-center gap-1">
                             <Calendar className="w-4 h-4" />
-                            {trip.date}
+                            {formatDate(trip.departure_time)}
                           </span>
                           <span className="flex items-center gap-1">
                             <Clock className="w-4 h-4" />
-                            {trip.departureTime} - {trip.arrivalTime}
+                            {formatTime(trip.departure_time)}
+                            {trip.arrival_time && ` - ${formatTime(trip.arrival_time)}`}
                           </span>
                         </div>
                       </div>
@@ -382,49 +419,38 @@ const TripsManagement = () => {
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 lg:gap-6">
                     <div className="text-center">
                       <p className="text-xs text-muted-foreground mb-1">الحافلة</p>
-                      <p className="font-medium text-foreground">{trip.bus}</p>
+                      <p className="font-medium text-foreground">{getBusInfo(trip.bus_id)}</p>
                     </div>
                     <div className="text-center">
                       <p className="text-xs text-muted-foreground mb-1">السائق</p>
-                      <p className="font-medium text-foreground">{trip.mainDriver}</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-xs text-muted-foreground mb-1">المقاعد</p>
-                      <p className="font-medium text-foreground">{trip.bookedSeats}/{trip.totalSeats}</p>
+                      <p className="font-medium text-foreground">{getDriverInfo(trip.driver_id)}</p>
                     </div>
                     <div className="text-center">
                       <p className="text-xs text-muted-foreground mb-1">السعر</p>
-                      <p className="font-bold text-secondary">{trip.price} ر.س</p>
+                      <p className="font-bold text-secondary">{trip.base_price} ر.س</p>
+                    </div>
+                    <div className="text-center">
+                      <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium ${
+                        trip.status === "scheduled" 
+                          ? "bg-muted text-muted-foreground" 
+                          : trip.status === "in_progress"
+                          ? "bg-primary/10 text-primary"
+                          : trip.status === "completed"
+                          ? "bg-secondary/10 text-secondary"
+                          : "bg-destructive/10 text-destructive"
+                      }`}>
+                        {trip.status === "scheduled" ? "مجدولة" : 
+                         trip.status === "in_progress" ? "جارية" :
+                         trip.status === "completed" ? "مكتملة" :
+                         trip.status === "cancelled" ? "ملغاة" : trip.status}
+                      </span>
                     </div>
                   </div>
 
-                  {/* Status & Actions */}
-                  <div className="flex items-center gap-3">
-                    <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium ${
-                      trip.status === "active" 
-                        ? "bg-secondary/10 text-secondary" 
-                        : "bg-muted text-muted-foreground"
-                    }`}>
-                      {trip.status === "active" ? "نشطة" : "مجدولة"}
-                    </span>
-                    <Button variant="outline" size="sm">
-                      التفاصيل
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Progress Bar */}
-                <div className="mt-4 pt-4 border-t border-border">
-                  <div className="flex items-center justify-between text-sm mb-2">
-                    <span className="text-muted-foreground">نسبة الحجز</span>
-                    <span className="text-foreground font-medium">{Math.round((trip.bookedSeats / trip.totalSeats) * 100)}%</span>
-                  </div>
-                  <div className="h-2 bg-muted rounded-full overflow-hidden">
-                    <div 
-                      className="h-full gradient-secondary rounded-full transition-all"
-                      style={{ width: `${(trip.bookedSeats / trip.totalSeats) * 100}%` }}
-                    />
-                  </div>
+                  {/* Actions */}
+                  <Button variant="outline" size="sm">
+                    التفاصيل
+                  </Button>
                 </div>
               </div>
             ))}

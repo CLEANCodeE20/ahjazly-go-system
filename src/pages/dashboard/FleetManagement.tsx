@@ -17,13 +17,12 @@ import {
   Search,
   Edit,
   Trash2,
-  MoreVertical,
   CheckCircle2,
   AlertCircle,
   MapPin,
-  Ticket
+  Ticket,
+  Loader2
 } from "lucide-react";
-import { toast } from "@/hooks/use-toast";
 import {
   Dialog,
   DialogContent,
@@ -33,15 +32,25 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-
-// Mock data for buses
-const mockBuses = [
-  { id: 1, plateNumber: "ABC-1234", model: "Mercedes-Benz Tourismo", year: 2022, seats: 45, status: "active", licenseExpiry: "2024-06-15" },
-  { id: 2, plateNumber: "XYZ-5678", model: "Volvo 9700", year: 2021, seats: 40, status: "active", licenseExpiry: "2024-08-20" },
-  { id: 3, plateNumber: "DEF-9012", model: "Scania Touring", year: 2023, seats: 50, status: "maintenance", licenseExpiry: "2024-12-01" },
-  { id: 4, plateNumber: "GHI-3456", model: "MAN Lion's Coach", year: 2020, seats: 45, status: "active", licenseExpiry: "2024-03-10" },
-  { id: 5, plateNumber: "JKL-7890", model: "Setra S 516 HDH", year: 2022, seats: 48, status: "inactive", licenseExpiry: "2024-05-25" }
-];
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useSupabaseCRUD } from "@/hooks/useSupabaseCRUD";
 
 // Sidebar navigation
 const sidebarLinks = [
@@ -57,56 +66,84 @@ const sidebarLinks = [
   { href: "/dashboard/settings", label: "الإعدادات", icon: Settings }
 ];
 
+interface BusRecord {
+  bus_id: number;
+  partner_id: number | null;
+  license_plate: string;
+  model: string | null;
+  bus_type: string | null;
+  bus_class_id: number | null;
+  capacity: number | null;
+  status: string | null;
+  owner_user_id: number | null;
+  created_at: string;
+}
+
 const FleetManagement = () => {
-  const [buses, setBuses] = useState(mockBuses);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [newBus, setNewBus] = useState({
-    plateNumber: "",
-    model: "",
-    year: "",
-    seats: "",
-    licenseExpiry: ""
+  const { 
+    data: buses, 
+    loading, 
+    create, 
+    remove 
+  } = useSupabaseCRUD<BusRecord>({ 
+    tableName: 'buses',
+    primaryKey: 'bus_id',
+    initialFetch: true
   });
 
-  const handleAddBus = () => {
-    const bus = {
-      id: buses.length + 1,
-      ...newBus,
-      year: parseInt(newBus.year),
-      seats: parseInt(newBus.seats),
-      status: "active"
-    };
-    setBuses([...buses, bus]);
-    setNewBus({ plateNumber: "", model: "", year: "", seats: "", licenseExpiry: "" });
-    setIsDialogOpen(false);
-    toast({
-      title: "تمت الإضافة بنجاح",
-      description: "تم إضافة الحافلة إلى الأسطول",
-    });
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [newBus, setNewBus] = useState({
+    license_plate: "",
+    model: "",
+    capacity: "",
+    bus_type: "standard",
+    status: "active"
+  });
+
+  const handleAddBus = async () => {
+    if (!newBus.license_plate || !newBus.model) return;
+    
+    setIsSubmitting(true);
+    try {
+      await create({
+        license_plate: newBus.license_plate,
+        model: newBus.model,
+        capacity: parseInt(newBus.capacity) || 40,
+        bus_type: newBus.bus_type as "standard" | "vip" | "sleeper" | "double_decker",
+        status: newBus.status as "active" | "maintenance" | "inactive" | "retired"
+      });
+      setNewBus({ license_plate: "", model: "", capacity: "", bus_type: "standard", status: "active" });
+      setIsDialogOpen(false);
+    } catch (error) {
+      console.error('Add bus error:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const handleDeleteBus = (id: number) => {
-    setBuses(buses.filter(bus => bus.id !== id));
-    toast({
-      title: "تم الحذف",
-      description: "تم حذف الحافلة من الأسطول",
-      variant: "destructive"
-    });
+  const handleDeleteBus = async () => {
+    if (deleteId) {
+      await remove(deleteId);
+      setDeleteId(null);
+    }
   };
 
   const filteredBuses = buses.filter(bus => 
-    bus.plateNumber.includes(searchQuery) || 
-    bus.model.includes(searchQuery)
+    bus.license_plate?.includes(searchQuery) || 
+    bus.model?.includes(searchQuery)
   );
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: string | null) => {
     switch (status) {
       case "active":
         return <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-secondary/10 text-secondary"><CheckCircle2 className="w-3 h-3" /> نشطة</span>;
       case "maintenance":
         return <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-accent/10 text-accent"><AlertCircle className="w-3 h-3" /> صيانة</span>;
       case "inactive":
+      case "retired":
         return <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-muted text-muted-foreground">غير نشطة</span>;
       default:
         return null;
@@ -180,16 +217,16 @@ const FleetManagement = () => {
                 <div className="grid gap-4 py-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="plateNumber">رقم اللوحة</Label>
+                      <Label htmlFor="license_plate">رقم اللوحة *</Label>
                       <Input
-                        id="plateNumber"
-                        value={newBus.plateNumber}
-                        onChange={(e) => setNewBus({ ...newBus, plateNumber: e.target.value })}
+                        id="license_plate"
+                        value={newBus.license_plate}
+                        onChange={(e) => setNewBus({ ...newBus, license_plate: e.target.value })}
                         placeholder="ABC-1234"
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="model">الموديل</Label>
+                      <Label htmlFor="model">الموديل *</Label>
                       <Input
                         id="model"
                         value={newBus.model}
@@ -198,35 +235,30 @@ const FleetManagement = () => {
                       />
                     </div>
                   </div>
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="year">سنة الصنع</Label>
+                      <Label htmlFor="capacity">عدد المقاعد</Label>
                       <Input
-                        id="year"
+                        id="capacity"
                         type="number"
-                        value={newBus.year}
-                        onChange={(e) => setNewBus({ ...newBus, year: e.target.value })}
-                        placeholder="2023"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="seats">عدد المقاعد</Label>
-                      <Input
-                        id="seats"
-                        type="number"
-                        value={newBus.seats}
-                        onChange={(e) => setNewBus({ ...newBus, seats: e.target.value })}
+                        value={newBus.capacity}
+                        onChange={(e) => setNewBus({ ...newBus, capacity: e.target.value })}
                         placeholder="45"
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="licenseExpiry">انتهاء الترخيص</Label>
-                      <Input
-                        id="licenseExpiry"
-                        type="date"
-                        value={newBus.licenseExpiry}
-                        onChange={(e) => setNewBus({ ...newBus, licenseExpiry: e.target.value })}
-                      />
+                      <Label>نوع الحافلة</Label>
+                      <Select value={newBus.bus_type} onValueChange={(v) => setNewBus({ ...newBus, bus_type: v })}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="standard">عادية</SelectItem>
+                          <SelectItem value="vip">VIP</SelectItem>
+                          <SelectItem value="sleeper">نوم</SelectItem>
+                          <SelectItem value="double_decker">طابقين</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
                 </div>
@@ -234,7 +266,8 @@ const FleetManagement = () => {
                   <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
                     إلغاء
                   </Button>
-                  <Button onClick={handleAddBus}>
+                  <Button onClick={handleAddBus} disabled={isSubmitting}>
+                    {isSubmitting && <Loader2 className="w-4 h-4 ml-2 animate-spin" />}
                     إضافة الحافلة
                   </Button>
                 </DialogFooter>
@@ -294,10 +327,36 @@ const FleetManagement = () => {
             </div>
           </div>
 
+          {/* Loading State */}
+          {loading && buses.length === 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="bg-card rounded-xl border border-border p-5">
+                  <Skeleton className="w-12 h-12 rounded-xl mb-4" />
+                  <Skeleton className="h-5 w-32 mb-2" />
+                  <Skeleton className="h-4 w-48" />
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Empty State */}
+          {!loading && buses.length === 0 && (
+            <div className="text-center py-12">
+              <Bus className="w-16 h-16 mx-auto text-muted-foreground/50 mb-4" />
+              <h3 className="text-lg font-medium text-foreground mb-2">لا توجد حافلات</h3>
+              <p className="text-muted-foreground mb-4">ابدأ بإضافة حافلة جديدة</p>
+              <Button onClick={() => setIsDialogOpen(true)}>
+                <Plus className="w-4 h-4 ml-2" />
+                إضافة حافلة
+              </Button>
+            </div>
+          )}
+
           {/* Buses Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredBuses.map((bus) => (
-              <div key={bus.id} className="bg-card rounded-xl border border-border p-5 hover:shadow-elegant transition-shadow">
+              <div key={bus.bus_id} className="bg-card rounded-xl border border-border p-5 hover:shadow-elegant transition-shadow">
                 <div className="flex items-start justify-between mb-4">
                   <div className="w-12 h-12 rounded-xl gradient-primary flex items-center justify-center">
                     <Bus className="w-6 h-6 text-primary-foreground" />
@@ -306,27 +365,28 @@ const FleetManagement = () => {
                     <Button variant="ghost" size="icon" className="h-8 w-8">
                       <Edit className="w-4 h-4" />
                     </Button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDeleteBus(bus.id)}>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-8 w-8 text-destructive" 
+                      onClick={() => setDeleteId(bus.bus_id)}
+                    >
                       <Trash2 className="w-4 h-4" />
                     </Button>
                   </div>
                 </div>
                 
-                <h3 className="font-bold text-foreground text-lg mb-1">{bus.plateNumber}</h3>
+                <h3 className="font-bold text-foreground text-lg mb-1">{bus.license_plate}</h3>
                 <p className="text-muted-foreground text-sm mb-4">{bus.model}</p>
                 
                 <div className="space-y-2 mb-4">
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">سنة الصنع</span>
-                    <span className="text-foreground">{bus.year}</span>
+                    <span className="text-muted-foreground">النوع</span>
+                    <span className="text-foreground">{bus.bus_type === 'standard' ? 'عادية' : bus.bus_type === 'vip' ? 'VIP' : bus.bus_type}</span>
                   </div>
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-muted-foreground">عدد المقاعد</span>
-                    <span className="text-foreground">{bus.seats} مقعد</span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">انتهاء الترخيص</span>
-                    <span className="text-foreground">{bus.licenseExpiry}</span>
+                    <span className="text-foreground">{bus.capacity || 40} مقعد</span>
                   </div>
                 </div>
 
@@ -336,6 +396,24 @@ const FleetManagement = () => {
           </div>
         </div>
       </main>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>تأكيد الحذف</AlertDialogTitle>
+            <AlertDialogDescription>
+              هل أنت متأكد من حذف هذه الحافلة؟ لا يمكن التراجع عن هذا الإجراء.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>إلغاء</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteBus} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              حذف
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

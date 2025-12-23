@@ -47,7 +47,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
-import { useNeonCRUD } from "@/hooks/useNeonCRUD";
+import { useSupabaseCRUD } from "@/hooks/useSupabaseCRUD";
 import { Skeleton } from "@/components/ui/skeleton";
 
 // Sidebar navigation
@@ -66,11 +66,11 @@ const sidebarLinks = [
 
 interface RouteRecord {
   route_id: number;
-  partner_id: number;
+  partner_id: number | null;
   origin_city: string;
   destination_city: string;
-  distance_km: number;
-  estimated_duration_hours: number;
+  distance_km: number | null;
+  estimated_duration_hours: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -83,7 +83,7 @@ const RoutesManagement = () => {
     create, 
     update, 
     remove,
-  } = useNeonCRUD<RouteRecord>({ 
+  } = useSupabaseCRUD<RouteRecord>({ 
     tableName: 'routes',
     primaryKey: 'route_id',
     initialFetch: true
@@ -116,21 +116,25 @@ const RoutesManagement = () => {
     const routeData = {
       origin_city: formData.origin_city,
       destination_city: formData.destination_city,
-      distance_km: Number(formData.distance_km) || 0,
-      estimated_duration_hours: Number(formData.estimated_duration_hours) || 0,
-      partner_id: 1 // Default partner
+      distance_km: Number(formData.distance_km) || null,
+      estimated_duration_hours: Number(formData.estimated_duration_hours) || null,
     };
 
-    if (editingRoute) {
-      await update(editingRoute.route_id, routeData);
-    } else {
-      await create(routeData);
-    }
+    try {
+      if (editingRoute) {
+        await update(editingRoute.route_id, routeData);
+      } else {
+        await create(routeData);
+      }
 
-    setFormData({ origin_city: "", destination_city: "", distance_km: "", estimated_duration_hours: "" });
-    setEditingRoute(null);
-    setIsAddDialogOpen(false);
-    setIsSubmitting(false);
+      setFormData({ origin_city: "", destination_city: "", distance_km: "", estimated_duration_hours: "" });
+      setEditingRoute(null);
+      setIsAddDialogOpen(false);
+    } catch (error) {
+      console.error('Submit error:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleEdit = (route: RouteRecord) => {
@@ -370,13 +374,13 @@ const RoutesManagement = () => {
                         <span className="text-muted-foreground">←</span>
                         <span className="text-foreground">{route.destination_city}</span>
                       </div>
-                      {route.distance_km > 0 && (
+                      {route.distance_km && route.distance_km > 0 && (
                         <div className="flex items-center gap-2 text-muted-foreground">
                           <Navigation className="w-4 h-4" />
                           <span>{route.distance_km} كم</span>
                         </div>
                       )}
-                      {route.estimated_duration_hours > 0 && (
+                      {route.estimated_duration_hours && route.estimated_duration_hours > 0 && (
                         <div className="flex items-center gap-2 text-muted-foreground">
                           <Clock className="w-4 h-4" />
                           <span>{route.estimated_duration_hours} ساعة</span>

@@ -13,86 +13,17 @@ import {
   Settings,
   LogOut,
   Search,
-  Calendar,
   MapPin,
   User,
-  Phone,
   CheckCircle2,
   XCircle,
   Clock,
   Ticket,
   Eye
 } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useSupabaseCRUD } from "@/hooks/useSupabaseCRUD";
 import { toast } from "@/hooks/use-toast";
-
-// Mock data for bookings
-const mockBookings = [
-  { 
-    id: "BK-001", 
-    passengerName: "عبدالله محمد",
-    phone: "0501234567",
-    route: "الرياض - جدة", 
-    date: "2024-01-15", 
-    time: "08:00",
-    seatNumber: "A12",
-    price: 150,
-    paymentStatus: "paid",
-    bookingStatus: "confirmed",
-    createdAt: "2024-01-14 10:30"
-  },
-  { 
-    id: "BK-002", 
-    passengerName: "سارة أحمد",
-    phone: "0559876543",
-    route: "الرياض - جدة", 
-    date: "2024-01-15", 
-    time: "08:00",
-    seatNumber: "A14",
-    price: 150,
-    paymentStatus: "pending",
-    bookingStatus: "pending",
-    createdAt: "2024-01-14 11:45"
-  },
-  { 
-    id: "BK-003", 
-    passengerName: "خالد عمر",
-    phone: "0544556677",
-    route: "الرياض - الدمام", 
-    date: "2024-01-15", 
-    time: "10:30",
-    seatNumber: "B8",
-    price: 80,
-    paymentStatus: "paid",
-    bookingStatus: "confirmed",
-    createdAt: "2024-01-14 14:20"
-  },
-  { 
-    id: "BK-004", 
-    passengerName: "نورة سعد",
-    phone: "0533221100",
-    route: "جدة - مكة", 
-    date: "2024-01-16", 
-    time: "06:00",
-    seatNumber: "C3",
-    price: 50,
-    paymentStatus: "paid",
-    bookingStatus: "confirmed",
-    createdAt: "2024-01-14 16:00"
-  },
-  { 
-    id: "BK-005", 
-    passengerName: "فهد ناصر",
-    phone: "0511223344",
-    route: "الرياض - جدة", 
-    date: "2024-01-15", 
-    time: "08:00",
-    seatNumber: "A20",
-    price: 150,
-    paymentStatus: "failed",
-    bookingStatus: "cancelled",
-    createdAt: "2024-01-14 09:15"
-  }
-];
 
 // Sidebar navigation
 const sidebarLinks = [
@@ -108,48 +39,129 @@ const sidebarLinks = [
   { href: "/dashboard/settings", label: "الإعدادات", icon: Settings }
 ];
 
-const stats = [
-  { label: "حجوزات اليوم", value: 45, icon: Ticket, color: "text-primary" },
-  { label: "مؤكدة", value: 38, icon: CheckCircle2, color: "text-secondary" },
-  { label: "قيد الانتظار", value: 5, icon: Clock, color: "text-accent" },
-  { label: "ملغاة", value: 2, icon: XCircle, color: "text-destructive" }
-];
+interface BookingRecord {
+  booking_id: number;
+  user_id: number | null;
+  trip_id: number | null;
+  booking_date: string;
+  booking_status: string | null;
+  payment_method: string | null;
+  payment_status: string | null;
+  total_price: number;
+  platform_commission: number | null;
+  partner_revenue: number | null;
+}
+
+interface TripRecord {
+  trip_id: number;
+  route_id: number | null;
+  departure_time: string;
+}
+
+interface RouteRecord {
+  route_id: number;
+  origin_city: string;
+  destination_city: string;
+}
+
+interface UserRecord {
+  user_id: number;
+  full_name: string;
+  phone_number: string | null;
+}
 
 const BookingsManagement = () => {
-  const [bookings, setBookings] = useState(mockBookings);
+  const { data: bookings, loading, update } = useSupabaseCRUD<BookingRecord>({ 
+    tableName: 'bookings',
+    primaryKey: 'booking_id',
+    initialFetch: true
+  });
+
+  const { data: trips } = useSupabaseCRUD<TripRecord>({ 
+    tableName: 'trips',
+    primaryKey: 'trip_id',
+    initialFetch: true
+  });
+
+  const { data: routes } = useSupabaseCRUD<RouteRecord>({ 
+    tableName: 'routes',
+    primaryKey: 'route_id',
+    initialFetch: true
+  });
+
+  const { data: users } = useSupabaseCRUD<UserRecord>({ 
+    tableName: 'users',
+    primaryKey: 'user_id',
+    initialFetch: true
+  });
+
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
 
-  const handleConfirmBooking = (id: string) => {
-    setBookings(bookings.map(b => 
-      b.id === id ? { ...b, bookingStatus: "confirmed", paymentStatus: "paid" } : b
-    ));
-    toast({
-      title: "تم التأكيد",
-      description: "تم تأكيد الحجز بنجاح",
-    });
+  const getRouteInfo = (tripId: number | null) => {
+    const trip = trips.find(t => t.trip_id === tripId);
+    if (!trip) return 'غير محدد';
+    const route = routes.find(r => r.route_id === trip.route_id);
+    return route ? `${route.origin_city} - ${route.destination_city}` : 'غير محدد';
   };
 
-  const handleCancelBooking = (id: string) => {
-    setBookings(bookings.map(b => 
-      b.id === id ? { ...b, bookingStatus: "cancelled" } : b
-    ));
-    toast({
-      title: "تم الإلغاء",
-      description: "تم إلغاء الحجز",
-      variant: "destructive"
-    });
+  const getTripTime = (tripId: number | null) => {
+    const trip = trips.find(t => t.trip_id === tripId);
+    if (!trip) return { date: '', time: '' };
+    const dt = new Date(trip.departure_time);
+    return {
+      date: dt.toLocaleDateString('ar-SA'),
+      time: dt.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })
+    };
+  };
+
+  const getUserInfo = (userId: number | null) => {
+    const user = users.find(u => u.user_id === userId);
+    return user ? { name: user.full_name, phone: user.phone_number || '' } : { name: 'زائر', phone: '' };
+  };
+
+  const handleConfirmBooking = async (id: number) => {
+    try {
+      await update(id, { booking_status: 'confirmed', payment_status: 'paid' } as never);
+      toast({
+        title: "تم التأكيد",
+        description: "تم تأكيد الحجز بنجاح",
+      });
+    } catch (error) {
+      console.error('Confirm error:', error);
+    }
+  };
+
+  const handleCancelBooking = async (id: number) => {
+    try {
+      await update(id, { booking_status: 'cancelled' } as never);
+      toast({
+        title: "تم الإلغاء",
+        description: "تم إلغاء الحجز",
+        variant: "destructive"
+      });
+    } catch (error) {
+      console.error('Cancel error:', error);
+    }
   };
 
   const filteredBookings = bookings.filter(booking => {
-    const matchesSearch = booking.passengerName.includes(searchQuery) || 
-                         booking.phone.includes(searchQuery) ||
-                         booking.id.includes(searchQuery);
-    const matchesFilter = filterStatus === "all" || booking.bookingStatus === filterStatus;
+    const userInfo = getUserInfo(booking.user_id);
+    const matchesSearch = userInfo.name.includes(searchQuery) || 
+                         userInfo.phone.includes(searchQuery) ||
+                         booking.booking_id.toString().includes(searchQuery);
+    const matchesFilter = filterStatus === "all" || booking.booking_status === filterStatus;
     return matchesSearch && matchesFilter;
   });
 
-  const getStatusBadge = (status: string) => {
+  const stats = [
+    { label: "إجمالي الحجوزات", value: bookings.length, icon: Ticket, color: "text-primary" },
+    { label: "مؤكدة", value: bookings.filter(b => b.booking_status === 'confirmed').length, icon: CheckCircle2, color: "text-secondary" },
+    { label: "قيد الانتظار", value: bookings.filter(b => b.booking_status === 'pending').length, icon: Clock, color: "text-accent" },
+    { label: "ملغاة", value: bookings.filter(b => b.booking_status === 'cancelled').length, icon: XCircle, color: "text-destructive" }
+  ];
+
+  const getStatusBadge = (status: string | null) => {
     switch (status) {
       case "confirmed":
         return <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-secondary/10 text-secondary"><CheckCircle2 className="w-3 h-3" /> مؤكد</span>;
@@ -157,12 +169,14 @@ const BookingsManagement = () => {
         return <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-accent/10 text-accent"><Clock className="w-3 h-3" /> قيد الانتظار</span>;
       case "cancelled":
         return <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-destructive/10 text-destructive"><XCircle className="w-3 h-3" /> ملغي</span>;
+      case "completed":
+        return <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-secondary/10 text-secondary"><CheckCircle2 className="w-3 h-3" /> مكتمل</span>;
       default:
         return null;
     }
   };
 
-  const getPaymentBadge = (status: string) => {
+  const getPaymentBadge = (status: string | null) => {
     switch (status) {
       case "paid":
         return <span className="text-xs font-medium text-secondary">مدفوع</span>;
@@ -170,6 +184,8 @@ const BookingsManagement = () => {
         return <span className="text-xs font-medium text-accent">في انتظار الدفع</span>;
       case "failed":
         return <span className="text-xs font-medium text-destructive">فشل الدفع</span>;
+      case "refunded":
+        return <span className="text-xs font-medium text-muted-foreground">مسترد</span>;
       default:
         return null;
     }
@@ -272,76 +288,102 @@ const BookingsManagement = () => {
             </div>
           </div>
 
-          {/* Bookings Table */}
-          <div className="bg-card rounded-xl border border-border overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-muted/50 border-b border-border">
-                  <tr>
-                    <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">رقم الحجز</th>
-                    <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">المسافر</th>
-                    <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">الرحلة</th>
-                    <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">المقعد</th>
-                    <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">السعر</th>
-                    <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">الدفع</th>
-                    <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">الحالة</th>
-                    <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">الإجراءات</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredBookings.map((booking) => (
-                    <tr key={booking.id} className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors">
-                      <td className="py-4 px-4">
-                        <span className="font-mono text-sm font-medium text-primary">{booking.id}</span>
-                      </td>
-                      <td className="py-4 px-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center">
-                            <User className="w-4 h-4 text-primary" />
-                          </div>
-                          <div>
-                            <p className="font-medium text-foreground">{booking.passengerName}</p>
-                            <p className="text-sm text-muted-foreground">{booking.phone}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="py-4 px-4">
-                        <div>
-                          <p className="font-medium text-foreground">{booking.route}</p>
-                          <p className="text-sm text-muted-foreground">{booking.date} - {booking.time}</p>
-                        </div>
-                      </td>
-                      <td className="py-4 px-4">
-                        <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-muted text-foreground font-medium">
-                          {booking.seatNumber}
-                        </span>
-                      </td>
-                      <td className="py-4 px-4 font-bold text-foreground">{booking.price} ر.س</td>
-                      <td className="py-4 px-4">{getPaymentBadge(booking.paymentStatus)}</td>
-                      <td className="py-4 px-4">{getStatusBadge(booking.bookingStatus)}</td>
-                      <td className="py-4 px-4">
-                        <div className="flex items-center gap-2">
-                          <Button size="sm" variant="ghost">
-                            <Eye className="w-4 h-4" />
-                          </Button>
-                          {booking.bookingStatus === "pending" && (
-                            <>
-                              <Button size="sm" variant="success" onClick={() => handleConfirmBooking(booking.id)}>
-                                <CheckCircle2 className="w-4 h-4" />
-                              </Button>
-                              <Button size="sm" variant="destructive" onClick={() => handleCancelBooking(booking.id)}>
-                                <XCircle className="w-4 h-4" />
-                              </Button>
-                            </>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+          {/* Loading State */}
+          {loading && bookings.length === 0 && (
+            <div className="bg-card rounded-xl border border-border overflow-hidden">
+              <div className="p-4 space-y-4">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="flex items-center gap-4">
+                    <Skeleton className="w-9 h-9 rounded-full" />
+                    <div className="flex-1 space-y-2">
+                      <Skeleton className="h-4 w-32" />
+                      <Skeleton className="h-3 w-24" />
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
+
+          {/* Empty State */}
+          {!loading && bookings.length === 0 && (
+            <div className="text-center py-12">
+              <Ticket className="w-16 h-16 mx-auto text-muted-foreground/50 mb-4" />
+              <h3 className="text-lg font-medium text-foreground mb-2">لا توجد حجوزات</h3>
+              <p className="text-muted-foreground">لم يتم إجراء أي حجوزات بعد</p>
+            </div>
+          )}
+
+          {/* Bookings Table */}
+          {bookings.length > 0 && (
+            <div className="bg-card rounded-xl border border-border overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-muted/50 border-b border-border">
+                    <tr>
+                      <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">رقم الحجز</th>
+                      <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">المسافر</th>
+                      <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">الرحلة</th>
+                      <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">السعر</th>
+                      <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">الدفع</th>
+                      <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">الحالة</th>
+                      <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">الإجراءات</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredBookings.map((booking) => {
+                      const userInfo = getUserInfo(booking.user_id);
+                      const tripTime = getTripTime(booking.trip_id);
+                      return (
+                        <tr key={booking.booking_id} className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors">
+                          <td className="py-4 px-4">
+                            <span className="font-mono text-sm font-medium text-primary">BK-{booking.booking_id.toString().padStart(3, '0')}</span>
+                          </td>
+                          <td className="py-4 px-4">
+                            <div className="flex items-center gap-3">
+                              <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center">
+                                <User className="w-4 h-4 text-primary" />
+                              </div>
+                              <div>
+                                <p className="font-medium text-foreground">{userInfo.name}</p>
+                                <p className="text-sm text-muted-foreground">{userInfo.phone}</p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="py-4 px-4">
+                            <div>
+                              <p className="font-medium text-foreground">{getRouteInfo(booking.trip_id)}</p>
+                              <p className="text-sm text-muted-foreground">{tripTime.date} - {tripTime.time}</p>
+                            </div>
+                          </td>
+                          <td className="py-4 px-4 font-bold text-foreground">{booking.total_price} ر.س</td>
+                          <td className="py-4 px-4">{getPaymentBadge(booking.payment_status)}</td>
+                          <td className="py-4 px-4">{getStatusBadge(booking.booking_status)}</td>
+                          <td className="py-4 px-4">
+                            <div className="flex items-center gap-2">
+                              <Button size="sm" variant="ghost">
+                                <Eye className="w-4 h-4" />
+                              </Button>
+                              {booking.booking_status === "pending" && (
+                                <>
+                                  <Button size="sm" variant="outline" className="text-secondary border-secondary hover:bg-secondary/10" onClick={() => handleConfirmBooking(booking.booking_id)}>
+                                    <CheckCircle2 className="w-4 h-4" />
+                                  </Button>
+                                  <Button size="sm" variant="destructive" onClick={() => handleCancelBooking(booking.booking_id)}>
+                                    <XCircle className="w-4 h-4" />
+                                  </Button>
+                                </>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </div>
       </main>
     </div>
