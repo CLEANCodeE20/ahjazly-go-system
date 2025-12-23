@@ -14,85 +14,42 @@ import {
   Bell,
   LogOut,
   Eye,
-  Mail,
-  MoreVertical
+  MoreVertical,
+  Loader2
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { useSupabaseCRUD } from "@/hooks/useSupabaseCRUD";
 
-// Mock data for applications
-const mockApplications = [
-  {
-    id: 1,
-    companyName: "شركة السفر الذهبي",
-    ownerName: "محمد أحمد",
-    email: "golden@travel.com",
-    phone: "0501234567",
-    city: "الرياض",
-    fleetSize: 25,
-    status: "pending",
-    submittedAt: "2024-01-15"
-  },
-  {
-    id: 2,
-    companyName: "النقل السريع",
-    ownerName: "خالد عبدالله",
-    email: "fast@transport.com",
-    phone: "0509876543",
-    city: "جدة",
-    fleetSize: 15,
-    status: "pending",
-    submittedAt: "2024-01-14"
-  },
-  {
-    id: 3,
-    companyName: "رحلات المملكة",
-    ownerName: "سعد محمد",
-    email: "kingdom@trips.com",
-    phone: "0551112233",
-    city: "الدمام",
-    fleetSize: 30,
-    status: "approved",
-    submittedAt: "2024-01-10"
-  },
-  {
-    id: 4,
-    companyName: "الأمل للنقل",
-    ownerName: "عمر حسن",
-    email: "amal@transport.com",
-    phone: "0544556677",
-    city: "مكة",
-    fleetSize: 8,
-    status: "rejected",
-    submittedAt: "2024-01-08"
-  }
-];
-
-const stats = [
-  { label: "طلبات جديدة", value: 12, icon: Clock, color: "text-accent" },
-  { label: "شركات مفعلة", value: 156, icon: CheckCircle2, color: "text-secondary" },
-  { label: "طلبات مرفوضة", value: 8, icon: XCircle, color: "text-destructive" },
-  { label: "إجمالي الطلبات", value: 176, icon: FileText, color: "text-primary" }
-];
+interface PartnerRecord {
+  partner_id: number;
+  company_name: string;
+  contact_person: string | null;
+  address: string | null;
+  status: string | null;
+  commission_percentage: number | null;
+  created_at: string | null;
+}
 
 const AdminDashboard = () => {
-  const [applications, setApplications] = useState(mockApplications);
+  const { data: partners, loading, update } = useSupabaseCRUD<PartnerRecord>({
+    tableName: 'partners',
+    primaryKey: 'partner_id',
+    initialFetch: true
+  });
+
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
 
-  const handleApprove = (id: number) => {
-    setApplications(apps => 
-      apps.map(app => app.id === id ? { ...app, status: "approved" } : app)
-    );
+  const handleApprove = async (id: number) => {
+    await update(id, { status: 'approved' });
     toast({
       title: "تمت الموافقة",
       description: "تم قبول طلب الشركة وإرسال بريد إلكتروني بالتفاصيل",
     });
   };
 
-  const handleReject = (id: number) => {
-    setApplications(apps => 
-      apps.map(app => app.id === id ? { ...app, status: "rejected" } : app)
-    );
+  const handleReject = async (id: number) => {
+    await update(id, { status: 'rejected' });
     toast({
       title: "تم الرفض",
       description: "تم رفض طلب الشركة وإخطارها بالقرار",
@@ -100,15 +57,27 @@ const AdminDashboard = () => {
     });
   };
 
-  const filteredApplications = applications.filter(app => {
-    const matchesSearch = app.companyName.includes(searchQuery) || 
-                         app.ownerName.includes(searchQuery) ||
-                         app.email.includes(searchQuery);
-    const matchesFilter = filterStatus === "all" || app.status === filterStatus;
+  const filteredPartners = partners.filter(partner => {
+    const matchesSearch = partner.company_name?.includes(searchQuery) || 
+                         partner.contact_person?.includes(searchQuery) || false;
+    const matchesFilter = filterStatus === "all" || partner.status === filterStatus;
     return matchesSearch && matchesFilter;
   });
 
-  const getStatusBadge = (status: string) => {
+  // Calculate stats
+  const pendingCount = partners.filter(p => p.status === 'pending').length;
+  const approvedCount = partners.filter(p => p.status === 'approved').length;
+  const rejectedCount = partners.filter(p => p.status === 'rejected').length;
+  const totalCount = partners.length;
+
+  const stats = [
+    { label: "طلبات جديدة", value: pendingCount, icon: Clock, color: "text-accent" },
+    { label: "شركات مفعلة", value: approvedCount, icon: CheckCircle2, color: "text-secondary" },
+    { label: "طلبات مرفوضة", value: rejectedCount, icon: XCircle, color: "text-destructive" },
+    { label: "إجمالي الطلبات", value: totalCount, icon: FileText, color: "text-primary" }
+  ];
+
+  const getStatusBadge = (status: string | null) => {
     switch (status) {
       case "pending":
         return <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-accent/10 text-accent"><Clock className="w-3 h-3" /> قيد المراجعة</span>;
@@ -117,7 +86,7 @@ const AdminDashboard = () => {
       case "rejected":
         return <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-destructive/10 text-destructive"><XCircle className="w-3 h-3" /> مرفوض</span>;
       default:
-        return null;
+        return <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-muted text-muted-foreground">{status || "-"}</span>;
     }
   };
 
@@ -169,7 +138,9 @@ const AdminDashboard = () => {
             <div className="flex items-center gap-3">
               <button className="relative p-2 text-muted-foreground hover:text-foreground transition-colors">
                 <Bell className="w-5 h-5" />
-                <span className="absolute top-1 right-1 w-2 h-2 bg-destructive rounded-full" />
+                {pendingCount > 0 && (
+                  <span className="absolute top-1 right-1 w-2 h-2 bg-destructive rounded-full" />
+                )}
               </button>
               <div className="w-9 h-9 rounded-full gradient-primary flex items-center justify-center text-primary-foreground font-medium">
                 م
@@ -222,64 +193,79 @@ const AdminDashboard = () => {
             </div>
           </div>
 
-          {/* Applications Table */}
+          {/* Partners Table */}
           <div className="bg-card rounded-xl border border-border overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-muted/50 border-b border-border">
-                  <tr>
-                    <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">الشركة</th>
-                    <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">المالك</th>
-                    <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">المدينة</th>
-                    <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">الأسطول</th>
-                    <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">الحالة</th>
-                    <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">التاريخ</th>
-                    <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">الإجراءات</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredApplications.map((app) => (
-                    <tr key={app.id} className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors">
-                      <td className="py-4 px-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                            <Building2 className="w-5 h-5 text-primary" />
-                          </div>
-                          <div>
-                            <p className="font-medium text-foreground">{app.companyName}</p>
-                            <p className="text-sm text-muted-foreground">{app.email}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="py-4 px-4 text-foreground">{app.ownerName}</td>
-                      <td className="py-4 px-4 text-muted-foreground">{app.city}</td>
-                      <td className="py-4 px-4 text-muted-foreground">{app.fleetSize} حافلة</td>
-                      <td className="py-4 px-4">{getStatusBadge(app.status)}</td>
-                      <td className="py-4 px-4 text-muted-foreground text-sm">{app.submittedAt}</td>
-                      <td className="py-4 px-4">
-                        {app.status === "pending" ? (
-                          <div className="flex items-center gap-2">
-                            <Button size="sm" variant="success" onClick={() => handleApprove(app.id)}>
-                              <CheckCircle2 className="w-4 h-4" />
-                            </Button>
-                            <Button size="sm" variant="destructive" onClick={() => handleReject(app.id)}>
-                              <XCircle className="w-4 h-4" />
-                            </Button>
-                            <Button size="sm" variant="ghost">
-                              <Eye className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        ) : (
-                          <Button size="sm" variant="ghost">
-                            <MoreVertical className="w-4 h-4" />
-                          </Button>
-                        )}
-                      </td>
+            {loading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-muted/50 border-b border-border">
+                    <tr>
+                      <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">الشركة</th>
+                      <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">المالك</th>
+                      <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">العنوان</th>
+                      <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">العمولة</th>
+                      <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">الحالة</th>
+                      <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">التاريخ</th>
+                      <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">الإجراءات</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {filteredPartners.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} className="py-12 text-center text-muted-foreground">
+                          لا توجد طلبات
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredPartners.map((partner) => (
+                        <tr key={partner.partner_id} className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors">
+                          <td className="py-4 px-4">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                                <Building2 className="w-5 h-5 text-primary" />
+                              </div>
+                              <div>
+                                <p className="font-medium text-foreground">{partner.company_name}</p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="py-4 px-4 text-foreground">{partner.contact_person || "-"}</td>
+                          <td className="py-4 px-4 text-muted-foreground">{partner.address || "-"}</td>
+                          <td className="py-4 px-4 text-muted-foreground">{partner.commission_percentage || 10}%</td>
+                          <td className="py-4 px-4">{getStatusBadge(partner.status)}</td>
+                          <td className="py-4 px-4 text-muted-foreground text-sm">
+                            {partner.created_at ? new Date(partner.created_at).toLocaleDateString('ar-SA') : "-"}
+                          </td>
+                          <td className="py-4 px-4">
+                            {partner.status === "pending" ? (
+                              <div className="flex items-center gap-2">
+                                <Button size="sm" variant="default" onClick={() => handleApprove(partner.partner_id)} className="bg-secondary hover:bg-secondary/90">
+                                  <CheckCircle2 className="w-4 h-4" />
+                                </Button>
+                                <Button size="sm" variant="destructive" onClick={() => handleReject(partner.partner_id)}>
+                                  <XCircle className="w-4 h-4" />
+                                </Button>
+                                <Button size="sm" variant="ghost">
+                                  <Eye className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            ) : (
+                              <Button size="sm" variant="ghost">
+                                <MoreVertical className="w-4 h-4" />
+                              </Button>
+                            )}
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         </div>
       </main>

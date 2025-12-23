@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -16,12 +16,16 @@ import {
   Upload,
   CheckCircle2,
   ArrowLeft,
-  ArrowRight
+  ArrowRight,
+  Loader2
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 const Apply = () => {
+  const navigate = useNavigate();
   const [step, setStep] = useState(1);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     // Owner Info
     ownerName: "",
@@ -52,15 +56,83 @@ const Apply = () => {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    toast({
-      title: "تم إرسال الطلب بنجاح!",
-      description: "سنراجع طلبك ونتواصل معك خلال 48 ساعة عمل.",
-    });
+    setIsSubmitting(true);
+
+    try {
+      // Create partner record
+      const { data: partner, error: partnerError } = await supabase
+        .from('partners')
+        .insert({
+          company_name: formData.companyName,
+          contact_person: formData.ownerName,
+          address: `${formData.companyAddress}, ${formData.companyCity}`,
+          status: 'pending'
+        })
+        .select()
+        .single();
+
+      if (partnerError) throw partnerError;
+
+      // Create user record for owner
+      const { error: userError } = await supabase
+        .from('users')
+        .insert({
+          full_name: formData.ownerName,
+          email: formData.ownerEmail,
+          phone_number: formData.ownerPhone,
+          user_type: 'partner',
+          partner_id: partner.partner_id,
+          account_status: 'pending'
+        });
+
+      if (userError) throw userError;
+
+      toast({
+        title: "تم إرسال الطلب بنجاح!",
+        description: "سنراجع طلبك ونتواصل معك خلال 48 ساعة عمل.",
+      });
+
+      // Navigate to home after success
+      setTimeout(() => navigate('/'), 2000);
+
+    } catch (error: any) {
+      console.error('Error submitting application:', error);
+      toast({
+        title: "حدث خطأ",
+        description: error.message || "فشل في إرسال الطلب، يرجى المحاولة مرة أخرى",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const nextStep = () => setStep(step + 1);
+  const nextStep = () => {
+    // Validate current step
+    if (step === 1) {
+      if (!formData.ownerName || !formData.ownerPhone || !formData.ownerEmail) {
+        toast({
+          title: "خطأ",
+          description: "يرجى ملء جميع الحقول المطلوبة",
+          variant: "destructive"
+        });
+        return;
+      }
+    } else if (step === 2) {
+      if (!formData.companyName || !formData.companyCity) {
+        toast({
+          title: "خطأ",
+          description: "يرجى ملء جميع الحقول المطلوبة",
+          variant: "destructive"
+        });
+        return;
+      }
+    }
+    setStep(step + 1);
+  };
+  
   const prevStep = () => setStep(step - 1);
 
   return (
@@ -126,7 +198,7 @@ const Apply = () => {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="ownerName">الاسم الكامل</Label>
+                      <Label htmlFor="ownerName">الاسم الكامل *</Label>
                       <Input
                         id="ownerName"
                         name="ownerName"
@@ -144,14 +216,13 @@ const Apply = () => {
                         value={formData.ownerIdNumber}
                         onChange={handleInputChange}
                         placeholder="رقم الهوية الوطنية"
-                        required
                       />
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="ownerPhone">رقم الجوال</Label>
+                      <Label htmlFor="ownerPhone">رقم الجوال *</Label>
                       <Input
                         id="ownerPhone"
                         name="ownerPhone"
@@ -163,7 +234,7 @@ const Apply = () => {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="ownerEmail">البريد الإلكتروني</Label>
+                      <Label htmlFor="ownerEmail">البريد الإلكتروني *</Label>
                       <Input
                         id="ownerEmail"
                         name="ownerEmail"
@@ -189,7 +260,7 @@ const Apply = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="companyName">اسم الشركة</Label>
+                    <Label htmlFor="companyName">اسم الشركة *</Label>
                     <Input
                       id="companyName"
                       name="companyName"
@@ -210,7 +281,6 @@ const Apply = () => {
                         value={formData.companyEmail}
                         onChange={handleInputChange}
                         placeholder="info@company.com"
-                        required
                       />
                     </div>
                     <div className="space-y-2">
@@ -222,14 +292,13 @@ const Apply = () => {
                         value={formData.companyPhone}
                         onChange={handleInputChange}
                         placeholder="رقم الهاتف الثابت"
-                        required
                       />
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="companyCity">المدينة</Label>
+                      <Label htmlFor="companyCity">المدينة *</Label>
                       <Input
                         id="companyCity"
                         name="companyCity"
@@ -248,7 +317,6 @@ const Apply = () => {
                         value={formData.fleetSize}
                         onChange={handleInputChange}
                         placeholder="عدد حافلات الأسطول"
-                        required
                       />
                     </div>
                   </div>
@@ -261,7 +329,6 @@ const Apply = () => {
                       value={formData.companyAddress}
                       onChange={handleInputChange}
                       placeholder="العنوان الكامل للشركة"
-                      required
                     />
                   </div>
                 </div>
@@ -348,9 +415,18 @@ const Apply = () => {
                     <ArrowLeft className="w-4 h-4 mr-2" />
                   </Button>
                 ) : (
-                  <Button type="submit" variant="hero">
-                    إرسال الطلب
-                    <CheckCircle2 className="w-4 h-4 mr-2" />
+                  <Button type="submit" variant="hero" disabled={isSubmitting}>
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        جاري الإرسال...
+                      </>
+                    ) : (
+                      <>
+                        إرسال الطلب
+                        <CheckCircle2 className="w-4 h-4 mr-2" />
+                      </>
+                    )}
                   </Button>
                 )}
               </div>

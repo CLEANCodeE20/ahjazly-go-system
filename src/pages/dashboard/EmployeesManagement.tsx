@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,7 +23,8 @@ import {
   Ticket,
   User,
   Shield,
-  Briefcase
+  Briefcase,
+  Loader2
 } from "lucide-react";
 import {
   Dialog,
@@ -47,6 +48,7 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { useSupabaseCRUD } from "@/hooks/useSupabaseCRUD";
 
 // Sidebar navigation
 const sidebarLinks = [
@@ -72,120 +74,74 @@ const roles = [
   { value: "supervisor", label: "مشرف" }
 ];
 
-// Branches
-const branches = [
-  { value: "riyadh", label: "الفرع الرئيسي - الرياض" },
-  { value: "jeddah", label: "فرع جدة" },
-  { value: "dammam", label: "فرع الدمام" },
-  { value: "makkah", label: "فرع مكة" }
-];
+interface EmployeeRecord {
+  employee_id: number;
+  user_id: number | null;
+  partner_id: number | null;
+  branch_id: number | null;
+  role_in_company: string | null;
+  status: string | null;
+  created_at: string | null;
+}
 
-// Sample employees data
-const initialEmployees = [
-  { 
-    id: 1, 
-    name: "عبدالله محمد الشمري", 
-    nationalId: "1098765432",
-    phone: "0501234567",
-    email: "abdullah@example.com",
-    role: "driver",
-    branch: "riyadh",
-    salary: 5000,
-    joinDate: "2023-01-15",
-    status: "active"
-  },
-  { 
-    id: 2, 
-    name: "سعود خالد العتيبي", 
-    nationalId: "1087654321",
-    phone: "0512345678",
-    email: "saud@example.com",
-    role: "driver",
-    branch: "jeddah",
-    salary: 4800,
-    joinDate: "2023-03-20",
-    status: "active"
-  },
-  { 
-    id: 3, 
-    name: "فهد سلمان القحطاني", 
-    nationalId: "1076543210",
-    phone: "0523456789",
-    email: "fahad@example.com",
-    role: "assistant",
-    branch: "riyadh",
-    salary: 3500,
-    joinDate: "2023-06-10",
-    status: "active"
-  },
-  { 
-    id: 4, 
-    name: "أحمد علي السعيد", 
-    nationalId: "1065432109",
-    phone: "0534567890",
-    email: "ahmed@example.com",
-    role: "manager",
-    branch: "riyadh",
-    salary: 8000,
-    joinDate: "2022-11-01",
-    status: "active"
-  },
-  { 
-    id: 5, 
-    name: "محمد ناصر الحربي", 
-    nationalId: "1054321098",
-    phone: "0545678901",
-    email: "mohammed@example.com",
-    role: "accountant",
-    branch: "jeddah",
-    salary: 6000,
-    joinDate: "2023-02-15",
-    status: "inactive"
-  },
-  { 
-    id: 6, 
-    name: "خالد عبدالرحمن المطيري", 
-    nationalId: "1043210987",
-    phone: "0556789012",
-    email: "khalid@example.com",
-    role: "support",
-    branch: "dammam",
-    salary: 4000,
-    joinDate: "2023-08-20",
-    status: "active"
-  }
-];
+interface BranchRecord {
+  branch_id: number;
+  branch_name: string;
+  city: string | null;
+}
+
+interface UserRecord {
+  user_id: number;
+  full_name: string;
+  phone_number: string | null;
+  email: string | null;
+}
 
 const EmployeesManagement = () => {
   const location = useLocation();
   const { toast } = useToast();
-  const [employees, setEmployees] = useState(initialEmployees);
+  
+  const { data: employees, loading, create, update, remove } = useSupabaseCRUD<EmployeeRecord>({
+    tableName: 'employees',
+    primaryKey: 'employee_id',
+    initialFetch: true
+  });
+
+  const { data: branches } = useSupabaseCRUD<BranchRecord>({
+    tableName: 'branches',
+    primaryKey: 'branch_id',
+    initialFetch: true
+  });
+
+  const { data: users } = useSupabaseCRUD<UserRecord>({
+    tableName: 'users',
+    primaryKey: 'user_id',
+    initialFetch: true
+  });
+
   const [searchTerm, setSearchTerm] = useState("");
   const [filterRole, setFilterRole] = useState("all");
   const [filterBranch, setFilterBranch] = useState("all");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [editingEmployee, setEditingEmployee] = useState<typeof initialEmployees[0] | null>(null);
+  const [editingEmployee, setEditingEmployee] = useState<EmployeeRecord | null>(null);
   const [formData, setFormData] = useState({
-    name: "",
-    nationalId: "",
-    phone: "",
-    email: "",
-    role: "",
-    branch: "",
-    salary: ""
+    user_id: "",
+    branch_id: "",
+    role_in_company: "",
+    status: "active"
   });
 
   const filteredEmployees = employees.filter(employee => {
-    const matchesSearch = employee.name.includes(searchTerm) || 
-                         employee.nationalId.includes(searchTerm) ||
-                         employee.phone.includes(searchTerm);
-    const matchesRole = filterRole === "all" || employee.role === filterRole;
-    const matchesBranch = filterBranch === "all" || employee.branch === filterBranch;
+    const user = users.find(u => u.user_id === employee.user_id);
+    const matchesSearch = user?.full_name?.includes(searchTerm) || 
+                         user?.phone_number?.includes(searchTerm) || false;
+    const matchesRole = filterRole === "all" || employee.role_in_company === filterRole;
+    const matchesBranch = filterBranch === "all" || employee.branch_id?.toString() === filterBranch;
     return matchesSearch && matchesRole && matchesBranch;
   });
 
-  const handleSubmit = () => {
-    if (!formData.name || !formData.nationalId || !formData.phone || !formData.role || !formData.branch) {
+  const handleSubmit = async () => {
+    if (!formData.role_in_company || !formData.branch_id) {
       toast({
         title: "خطأ",
         description: "يرجى ملء جميع الحقول المطلوبة",
@@ -194,62 +150,46 @@ const EmployeesManagement = () => {
       return;
     }
 
+    const employeeData = {
+      user_id: formData.user_id ? parseInt(formData.user_id) : null,
+      branch_id: parseInt(formData.branch_id),
+      role_in_company: formData.role_in_company,
+      status: formData.status
+    };
+
     if (editingEmployee) {
-      setEmployees(employees.map(e => 
-        e.id === editingEmployee.id 
-          ? { ...e, ...formData, salary: Number(formData.salary) }
-          : e
-      ));
-      toast({
-        title: "تم التحديث",
-        description: "تم تحديث بيانات الموظف بنجاح"
-      });
+      await update(editingEmployee.employee_id, employeeData);
     } else {
-      const newEmployee = {
-        id: Date.now(),
-        ...formData,
-        salary: Number(formData.salary),
-        joinDate: new Date().toISOString().split('T')[0],
-        status: "active" as const
-      };
-      setEmployees([...employees, newEmployee]);
-      toast({
-        title: "تمت الإضافة",
-        description: "تم إضافة الموظف الجديد بنجاح"
-      });
+      await create(employeeData);
     }
 
-    setFormData({ name: "", nationalId: "", phone: "", email: "", role: "", branch: "", salary: "" });
+    setFormData({ user_id: "", branch_id: "", role_in_company: "", status: "active" });
     setEditingEmployee(null);
     setIsAddDialogOpen(false);
   };
 
-  const handleEdit = (employee: typeof initialEmployees[0]) => {
+  const handleEdit = (employee: EmployeeRecord) => {
     setEditingEmployee(employee);
     setFormData({
-      name: employee.name,
-      nationalId: employee.nationalId,
-      phone: employee.phone,
-      email: employee.email,
-      role: employee.role,
-      branch: employee.branch,
-      salary: employee.salary.toString()
+      user_id: employee.user_id?.toString() || "",
+      branch_id: employee.branch_id?.toString() || "",
+      role_in_company: employee.role_in_company || "",
+      status: employee.status || "active"
     });
     setIsAddDialogOpen(true);
   };
 
-  const handleDelete = (id: number) => {
-    setEmployees(employees.filter(e => e.id !== id));
-    toast({
-      title: "تم الحذف",
-      description: "تم حذف الموظف بنجاح"
-    });
+  const handleDelete = async (id: number) => {
+    await remove(id);
   };
 
-  const getRoleLabel = (value: string) => roles.find(r => r.value === value)?.label || value;
-  const getBranchLabel = (value: string) => branches.find(b => b.value === value)?.label || value;
+  const getRoleLabel = (value: string | null) => roles.find(r => r.value === value)?.label || value || "-";
+  const getBranchName = (branchId: number | null) => branches.find(b => b.branch_id === branchId)?.branch_name || "-";
+  const getUserName = (userId: number | null) => users.find(u => u.user_id === userId)?.full_name || "-";
+  const getUserPhone = (userId: number | null) => users.find(u => u.user_id === userId)?.phone_number || "-";
+  const getUserEmail = (userId: number | null) => users.find(u => u.user_id === userId)?.email || "-";
 
-  const getRoleIcon = (role: string) => {
+  const getRoleIcon = (role: string | null) => {
     switch (role) {
       case "driver":
       case "assistant":
@@ -321,7 +261,7 @@ const EmployeesManagement = () => {
               <DialogTrigger asChild>
                 <Button onClick={() => {
                   setEditingEmployee(null);
-                  setFormData({ name: "", nationalId: "", phone: "", email: "", role: "", branch: "", salary: "" });
+                  setFormData({ user_id: "", branch_id: "", role_in_company: "", status: "active" });
                 }}>
                   <Plus className="w-4 h-4 ml-2" />
                   إضافة موظف
@@ -333,44 +273,24 @@ const EmployeesManagement = () => {
                 </DialogHeader>
                 <div className="space-y-4 mt-4">
                   <div className="space-y-2">
-                    <Label>الاسم الكامل *</Label>
-                    <Input 
-                      placeholder="الاسم الرباعي"
-                      value={formData.name}
-                      onChange={(e) => setFormData({...formData, name: e.target.value})}
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>رقم الهوية *</Label>
-                      <Input 
-                        placeholder="10xxxxxxxx"
-                        value={formData.nationalId}
-                        onChange={(e) => setFormData({...formData, nationalId: e.target.value})}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>رقم الجوال *</Label>
-                      <Input 
-                        placeholder="05xxxxxxxx"
-                        value={formData.phone}
-                        onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>البريد الإلكتروني</Label>
-                    <Input 
-                      type="email"
-                      placeholder="employee@example.com"
-                      value={formData.email}
-                      onChange={(e) => setFormData({...formData, email: e.target.value})}
-                    />
+                    <Label>المستخدم</Label>
+                    <Select value={formData.user_id} onValueChange={(v) => setFormData({...formData, user_id: v})}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="اختر المستخدم" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {users.map((user) => (
+                          <SelectItem key={user.user_id} value={user.user_id.toString()}>
+                            {user.full_name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label>الوظيفة *</Label>
-                      <Select value={formData.role} onValueChange={(v) => setFormData({...formData, role: v})}>
+                      <Select value={formData.role_in_company} onValueChange={(v) => setFormData({...formData, role_in_company: v})}>
                         <SelectTrigger>
                           <SelectValue placeholder="اختر الوظيفة" />
                         </SelectTrigger>
@@ -385,14 +305,14 @@ const EmployeesManagement = () => {
                     </div>
                     <div className="space-y-2">
                       <Label>الفرع *</Label>
-                      <Select value={formData.branch} onValueChange={(v) => setFormData({...formData, branch: v})}>
+                      <Select value={formData.branch_id} onValueChange={(v) => setFormData({...formData, branch_id: v})}>
                         <SelectTrigger>
                           <SelectValue placeholder="اختر الفرع" />
                         </SelectTrigger>
                         <SelectContent>
                           {branches.map((branch) => (
-                            <SelectItem key={branch.value} value={branch.value}>
-                              {branch.label}
+                            <SelectItem key={branch.branch_id} value={branch.branch_id.toString()}>
+                              {branch.branch_name}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -400,13 +320,16 @@ const EmployeesManagement = () => {
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label>الراتب الشهري (ريال)</Label>
-                    <Input 
-                      type="number"
-                      placeholder="0"
-                      value={formData.salary}
-                      onChange={(e) => setFormData({...formData, salary: e.target.value})}
-                    />
+                    <Label>الحالة</Label>
+                    <Select value={formData.status} onValueChange={(v) => setFormData({...formData, status: v})}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="active">نشط</SelectItem>
+                        <SelectItem value="inactive">غير نشط</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="flex gap-3 pt-4">
                     <Button onClick={handleSubmit} className="flex-1">
@@ -428,7 +351,7 @@ const EmployeesManagement = () => {
             <div className="relative flex-1 max-w-md">
               <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
               <Input 
-                placeholder="بحث بالاسم أو رقم الهوية..."
+                placeholder="بحث بالاسم أو رقم الجوال..."
                 className="pr-10"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -454,8 +377,8 @@ const EmployeesManagement = () => {
               <SelectContent>
                 <SelectItem value="all">كل الفروع</SelectItem>
                 {branches.map((branch) => (
-                  <SelectItem key={branch.value} value={branch.value}>
-                    {branch.label}
+                  <SelectItem key={branch.branch_id} value={branch.branch_id.toString()}>
+                    {branch.branch_name}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -464,89 +387,91 @@ const EmployeesManagement = () => {
 
           {/* Employees Table */}
           <div className="bg-card rounded-xl border border-border overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-muted/50">
-                  <tr>
-                    <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">الموظف</th>
-                    <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">رقم الهوية</th>
-                    <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">الوظيفة</th>
-                    <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">الفرع</th>
-                    <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">الجوال</th>
-                    <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">الراتب</th>
-                    <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">الحالة</th>
-                    <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">إجراءات</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredEmployees.map((employee) => {
-                    const RoleIcon = getRoleIcon(employee.role);
-                    return (
-                      <tr key={employee.id} className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors">
-                        <td className="py-4 px-4">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full gradient-primary flex items-center justify-center">
-                              <User className="w-5 h-5 text-primary-foreground" />
-                            </div>
-                            <div>
-                              <p className="font-medium text-foreground">{employee.name}</p>
-                              <p className="text-xs text-muted-foreground">{employee.email}</p>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="py-4 px-4 text-muted-foreground" dir="ltr">{employee.nationalId}</td>
-                        <td className="py-4 px-4">
-                          <div className="flex items-center gap-2">
-                            <RoleIcon className="w-4 h-4 text-primary" />
-                            <span className="text-foreground">{getRoleLabel(employee.role)}</span>
-                          </div>
-                        </td>
-                        <td className="py-4 px-4 text-muted-foreground">{getBranchLabel(employee.branch)}</td>
-                        <td className="py-4 px-4 text-muted-foreground" dir="ltr">{employee.phone}</td>
-                        <td className="py-4 px-4 text-muted-foreground">{employee.salary.toLocaleString()} ريال</td>
-                        <td className="py-4 px-4">
-                          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
-                            employee.status === "active" 
-                              ? "bg-secondary/10 text-secondary" 
-                              : "bg-muted text-muted-foreground"
-                          }`}>
-                            {employee.status === "active" ? "نشط" : "غير نشط"}
-                          </span>
-                        </td>
-                        <td className="py-4 px-4">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <button className="p-1 text-muted-foreground hover:text-foreground">
-                                <MoreVertical className="w-5 h-5" />
-                              </button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="start">
-                              <DropdownMenuItem onClick={() => handleEdit(employee)}>
-                                <Edit className="w-4 h-4 ml-2" />
-                                تعديل
-                              </DropdownMenuItem>
-                              <DropdownMenuItem 
-                                className="text-destructive focus:text-destructive"
-                                onClick={() => handleDelete(employee.id)}
-                              >
-                                <Trash2 className="w-4 h-4 ml-2" />
-                                حذف
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+            {loading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-muted/50">
+                    <tr>
+                      <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">الموظف</th>
+                      <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">الوظيفة</th>
+                      <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">الفرع</th>
+                      <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">الجوال</th>
+                      <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">الحالة</th>
+                      <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">الإجراءات</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredEmployees.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="py-12 text-center text-muted-foreground">
+                          لا يوجد موظفين
                         </td>
                       </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-
-            {filteredEmployees.length === 0 && (
-              <div className="text-center py-12">
-                <Users className="w-16 h-16 mx-auto text-muted-foreground/50 mb-4" />
-                <h3 className="text-lg font-medium text-foreground mb-2">لا يوجد موظفين</h3>
-                <p className="text-muted-foreground mb-4">لم يتم العثور على موظفين مطابقين للبحث</p>
+                    ) : (
+                      filteredEmployees.map((employee) => {
+                        const RoleIcon = getRoleIcon(employee.role_in_company);
+                        return (
+                          <tr key={employee.employee_id} className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors">
+                            <td className="py-4 px-4">
+                              <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                                  <User className="w-5 h-5 text-primary" />
+                                </div>
+                                <div>
+                                  <p className="font-medium text-foreground">{getUserName(employee.user_id)}</p>
+                                  <p className="text-sm text-muted-foreground">{getUserEmail(employee.user_id)}</p>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="py-4 px-4">
+                              <div className="flex items-center gap-2">
+                                <RoleIcon className="w-4 h-4 text-muted-foreground" />
+                                <span className="text-foreground">{getRoleLabel(employee.role_in_company)}</span>
+                              </div>
+                            </td>
+                            <td className="py-4 px-4 text-muted-foreground">{getBranchName(employee.branch_id)}</td>
+                            <td className="py-4 px-4 text-muted-foreground">{getUserPhone(employee.user_id)}</td>
+                            <td className="py-4 px-4">
+                              <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
+                                employee.status === "active" 
+                                  ? "bg-secondary/10 text-secondary" 
+                                  : "bg-muted text-muted-foreground"
+                              }`}>
+                                {employee.status === "active" ? "نشط" : "غير نشط"}
+                              </span>
+                            </td>
+                            <td className="py-4 px-4">
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="icon">
+                                    <MoreVertical className="w-4 h-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem onClick={() => handleEdit(employee)}>
+                                    <Edit className="w-4 h-4 ml-2" />
+                                    تعديل
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem 
+                                    onClick={() => handleDelete(employee.employee_id)}
+                                    className="text-destructive"
+                                  >
+                                    <Trash2 className="w-4 h-4 ml-2" />
+                                    حذف
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
               </div>
             )}
           </div>
