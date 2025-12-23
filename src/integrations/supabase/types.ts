@@ -1931,6 +1931,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_first_admin: { Args: never; Returns: boolean }
     }
     Enums: {
       account_status: "active" | "inactive" | "suspended" | "pending"
