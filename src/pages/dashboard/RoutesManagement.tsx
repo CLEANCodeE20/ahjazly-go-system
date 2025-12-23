@@ -20,7 +20,8 @@ import {
   Trash2,
   MoreVertical,
   Clock,
-  Navigation
+  Navigation,
+  Loader2
 } from "lucide-react";
 import {
   Dialog,
@@ -35,8 +36,19 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
-import { useToast } from "@/hooks/use-toast";
+import { useNeonCRUD } from "@/hooks/useNeonCRUD";
+import { Skeleton } from "@/components/ui/skeleton";
 
 // Sidebar navigation
 const sidebarLinks = [
@@ -52,163 +64,91 @@ const sidebarLinks = [
   { href: "/dashboard/settings", label: "الإعدادات", icon: Settings }
 ];
 
-// Sample routes data
-const initialRoutes = [
-  { 
-    id: 1, 
-    name: "الرياض - جدة", 
-    from: "الرياض",
-    to: "جدة",
-    distance: 950,
-    duration: "6 ساعات",
-    stops: ["القصيم", "المدينة المنورة"],
-    basePrice: 150,
-    status: "active"
-  },
-  { 
-    id: 2, 
-    name: "الرياض - الدمام", 
-    from: "الرياض",
-    to: "الدمام",
-    distance: 400,
-    duration: "4 ساعات",
-    stops: ["الأحساء"],
-    basePrice: 80,
-    status: "active"
-  },
-  { 
-    id: 3, 
-    name: "جدة - مكة", 
-    from: "جدة",
-    to: "مكة المكرمة",
-    distance: 80,
-    duration: "1.5 ساعة",
-    stops: [],
-    basePrice: 50,
-    status: "active"
-  },
-  { 
-    id: 4, 
-    name: "الرياض - القصيم", 
-    from: "الرياض",
-    to: "بريدة",
-    distance: 350,
-    duration: "3.5 ساعات",
-    stops: ["المجمعة"],
-    basePrice: 70,
-    status: "inactive"
-  },
-  { 
-    id: 5, 
-    name: "جدة - المدينة", 
-    from: "جدة",
-    to: "المدينة المنورة",
-    distance: 420,
-    duration: "4.5 ساعات",
-    stops: ["ينبع"],
-    basePrice: 100,
-    status: "active"
-  }
-];
+interface RouteRecord {
+  route_id: number;
+  partner_id: number;
+  origin_city: string;
+  destination_city: string;
+  distance_km: number;
+  estimated_duration_hours: number;
+  created_at: string;
+  updated_at: string;
+}
 
 const RoutesManagement = () => {
   const location = useLocation();
-  const { toast } = useToast();
-  const [routes, setRoutes] = useState(initialRoutes);
+  const { 
+    data: routes, 
+    loading, 
+    create, 
+    update, 
+    remove,
+  } = useNeonCRUD<RouteRecord>({ 
+    tableName: 'routes',
+    primaryKey: 'route_id',
+    initialFetch: true
+  });
+  
   const [searchTerm, setSearchTerm] = useState("");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [editingRoute, setEditingRoute] = useState<typeof initialRoutes[0] | null>(null);
+  const [editingRoute, setEditingRoute] = useState<RouteRecord | null>(null);
+  const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
-    name: "",
-    from: "",
-    to: "",
-    distance: "",
-    duration: "",
-    stops: "",
-    basePrice: ""
+    origin_city: "",
+    destination_city: "",
+    distance_km: "",
+    estimated_duration_hours: "",
   });
 
   const filteredRoutes = routes.filter(route => 
-    route.name.includes(searchTerm) || 
-    route.from.includes(searchTerm) ||
-    route.to.includes(searchTerm)
+    route.origin_city?.includes(searchTerm) || 
+    route.destination_city?.includes(searchTerm)
   );
 
-  const handleSubmit = () => {
-    if (!formData.name || !formData.from || !formData.to || !formData.basePrice) {
-      toast({
-        title: "خطأ",
-        description: "يرجى ملء جميع الحقول المطلوبة",
-        variant: "destructive"
-      });
+  const handleSubmit = async () => {
+    if (!formData.origin_city || !formData.destination_city) {
       return;
     }
 
+    setIsSubmitting(true);
+
+    const routeData = {
+      origin_city: formData.origin_city,
+      destination_city: formData.destination_city,
+      distance_km: Number(formData.distance_km) || 0,
+      estimated_duration_hours: Number(formData.estimated_duration_hours) || 0,
+      partner_id: 1 // Default partner
+    };
+
     if (editingRoute) {
-      setRoutes(routes.map(r => 
-        r.id === editingRoute.id 
-          ? { 
-              ...r, 
-              ...formData, 
-              distance: Number(formData.distance),
-              basePrice: Number(formData.basePrice),
-              stops: formData.stops.split(",").map(s => s.trim()).filter(Boolean)
-            }
-          : r
-      ));
-      toast({
-        title: "تم التحديث",
-        description: "تم تحديث بيانات المسار بنجاح"
-      });
+      await update(editingRoute.route_id, routeData);
     } else {
-      const newRoute = {
-        id: Date.now(),
-        ...formData,
-        distance: Number(formData.distance),
-        basePrice: Number(formData.basePrice),
-        stops: formData.stops.split(",").map(s => s.trim()).filter(Boolean),
-        status: "active" as const
-      };
-      setRoutes([...routes, newRoute]);
-      toast({
-        title: "تمت الإضافة",
-        description: "تم إضافة المسار الجديد بنجاح"
-      });
+      await create(routeData);
     }
 
-    setFormData({ name: "", from: "", to: "", distance: "", duration: "", stops: "", basePrice: "" });
+    setFormData({ origin_city: "", destination_city: "", distance_km: "", estimated_duration_hours: "" });
     setEditingRoute(null);
     setIsAddDialogOpen(false);
+    setIsSubmitting(false);
   };
 
-  const handleEdit = (route: typeof initialRoutes[0]) => {
+  const handleEdit = (route: RouteRecord) => {
     setEditingRoute(route);
     setFormData({
-      name: route.name,
-      from: route.from,
-      to: route.to,
-      distance: route.distance.toString(),
-      duration: route.duration,
-      stops: route.stops.join(", "),
-      basePrice: route.basePrice.toString()
+      origin_city: route.origin_city,
+      destination_city: route.destination_city,
+      distance_km: route.distance_km?.toString() || "",
+      estimated_duration_hours: route.estimated_duration_hours?.toString() || "",
     });
     setIsAddDialogOpen(true);
   };
 
-  const handleDelete = (id: number) => {
-    setRoutes(routes.filter(r => r.id !== id));
-    toast({
-      title: "تم الحذف",
-      description: "تم حذف المسار بنجاح"
-    });
-  };
-
-  const toggleStatus = (id: number) => {
-    setRoutes(routes.map(r => 
-      r.id === id 
-        ? { ...r, status: r.status === "active" ? "inactive" : "active" }
-        : r
-    ));
+  const handleDelete = async () => {
+    if (deleteId) {
+      await remove(deleteId);
+      setDeleteId(null);
+    }
   };
 
   return (
@@ -265,7 +205,7 @@ const RoutesManagement = () => {
               <DialogTrigger asChild>
                 <Button onClick={() => {
                   setEditingRoute(null);
-                  setFormData({ name: "", from: "", to: "", distance: "", duration: "", stops: "", basePrice: "" });
+                  setFormData({ origin_city: "", destination_city: "", distance_km: "", estimated_duration_hours: "" });
                 }}>
                   <Plus className="w-4 h-4 ml-2" />
                   إضافة مسار
@@ -276,29 +216,21 @@ const RoutesManagement = () => {
                   <DialogTitle>{editingRoute ? "تعديل المسار" : "إضافة مسار جديد"}</DialogTitle>
                 </DialogHeader>
                 <div className="space-y-4 mt-4">
-                  <div className="space-y-2">
-                    <Label>اسم المسار *</Label>
-                    <Input 
-                      placeholder="مثال: الرياض - جدة"
-                      value={formData.name}
-                      onChange={(e) => setFormData({...formData, name: e.target.value})}
-                    />
-                  </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label>نقطة الانطلاق *</Label>
+                      <Label>مدينة الانطلاق *</Label>
                       <Input 
-                        placeholder="المدينة"
-                        value={formData.from}
-                        onChange={(e) => setFormData({...formData, from: e.target.value})}
+                        placeholder="الرياض"
+                        value={formData.origin_city}
+                        onChange={(e) => setFormData({...formData, origin_city: e.target.value})}
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label>نقطة الوصول *</Label>
+                      <Label>مدينة الوصول *</Label>
                       <Input 
-                        placeholder="المدينة"
-                        value={formData.to}
-                        onChange={(e) => setFormData({...formData, to: e.target.value})}
+                        placeholder="جدة"
+                        value={formData.destination_city}
+                        onChange={(e) => setFormData({...formData, destination_city: e.target.value})}
                       />
                     </div>
                   </div>
@@ -308,38 +240,24 @@ const RoutesManagement = () => {
                       <Input 
                         type="number"
                         placeholder="950"
-                        value={formData.distance}
-                        onChange={(e) => setFormData({...formData, distance: e.target.value})}
+                        value={formData.distance_km}
+                        onChange={(e) => setFormData({...formData, distance_km: e.target.value})}
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label>مدة الرحلة</Label>
+                      <Label>المدة (ساعات)</Label>
                       <Input 
-                        placeholder="6 ساعات"
-                        value={formData.duration}
-                        onChange={(e) => setFormData({...formData, duration: e.target.value})}
+                        type="number"
+                        step="0.5"
+                        placeholder="6"
+                        value={formData.estimated_duration_hours}
+                        onChange={(e) => setFormData({...formData, estimated_duration_hours: e.target.value})}
                       />
                     </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label>محطات التوقف</Label>
-                    <Input 
-                      placeholder="القصيم، المدينة (مفصولة بفاصلة)"
-                      value={formData.stops}
-                      onChange={(e) => setFormData({...formData, stops: e.target.value})}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>السعر الأساسي (ريال) *</Label>
-                    <Input 
-                      type="number"
-                      placeholder="150"
-                      value={formData.basePrice}
-                      onChange={(e) => setFormData({...formData, basePrice: e.target.value})}
-                    />
-                  </div>
                   <div className="flex gap-3 pt-4">
-                    <Button onClick={handleSubmit} className="flex-1">
+                    <Button onClick={handleSubmit} className="flex-1" disabled={isSubmitting}>
+                      {isSubmitting && <Loader2 className="w-4 h-4 ml-2 animate-spin" />}
                       {editingRoute ? "حفظ التغييرات" : "إضافة المسار"}
                     </Button>
                     <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
@@ -354,7 +272,7 @@ const RoutesManagement = () => {
 
         <div className="p-6">
           {/* Stats */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
             <div className="bg-card rounded-xl border border-border p-4">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -372,19 +290,10 @@ const RoutesManagement = () => {
                   <Navigation className="w-5 h-5 text-secondary" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-foreground">{routes.filter(r => r.status === "active").length}</p>
-                  <p className="text-sm text-muted-foreground">مسارات نشطة</p>
-                </div>
-              </div>
-            </div>
-            <div className="bg-card rounded-xl border border-border p-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center">
-                  <MapPin className="w-5 h-5 text-accent" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-foreground">{routes.reduce((acc, r) => acc + r.stops.length, 0)}</p>
-                  <p className="text-sm text-muted-foreground">محطات التوقف</p>
+                  <p className="text-2xl font-bold text-foreground">
+                    {routes.reduce((acc, r) => acc + (r.distance_km || 0), 0)} كم
+                  </p>
+                  <p className="text-sm text-muted-foreground">إجمالي المسافات</p>
                 </div>
               </div>
             </div>
@@ -403,10 +312,42 @@ const RoutesManagement = () => {
             </div>
           </div>
 
+          {/* Loading State */}
+          {loading && routes.length === 0 && (
+            <div className="space-y-4">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="bg-card rounded-xl border border-border p-5">
+                  <div className="flex items-center gap-4">
+                    <Skeleton className="w-12 h-12 rounded-xl" />
+                    <div className="flex-1 space-y-2">
+                      <Skeleton className="h-5 w-48" />
+                      <Skeleton className="h-4 w-32" />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Empty State */}
+          {!loading && routes.length === 0 && (
+            <div className="text-center py-12">
+              <div className="w-16 h-16 rounded-full bg-muted mx-auto mb-4 flex items-center justify-center">
+                <Route className="w-8 h-8 text-muted-foreground" />
+              </div>
+              <h3 className="text-lg font-semibold text-foreground mb-2">لا توجد مسارات</h3>
+              <p className="text-muted-foreground mb-4">ابدأ بإضافة مسار جديد</p>
+              <Button onClick={() => setIsAddDialogOpen(true)}>
+                <Plus className="w-4 h-4 ml-2" />
+                إضافة مسار
+              </Button>
+            </div>
+          )}
+
           {/* Routes List */}
           <div className="space-y-4">
             {filteredRoutes.map((route) => (
-              <div key={route.id} className="bg-card rounded-xl border border-border p-5 hover:shadow-elegant transition-shadow">
+              <div key={route.route_id} className="bg-card rounded-xl border border-border p-5 hover:shadow-elegant transition-shadow">
                 <div className="flex flex-col lg:flex-row lg:items-center gap-4">
                   {/* Route Info */}
                   <div className="flex-1">
@@ -415,16 +356,9 @@ const RoutesManagement = () => {
                         <Route className="w-6 h-6 text-primary-foreground" />
                       </div>
                       <div>
-                        <h3 className="font-bold text-foreground text-lg">{route.name}</h3>
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                            route.status === "active" 
-                              ? "bg-secondary/10 text-secondary" 
-                              : "bg-muted text-muted-foreground"
-                          }`}>
-                            {route.status === "active" ? "نشط" : "غير نشط"}
-                          </span>
-                        </div>
+                        <h3 className="font-bold text-foreground text-lg">
+                          {route.origin_city} - {route.destination_city}
+                        </h3>
                       </div>
                     </div>
 
@@ -432,58 +366,41 @@ const RoutesManagement = () => {
                     <div className="flex flex-wrap items-center gap-4 text-sm">
                       <div className="flex items-center gap-2">
                         <MapPin className="w-4 h-4 text-primary" />
-                        <span className="text-foreground">{route.from}</span>
+                        <span className="text-foreground">{route.origin_city}</span>
                         <span className="text-muted-foreground">←</span>
-                        <span className="text-foreground">{route.to}</span>
+                        <span className="text-foreground">{route.destination_city}</span>
                       </div>
-                      <div className="flex items-center gap-2 text-muted-foreground">
-                        <Navigation className="w-4 h-4" />
-                        <span>{route.distance} كم</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-muted-foreground">
-                        <Clock className="w-4 h-4" />
-                        <span>{route.duration}</span>
-                      </div>
-                    </div>
-
-                    {/* Stops */}
-                    {route.stops.length > 0 && (
-                      <div className="mt-3 flex items-center gap-2">
-                        <span className="text-sm text-muted-foreground">محطات التوقف:</span>
-                        <div className="flex flex-wrap gap-2">
-                          {route.stops.map((stop, index) => (
-                            <span key={index} className="inline-flex items-center px-2.5 py-1 rounded-lg bg-muted text-foreground text-xs">
-                              {stop}
-                            </span>
-                          ))}
+                      {route.distance_km > 0 && (
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                          <Navigation className="w-4 h-4" />
+                          <span>{route.distance_km} كم</span>
                         </div>
-                      </div>
-                    )}
+                      )}
+                      {route.estimated_duration_hours > 0 && (
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                          <Clock className="w-4 h-4" />
+                          <span>{route.estimated_duration_hours} ساعة</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
 
-                  {/* Price & Actions */}
+                  {/* Actions */}
                   <div className="flex items-center gap-4">
-                    <div className="text-center">
-                      <p className="text-2xl font-bold text-secondary">{route.basePrice}</p>
-                      <p className="text-xs text-muted-foreground">ريال</p>
-                    </div>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon">
                           <MoreVertical className="w-5 h-5" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="start">
+                      <DropdownMenuContent align="end">
                         <DropdownMenuItem onClick={() => handleEdit(route)}>
                           <Edit className="w-4 h-4 ml-2" />
                           تعديل
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => toggleStatus(route.id)}>
-                          {route.status === "active" ? "إيقاف" : "تفعيل"}
-                        </DropdownMenuItem>
                         <DropdownMenuItem 
-                          className="text-destructive focus:text-destructive"
-                          onClick={() => handleDelete(route.id)}
+                          onClick={() => setDeleteId(route.route_id)}
+                          className="text-destructive"
                         >
                           <Trash2 className="w-4 h-4 ml-2" />
                           حذف
@@ -495,16 +412,26 @@ const RoutesManagement = () => {
               </div>
             ))}
           </div>
-
-          {filteredRoutes.length === 0 && (
-            <div className="text-center py-12">
-              <Route className="w-16 h-16 mx-auto text-muted-foreground/50 mb-4" />
-              <h3 className="text-lg font-medium text-foreground mb-2">لا توجد مسارات</h3>
-              <p className="text-muted-foreground mb-4">لم يتم العثور على مسارات مطابقة للبحث</p>
-            </div>
-          )}
         </div>
       </main>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>تأكيد الحذف</AlertDialogTitle>
+            <AlertDialogDescription>
+              هل أنت متأكد من حذف هذا المسار؟ لا يمكن التراجع عن هذا الإجراء.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>إلغاء</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              حذف
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
