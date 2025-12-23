@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,11 +19,16 @@ import {
   XCircle,
   Clock,
   Ticket,
-  Eye
+  Eye,
+  Printer
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useSupabaseCRUD } from "@/hooks/useSupabaseCRUD";
+import { useRealtimeBookings } from "@/hooks/useRealtimeBookings";
 import { toast } from "@/hooks/use-toast";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import TicketPrint from "@/components/TicketPrint";
+import { useReactToPrint } from "react-to-print";
 
 // Sidebar navigation
 const sidebarLinks = [
@@ -71,7 +76,7 @@ interface UserRecord {
 }
 
 const BookingsManagement = () => {
-  const { data: bookings, loading, update } = useSupabaseCRUD<BookingRecord>({ 
+  const { data: bookings, loading, update, refetch } = useSupabaseCRUD<BookingRecord>({ 
     tableName: 'bookings',
     primaryKey: 'booking_id',
     initialFetch: true
@@ -95,8 +100,21 @@ const BookingsManagement = () => {
     initialFetch: true
   });
 
+  // Realtime notifications
+  useRealtimeBookings(() => {
+    refetch();
+  });
+
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
+  const [selectedBooking, setSelectedBooking] = useState<BookingRecord | null>(null);
+  const [showPrintDialog, setShowPrintDialog] = useState(false);
+  const ticketRef = useRef<HTMLDivElement>(null);
+
+  const handlePrint = useReactToPrint({
+    contentRef: ticketRef,
+    documentTitle: `تذكرة-${selectedBooking?.booking_id}`,
+  });
 
   const getRouteInfo = (tripId: number | null) => {
     const trip = trips.find(t => t.trip_id === tripId);
@@ -361,6 +379,12 @@ const BookingsManagement = () => {
                           <td className="py-4 px-4">{getStatusBadge(booking.booking_status)}</td>
                           <td className="py-4 px-4">
                             <div className="flex items-center gap-2">
+                              <Button size="sm" variant="ghost" onClick={() => {
+                                setSelectedBooking(booking);
+                                setShowPrintDialog(true);
+                              }}>
+                                <Printer className="w-4 h-4" />
+                              </Button>
                               <Button size="sm" variant="ghost">
                                 <Eye className="w-4 h-4" />
                               </Button>
@@ -386,6 +410,53 @@ const BookingsManagement = () => {
           )}
         </div>
       </main>
+
+      {/* Print Dialog */}
+      <Dialog open={showPrintDialog} onOpenChange={setShowPrintDialog}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-auto">
+          <DialogHeader>
+            <DialogTitle>طباعة التذكرة</DialogTitle>
+          </DialogHeader>
+          
+          {selectedBooking && (
+            <>
+              <TicketPrint
+                ref={ticketRef}
+                booking={{
+                  booking_id: selectedBooking.booking_id,
+                  total_price: selectedBooking.total_price,
+                  booking_date: selectedBooking.booking_date,
+                  payment_method: selectedBooking.payment_method,
+                  payment_status: selectedBooking.payment_status
+                }}
+                passenger={getUserInfo(selectedBooking.user_id)}
+                trip={{
+                  origin: (() => {
+                    const trip = trips.find(t => t.trip_id === selectedBooking.trip_id);
+                    const route = routes.find(r => r.route_id === trip?.route_id);
+                    return route?.origin_city || 'غير محدد';
+                  })(),
+                  destination: (() => {
+                    const trip = trips.find(t => t.trip_id === selectedBooking.trip_id);
+                    const route = routes.find(r => r.route_id === trip?.route_id);
+                    return route?.destination_city || 'غير محدد';
+                  })(),
+                  ...getTripTime(selectedBooking.trip_id)
+                }}
+              />
+              <div className="flex gap-2 mt-4">
+                <Button className="flex-1" onClick={() => handlePrint()}>
+                  <Printer className="w-4 h-4 ml-2" />
+                  طباعة
+                </Button>
+                <Button variant="outline" onClick={() => setShowPrintDialog(false)}>
+                  إغلاق
+                </Button>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
