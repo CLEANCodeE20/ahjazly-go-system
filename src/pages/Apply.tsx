@@ -11,13 +11,16 @@ import {
   User, 
   Mail, 
   Phone, 
-  MapPin, 
   FileText,
   Upload,
   CheckCircle2,
   ArrowLeft,
   ArrowRight,
-  Loader2
+  Loader2,
+  Lock,
+  Eye,
+  EyeOff,
+  XCircle
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -26,12 +29,15 @@ const Apply = () => {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
     // Owner Info
     ownerName: "",
     ownerPhone: "",
     ownerEmail: "",
     ownerIdNumber: "",
+    password: "",
+    confirmPassword: "",
     // Company Info
     companyName: "",
     companyEmail: "",
@@ -52,50 +58,153 @@ const Apply = () => {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, field: string) => {
     if (e.target.files && e.target.files[0]) {
-      setFormData({ ...formData, [field]: e.target.files[0] });
+      const file = e.target.files[0];
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        toast({
+          title: "خطأ",
+          description: "حجم الملف كبير جداً. الحد الأقصى 5 ميجابايت",
+          variant: "destructive"
+        });
+        return;
+      }
+      setFormData({ ...formData, [field]: file });
     }
+  };
+
+  const removeFile = (field: string) => {
+    setFormData({ ...formData, [field]: null });
+  };
+
+  const uploadFile = async (file: File, path: string): Promise<string | null> => {
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${path}/${Date.now()}.${fileExt}`;
+    
+    const { data, error } = await supabase.storage
+      .from('partner-documents')
+      .upload(fileName, file);
+    
+    if (error) {
+      console.error('Upload error:', error);
+      return null;
+    }
+    
+    const { data: urlData } = supabase.storage
+      .from('partner-documents')
+      .getPublicUrl(data.path);
+    
+    return urlData.publicUrl;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate password match
+    if (formData.password !== formData.confirmPassword) {
+      toast({
+        title: "خطأ",
+        description: "كلمات المرور غير متطابقة",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Validate password length
+    if (formData.password.length < 6) {
+      toast({
+        title: "خطأ",
+        description: "كلمة المرور يجب أن تكون 6 أحرف على الأقل",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
-      // Create partner record
-      const { data: partner, error: partnerError } = await supabase
-        .from('partners')
+      // 1. Create auth user account
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: formData.ownerEmail,
+        password: formData.password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/login`,
+          data: {
+            full_name: formData.ownerName,
+            phone: formData.ownerPhone
+          }
+        }
+      });
+
+      if (authError) {
+        if (authError.message.includes("already registered")) {
+          toast({
+            title: "البريد مسجل مسبقاً",
+            description: "هذا البريد الإلكتروني مسجل بالفعل، يرجى تسجيل الدخول",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "خطأ في إنشاء الحساب",
+            description: authError.message,
+            variant: "destructive",
+          });
+        }
+        return;
+      }
+
+      const userId = authData.user?.id;
+
+      // 2. Upload documents if provided
+      let commercialRegisterUrl = null;
+      let taxCertificateUrl = null;
+
+      if (formData.commercialRegister) {
+        commercialRegisterUrl = await uploadFile(
+          formData.commercialRegister, 
+          `applications/${userId || 'anonymous'}/commercial`
+        );
+      }
+
+      if (formData.taxCertificate) {
+        taxCertificateUrl = await uploadFile(
+          formData.taxCertificate, 
+          `applications/${userId || 'anonymous'}/tax`
+        );
+      }
+
+      // 3. Create application record
+      const { error: applicationError } = await supabase
+        .from('partner_applications')
         .insert({
+          owner_name: formData.ownerName,
+          owner_phone: formData.ownerPhone,
+          owner_email: formData.ownerEmail,
+          owner_id_number: formData.ownerIdNumber || null,
           company_name: formData.companyName,
-          contact_person: formData.ownerName,
-          address: `${formData.companyAddress}, ${formData.companyCity}`,
+          company_email: formData.companyEmail || null,
+          company_phone: formData.companyPhone || null,
+          company_address: formData.companyAddress || null,
+          company_city: formData.companyCity,
+          fleet_size: formData.fleetSize ? parseInt(formData.fleetSize) : null,
+          commercial_register_url: commercialRegisterUrl,
+          tax_certificate_url: taxCertificateUrl,
+          description: formData.description || null,
+          auth_user_id: userId || null,
           status: 'pending'
-        })
-        .select()
-        .single();
-
-      if (partnerError) throw partnerError;
-
-      // Create user record for owner
-      const { error: userError } = await supabase
-        .from('users')
-        .insert({
-          full_name: formData.ownerName,
-          email: formData.ownerEmail,
-          phone_number: formData.ownerPhone,
-          user_type: 'partner',
-          partner_id: partner.partner_id,
-          account_status: 'pending'
         });
 
-      if (userError) throw userError;
+      if (applicationError) throw applicationError;
+
+      // Sign out the user since they need to wait for approval
+      await supabase.auth.signOut();
 
       toast({
         title: "تم إرسال الطلب بنجاح!",
-        description: "سنراجع طلبك ونتواصل معك خلال 48 ساعة عمل.",
+        description: "سنراجع طلبك ونتواصل معك خلال 48 ساعة عمل. سيتم تفعيل حسابك بعد الموافقة.",
       });
 
-      // Navigate to home after success
-      setTimeout(() => navigate('/'), 2000);
+      // Navigate to success page or home
+      setTimeout(() => navigate('/'), 3000);
 
     } catch (error: any) {
       console.error('Error submitting application:', error);
@@ -109,28 +218,60 @@ const Apply = () => {
     }
   };
 
-  const nextStep = () => {
-    // Validate current step
-    if (step === 1) {
-      if (!formData.ownerName || !formData.ownerPhone || !formData.ownerEmail) {
+  const validateStep = (stepNum: number): boolean => {
+    if (stepNum === 1) {
+      if (!formData.ownerName || !formData.ownerPhone || !formData.ownerEmail || !formData.password || !formData.confirmPassword) {
         toast({
           title: "خطأ",
           description: "يرجى ملء جميع الحقول المطلوبة",
           variant: "destructive"
         });
-        return;
+        return false;
       }
-    } else if (step === 2) {
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(formData.ownerEmail)) {
+        toast({
+          title: "خطأ",
+          description: "البريد الإلكتروني غير صحيح",
+          variant: "destructive"
+        });
+        return false;
+      }
+      // Validate password match
+      if (formData.password !== formData.confirmPassword) {
+        toast({
+          title: "خطأ",
+          description: "كلمات المرور غير متطابقة",
+          variant: "destructive"
+        });
+        return false;
+      }
+      if (formData.password.length < 6) {
+        toast({
+          title: "خطأ",
+          description: "كلمة المرور يجب أن تكون 6 أحرف على الأقل",
+          variant: "destructive"
+        });
+        return false;
+      }
+    } else if (stepNum === 2) {
       if (!formData.companyName || !formData.companyCity) {
         toast({
           title: "خطأ",
           description: "يرجى ملء جميع الحقول المطلوبة",
           variant: "destructive"
         });
-        return;
+        return false;
       }
     }
-    setStep(step + 1);
+    return true;
+  };
+
+  const nextStep = () => {
+    if (validateStep(step)) {
+      setStep(step + 1);
+    }
   };
   
   const prevStep = () => setStep(step - 1);
@@ -223,27 +364,86 @@ const Apply = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="ownerPhone">رقم الجوال *</Label>
-                      <Input
-                        id="ownerPhone"
-                        name="ownerPhone"
-                        type="tel"
-                        value={formData.ownerPhone}
-                        onChange={handleInputChange}
-                        placeholder="05xxxxxxxx"
-                        required
-                      />
+                      <div className="relative">
+                        <Phone className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                        <Input
+                          id="ownerPhone"
+                          name="ownerPhone"
+                          type="tel"
+                          value={formData.ownerPhone}
+                          onChange={handleInputChange}
+                          placeholder="05xxxxxxxx"
+                          className="pr-10"
+                          required
+                        />
+                      </div>
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="ownerEmail">البريد الإلكتروني *</Label>
-                      <Input
-                        id="ownerEmail"
-                        name="ownerEmail"
-                        type="email"
-                        value={formData.ownerEmail}
-                        onChange={handleInputChange}
-                        placeholder="email@example.com"
-                        required
-                      />
+                      <div className="relative">
+                        <Mail className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                        <Input
+                          id="ownerEmail"
+                          name="ownerEmail"
+                          type="email"
+                          value={formData.ownerEmail}
+                          onChange={handleInputChange}
+                          placeholder="email@example.com"
+                          className="pr-10"
+                          required
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Password Section */}
+                  <div className="border-t border-border pt-6 mt-6">
+                    <h3 className="text-lg font-medium text-foreground mb-4 flex items-center gap-2">
+                      <Lock className="w-5 h-5 text-primary" />
+                      إنشاء كلمة مرور للحساب
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="password">كلمة المرور *</Label>
+                        <div className="relative">
+                          <Lock className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                          <Input
+                            id="password"
+                            name="password"
+                            type={showPassword ? "text" : "password"}
+                            value={formData.password}
+                            onChange={handleInputChange}
+                            placeholder="6 أحرف على الأقل"
+                            className="pr-10 pl-10"
+                            required
+                            minLength={6}
+                          />
+                          <button
+                            type="button"
+                            className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                            onClick={() => setShowPassword(!showPassword)}
+                          >
+                            {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          </button>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="confirmPassword">تأكيد كلمة المرور *</Label>
+                        <div className="relative">
+                          <Lock className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                          <Input
+                            id="confirmPassword"
+                            name="confirmPassword"
+                            type={showPassword ? "text" : "password"}
+                            value={formData.confirmPassword}
+                            onChange={handleInputChange}
+                            placeholder="أعد كتابة كلمة المرور"
+                            className="pr-10"
+                            required
+                            minLength={6}
+                          />
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -317,6 +517,7 @@ const Apply = () => {
                         value={formData.fleetSize}
                         onChange={handleInputChange}
                         placeholder="عدد حافلات الأسطول"
+                        min="1"
                       />
                     </div>
                   </div>
@@ -344,43 +545,95 @@ const Apply = () => {
                     <h2 className="text-xl font-semibold text-foreground">الوثائق المطلوبة</h2>
                   </div>
 
+                  <p className="text-sm text-muted-foreground mb-4">
+                    رفع الوثائق اختياري، لكنه يسرّع عملية مراجعة طلبك. الحد الأقصى لحجم الملف 5 ميجابايت.
+                  </p>
+
                   <div className="space-y-4">
-                    <div className="border-2 border-dashed border-border rounded-xl p-6 text-center hover:border-primary/50 transition-colors">
-                      <input
-                        type="file"
-                        id="commercialRegister"
-                        className="hidden"
-                        accept=".pdf,.jpg,.jpeg,.png"
-                        onChange={(e) => handleFileChange(e, "commercialRegister")}
-                      />
-                      <label htmlFor="commercialRegister" className="cursor-pointer">
-                        <Upload className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
-                        <p className="font-medium text-foreground mb-1">السجل التجاري</p>
-                        <p className="text-sm text-muted-foreground">
-                          {formData.commercialRegister 
-                            ? formData.commercialRegister.name 
-                            : "اسحب الملف هنا أو اضغط للتحميل (PDF, JPG, PNG)"}
-                        </p>
-                      </label>
+                    {/* Commercial Register */}
+                    <div className={`border-2 border-dashed rounded-xl p-6 text-center transition-colors ${
+                      formData.commercialRegister 
+                        ? "border-primary bg-primary/5" 
+                        : "border-border hover:border-primary/50"
+                    }`}>
+                      {formData.commercialRegister ? (
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <CheckCircle2 className="w-6 h-6 text-primary" />
+                            <div className="text-right">
+                              <p className="font-medium text-foreground">السجل التجاري</p>
+                              <p className="text-sm text-muted-foreground">{formData.commercialRegister.name}</p>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => removeFile("commercialRegister")}
+                            className="p-2 hover:bg-destructive/10 rounded-lg transition-colors"
+                          >
+                            <XCircle className="w-5 h-5 text-destructive" />
+                          </button>
+                        </div>
+                      ) : (
+                        <>
+                          <input
+                            type="file"
+                            id="commercialRegister"
+                            className="hidden"
+                            accept=".pdf,.jpg,.jpeg,.png"
+                            onChange={(e) => handleFileChange(e, "commercialRegister")}
+                          />
+                          <label htmlFor="commercialRegister" className="cursor-pointer">
+                            <Upload className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+                            <p className="font-medium text-foreground mb-1">السجل التجاري</p>
+                            <p className="text-sm text-muted-foreground">
+                              اسحب الملف هنا أو اضغط للتحميل (PDF, JPG, PNG)
+                            </p>
+                          </label>
+                        </>
+                      )}
                     </div>
 
-                    <div className="border-2 border-dashed border-border rounded-xl p-6 text-center hover:border-primary/50 transition-colors">
-                      <input
-                        type="file"
-                        id="taxCertificate"
-                        className="hidden"
-                        accept=".pdf,.jpg,.jpeg,.png"
-                        onChange={(e) => handleFileChange(e, "taxCertificate")}
-                      />
-                      <label htmlFor="taxCertificate" className="cursor-pointer">
-                        <Upload className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
-                        <p className="font-medium text-foreground mb-1">شهادة الزكاة والضريبة</p>
-                        <p className="text-sm text-muted-foreground">
-                          {formData.taxCertificate 
-                            ? formData.taxCertificate.name 
-                            : "اسحب الملف هنا أو اضغط للتحميل (PDF, JPG, PNG)"}
-                        </p>
-                      </label>
+                    {/* Tax Certificate */}
+                    <div className={`border-2 border-dashed rounded-xl p-6 text-center transition-colors ${
+                      formData.taxCertificate 
+                        ? "border-primary bg-primary/5" 
+                        : "border-border hover:border-primary/50"
+                    }`}>
+                      {formData.taxCertificate ? (
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <CheckCircle2 className="w-6 h-6 text-primary" />
+                            <div className="text-right">
+                              <p className="font-medium text-foreground">شهادة الزكاة والضريبة</p>
+                              <p className="text-sm text-muted-foreground">{formData.taxCertificate.name}</p>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => removeFile("taxCertificate")}
+                            className="p-2 hover:bg-destructive/10 rounded-lg transition-colors"
+                          >
+                            <XCircle className="w-5 h-5 text-destructive" />
+                          </button>
+                        </div>
+                      ) : (
+                        <>
+                          <input
+                            type="file"
+                            id="taxCertificate"
+                            className="hidden"
+                            accept=".pdf,.jpg,.jpeg,.png"
+                            onChange={(e) => handleFileChange(e, "taxCertificate")}
+                          />
+                          <label htmlFor="taxCertificate" className="cursor-pointer">
+                            <Upload className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+                            <p className="font-medium text-foreground mb-1">شهادة الزكاة والضريبة</p>
+                            <p className="text-sm text-muted-foreground">
+                              اسحب الملف هنا أو اضغط للتحميل (PDF, JPG, PNG)
+                            </p>
+                          </label>
+                        </>
+                      )}
                     </div>
                   </div>
 
@@ -394,6 +647,21 @@ const Apply = () => {
                       placeholder="أي معلومات إضافية ترغب في مشاركتها معنا"
                       rows={4}
                     />
+                  </div>
+
+                  {/* Summary */}
+                  <div className="bg-muted/50 rounded-xl p-4 mt-6">
+                    <h3 className="font-medium text-foreground mb-3">ملخص الطلب</h3>
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <p className="text-muted-foreground">الاسم:</p>
+                      <p className="text-foreground">{formData.ownerName}</p>
+                      <p className="text-muted-foreground">الشركة:</p>
+                      <p className="text-foreground">{formData.companyName}</p>
+                      <p className="text-muted-foreground">المدينة:</p>
+                      <p className="text-foreground">{formData.companyCity}</p>
+                      <p className="text-muted-foreground">البريد:</p>
+                      <p className="text-foreground">{formData.ownerEmail}</p>
+                    </div>
                   </div>
                 </div>
               )}
@@ -415,7 +683,7 @@ const Apply = () => {
                     <ArrowLeft className="w-4 h-4 mr-2" />
                   </Button>
                 ) : (
-                  <Button type="submit" variant="hero" disabled={isSubmitting}>
+                  <Button type="submit" disabled={isSubmitting}>
                     {isSubmitting ? (
                       <>
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -442,7 +710,7 @@ const Apply = () => {
           </p>
         </div>
       </main>
-
+      
       <Footer />
     </div>
   );
