@@ -15,10 +15,18 @@ import {
   Plus,
   MapPin,
   TrendingUp,
+  TrendingDown,
   Ticket,
-  Loader2
+  Loader2,
+  Calendar
 } from "lucide-react";
 import { useSupabaseCRUD } from "@/hooks/useSupabaseCRUD";
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from "@/components/ui/chart";
+import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, AreaChart, Area } from "recharts";
 
 // Sidebar navigation
 const sidebarLinks = [
@@ -64,6 +72,13 @@ interface RouteRecord {
   destination_city: string;
 }
 
+const CHART_COLORS = {
+  primary: "hsl(var(--primary))",
+  secondary: "hsl(var(--secondary))",
+  accent: "hsl(var(--accent))",
+  muted: "hsl(var(--muted))",
+};
+
 const CompanyDashboard = () => {
   const location = useLocation();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -97,20 +112,106 @@ const CompanyDashboard = () => {
   // Calculate stats
   const stats = useMemo(() => {
     const today = new Date().toISOString().split('T')[0];
+    const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+    
     const todayTrips = trips.filter(t => t.departure_time?.startsWith(today)).length;
+    const yesterdayTrips = trips.filter(t => t.departure_time?.startsWith(yesterday)).length;
+    const tripChange = yesterdayTrips > 0 ? Math.round(((todayTrips - yesterdayTrips) / yesterdayTrips) * 100) : todayTrips > 0 ? 100 : 0;
+    
     const newBookings = bookings.filter(b => b.booking_status === 'pending').length;
+    const confirmedBookings = bookings.filter(b => b.booking_status === 'confirmed').length;
+    
     const todayRevenue = bookings
       .filter(b => b.booking_date?.startsWith(today) && (b.booking_status === 'confirmed' || b.booking_status === 'completed'))
       .reduce((sum, b) => sum + (b.total_price || 0), 0);
+    const yesterdayRevenue = bookings
+      .filter(b => b.booking_date?.startsWith(yesterday) && (b.booking_status === 'confirmed' || b.booking_status === 'completed'))
+      .reduce((sum, b) => sum + (b.total_price || 0), 0);
+    const revenueChange = yesterdayRevenue > 0 ? Math.round(((todayRevenue - yesterdayRevenue) / yesterdayRevenue) * 100) : todayRevenue > 0 ? 100 : 0;
+    
     const activeBuses = buses.filter(b => b.status === 'active').length;
+    const totalBuses = buses.length;
 
     return [
-      { label: "الرحلات اليوم", value: todayTrips, icon: Route, change: "+2", trend: "up" },
-      { label: "الحجوزات الجديدة", value: newBookings, icon: Ticket, change: "+12", trend: "up" },
-      { label: "الإيرادات (ريال)", value: todayRevenue.toLocaleString(), icon: CreditCard, change: "+8%", trend: "up" },
-      { label: "الحافلات النشطة", value: activeBuses, icon: Bus, change: "0", trend: "neutral" }
+      { label: "الرحلات اليوم", value: todayTrips, icon: Route, change: `${tripChange >= 0 ? '+' : ''}${tripChange}%`, trend: tripChange >= 0 ? "up" : "down" },
+      { label: "الحجوزات الجديدة", value: newBookings, icon: Ticket, change: `${confirmedBookings} مؤكدة`, trend: "up" },
+      { label: "الإيرادات اليوم (ريال)", value: todayRevenue.toLocaleString(), icon: CreditCard, change: `${revenueChange >= 0 ? '+' : ''}${revenueChange}%`, trend: revenueChange >= 0 ? "up" : "down" },
+      { label: "الحافلات النشطة", value: `${activeBuses}/${totalBuses}`, icon: Bus, change: `${Math.round((activeBuses/Math.max(totalBuses,1))*100)}%`, trend: "neutral" }
     ];
   }, [trips, bookings, buses]);
+
+  // Weekly revenue data
+  const weeklyRevenueData = useMemo(() => {
+    const days = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+    const data = [];
+    
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date();
+      date.setDate(date.getDate() - i);
+      const dateStr = date.toISOString().split('T')[0];
+      const dayName = days[date.getDay()];
+      
+      const dayRevenue = bookings
+        .filter(b => b.booking_date?.startsWith(dateStr) && (b.booking_status === 'confirmed' || b.booking_status === 'completed'))
+        .reduce((sum, b) => sum + (b.total_price || 0), 0);
+      
+      const dayBookings = bookings.filter(b => b.booking_date?.startsWith(dateStr)).length;
+      
+      data.push({
+        day: dayName,
+        revenue: dayRevenue,
+        bookings: dayBookings
+      });
+    }
+    
+    return data;
+  }, [bookings]);
+
+  // Monthly trips data
+  const monthlyTripsData = useMemo(() => {
+    const data = [];
+    
+    for (let i = 29; i >= 0; i--) {
+      const date = new Date();
+      date.setDate(date.getDate() - i);
+      const dateStr = date.toISOString().split('T')[0];
+      
+      const dayTrips = trips.filter(t => t.departure_time?.startsWith(dateStr)).length;
+      const completedTrips = trips.filter(t => t.departure_time?.startsWith(dateStr) && t.status === 'completed').length;
+      
+      data.push({
+        date: date.getDate().toString(),
+        trips: dayTrips,
+        completed: completedTrips
+      });
+    }
+    
+    return data;
+  }, [trips]);
+
+  // Booking status distribution
+  const bookingStatusData = useMemo(() => {
+    const statusCounts = {
+      pending: bookings.filter(b => b.booking_status === 'pending').length,
+      confirmed: bookings.filter(b => b.booking_status === 'confirmed').length,
+      completed: bookings.filter(b => b.booking_status === 'completed').length,
+      cancelled: bookings.filter(b => b.booking_status === 'cancelled').length,
+    };
+    
+    return [
+      { name: 'قيد الانتظار', value: statusCounts.pending, color: 'hsl(var(--primary))' },
+      { name: 'مؤكدة', value: statusCounts.confirmed, color: 'hsl(var(--secondary))' },
+      { name: 'مكتملة', value: statusCounts.completed, color: 'hsl(var(--muted-foreground))' },
+      { name: 'ملغاة', value: statusCounts.cancelled, color: 'hsl(var(--destructive))' },
+    ].filter(item => item.value > 0);
+  }, [bookings]);
+
+  // Total revenue
+  const totalRevenue = useMemo(() => {
+    return bookings
+      .filter(b => b.booking_status === 'confirmed' || b.booking_status === 'completed')
+      .reduce((sum, b) => sum + (b.total_price || 0), 0);
+  }, [bookings]);
 
   // Recent trips (last 5)
   const recentTrips = useMemo(() => {
@@ -133,6 +234,13 @@ const CompanyDashboard = () => {
         };
       });
   }, [trips, routes, buses, bookings]);
+
+  const chartConfig = {
+    revenue: { label: "الإيرادات", color: CHART_COLORS.primary },
+    bookings: { label: "الحجوزات", color: CHART_COLORS.secondary },
+    trips: { label: "الرحلات", color: CHART_COLORS.primary },
+    completed: { label: "مكتملة", color: CHART_COLORS.secondary },
+  };
 
   return (
     <div className="min-h-screen bg-muted/30">
@@ -217,17 +325,131 @@ const CompanyDashboard = () => {
                       <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
                         <stat.icon className="w-5 h-5 text-primary" />
                       </div>
-                      {stat.trend === "up" && (
-                        <span className="flex items-center gap-1 text-xs font-medium text-secondary">
-                          <TrendingUp className="w-3 h-3" />
-                          {stat.change}
-                        </span>
-                      )}
+                      <span className={`flex items-center gap-1 text-xs font-medium ${
+                        stat.trend === "up" ? "text-secondary" : stat.trend === "down" ? "text-destructive" : "text-muted-foreground"
+                      }`}>
+                        {stat.trend === "up" && <TrendingUp className="w-3 h-3" />}
+                        {stat.trend === "down" && <TrendingDown className="w-3 h-3" />}
+                        {stat.change}
+                      </span>
                     </div>
                     <p className="text-2xl font-bold text-foreground mb-1">{stat.value}</p>
                     <p className="text-sm text-muted-foreground">{stat.label}</p>
                   </div>
                 ))}
+              </div>
+
+              {/* Charts Section */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                {/* Weekly Revenue Chart */}
+                <div className="bg-card rounded-xl border border-border p-5">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h3 className="font-semibold text-foreground">إيرادات الأسبوع</h3>
+                      <p className="text-sm text-muted-foreground">إجمالي: {totalRevenue.toLocaleString()} ريال</p>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Calendar className="w-4 h-4" />
+                      آخر 7 أيام
+                    </div>
+                  </div>
+                  <ChartContainer config={chartConfig} className="h-[250px] w-full">
+                    <BarChart data={weeklyRevenueData}>
+                      <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} />
+                      <YAxis axisLine={false} tickLine={false} tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} />
+                      <ChartTooltip content={<ChartTooltipContent />} />
+                      <Bar dataKey="revenue" fill={CHART_COLORS.primary} radius={[4, 4, 0, 0]} name="الإيرادات" />
+                    </BarChart>
+                  </ChartContainer>
+                </div>
+
+                {/* Monthly Trips Chart */}
+                <div className="bg-card rounded-xl border border-border p-5">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h3 className="font-semibold text-foreground">الرحلات الشهرية</h3>
+                      <p className="text-sm text-muted-foreground">إجمالي الرحلات: {trips.length}</p>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Calendar className="w-4 h-4" />
+                      آخر 30 يوم
+                    </div>
+                  </div>
+                  <ChartContainer config={chartConfig} className="h-[250px] w-full">
+                    <AreaChart data={monthlyTripsData}>
+                      <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} interval={4} />
+                      <YAxis axisLine={false} tickLine={false} tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} />
+                      <ChartTooltip content={<ChartTooltipContent />} />
+                      <Area type="monotone" dataKey="trips" stroke={CHART_COLORS.primary} fill={CHART_COLORS.primary} fillOpacity={0.2} name="الرحلات" />
+                      <Area type="monotone" dataKey="completed" stroke={CHART_COLORS.secondary} fill={CHART_COLORS.secondary} fillOpacity={0.2} name="مكتملة" />
+                    </AreaChart>
+                  </ChartContainer>
+                </div>
+
+                {/* Bookings by Day Chart */}
+                <div className="bg-card rounded-xl border border-border p-5">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h3 className="font-semibold text-foreground">الحجوزات اليومية</h3>
+                      <p className="text-sm text-muted-foreground">إجمالي الحجوزات: {bookings.length}</p>
+                    </div>
+                  </div>
+                  <ChartContainer config={chartConfig} className="h-[250px] w-full">
+                    <LineChart data={weeklyRevenueData}>
+                      <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} />
+                      <YAxis axisLine={false} tickLine={false} tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} />
+                      <ChartTooltip content={<ChartTooltipContent />} />
+                      <Line type="monotone" dataKey="bookings" stroke={CHART_COLORS.secondary} strokeWidth={2} dot={{ fill: CHART_COLORS.secondary, r: 4 }} name="الحجوزات" />
+                    </LineChart>
+                  </ChartContainer>
+                </div>
+
+                {/* Booking Status Distribution */}
+                <div className="bg-card rounded-xl border border-border p-5">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h3 className="font-semibold text-foreground">توزيع حالة الحجوزات</h3>
+                      <p className="text-sm text-muted-foreground">جميع الحجوزات</p>
+                    </div>
+                  </div>
+                  {bookingStatusData.length > 0 ? (
+                    <div className="flex items-center gap-6">
+                      <ChartContainer config={chartConfig} className="h-[200px] w-[200px]">
+                        <PieChart>
+                          <Pie
+                            data={bookingStatusData}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={50}
+                            outerRadius={80}
+                            paddingAngle={2}
+                            dataKey="value"
+                          >
+                            {bookingStatusData.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={entry.color} />
+                            ))}
+                          </Pie>
+                          <ChartTooltip content={<ChartTooltipContent />} />
+                        </PieChart>
+                      </ChartContainer>
+                      <div className="flex-1 space-y-3">
+                        {bookingStatusData.map((item, index) => (
+                          <div key={index} className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
+                              <span className="text-sm text-foreground">{item.name}</span>
+                            </div>
+                            <span className="text-sm font-medium text-foreground">{item.value}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="h-[200px] flex items-center justify-center text-muted-foreground">
+                      لا توجد بيانات
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Quick Actions */}
