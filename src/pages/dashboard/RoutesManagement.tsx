@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { 
@@ -21,7 +21,10 @@ import {
   MoreVertical,
   Clock,
   Navigation,
-  Loader2
+  Loader2,
+  ChevronDown,
+  ChevronUp,
+  GripVertical
 } from "lucide-react";
 import {
   Dialog,
@@ -47,8 +50,11 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
-import { useSupabaseCRUD } from "@/hooks/useSupabaseCRUD";
 import { Skeleton } from "@/components/ui/skeleton";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { usePartner } from "@/hooks/usePartner";
+import { toast } from "@/hooks/use-toast";
 
 // Sidebar navigation
 const sidebarLinks = [
@@ -75,31 +81,83 @@ interface RouteRecord {
   updated_at: string;
 }
 
+interface RouteStop {
+  stop_id: number;
+  route_id: number | null;
+  stop_name: string;
+  stop_location: string | null;
+  stop_order: number | null;
+  preparation_time: string | null;
+}
+
 const RoutesManagement = () => {
   const location = useLocation();
-  const { 
-    data: routes, 
-    loading, 
-    create, 
-    update, 
-    remove,
-  } = useSupabaseCRUD<RouteRecord>({ 
-    tableName: 'routes',
-    primaryKey: 'route_id',
-    initialFetch: true
-  });
+  const navigate = useNavigate();
+  const { signOut } = useAuth();
+  const { partnerId, partner, isLoading: partnerLoading } = usePartner();
   
+  const [routes, setRoutes] = useState<RouteRecord[]>([]);
+  const [routeStops, setRouteStops] = useState<Record<number, RouteStop[]>>({});
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingRoute, setEditingRoute] = useState<RouteRecord | null>(null);
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [expandedRouteId, setExpandedRouteId] = useState<number | null>(null);
+  const [isAddStopDialogOpen, setIsAddStopDialogOpen] = useState(false);
+  const [selectedRouteForStop, setSelectedRouteForStop] = useState<number | null>(null);
   const [formData, setFormData] = useState({
     origin_city: "",
     destination_city: "",
     distance_km: "",
     estimated_duration_hours: "",
   });
+  const [stopFormData, setStopFormData] = useState({
+    stop_name: "",
+    stop_location: "",
+    preparation_time: ""
+  });
+
+  useEffect(() => {
+    fetchRoutes();
+  }, [partnerId]);
+
+  const fetchRoutes = async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from('routes')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching routes:', error);
+      toast({ title: "خطأ", description: "فشل في تحميل المسارات", variant: "destructive" });
+    } else {
+      setRoutes(data || []);
+      // Fetch stops for all routes
+      if (data && data.length > 0) {
+        const routeIds = data.map(r => r.route_id);
+        const { data: stopsData } = await supabase
+          .from('route_stops')
+          .select('*')
+          .in('route_id', routeIds)
+          .order('stop_order', { ascending: true });
+        
+        if (stopsData) {
+          const stopsMap: Record<number, RouteStop[]> = {};
+          stopsData.forEach(stop => {
+            if (stop.route_id) {
+              if (!stopsMap[stop.route_id]) stopsMap[stop.route_id] = [];
+              stopsMap[stop.route_id].push(stop);
+            }
+          });
+          setRouteStops(stopsMap);
+        }
+      }
+    }
+    setLoading(false);
+  };
 
   const filteredRoutes = routes.filter(route => 
     route.origin_city?.includes(searchTerm) || 
@@ -108,6 +166,7 @@ const RoutesManagement = () => {
 
   const handleSubmit = async () => {
     if (!formData.origin_city || !formData.destination_city) {
+      toast({ title: "خطأ", description: "يرجى ملء الحقول المطلوبة", variant: "destructive" });
       return;
     }
 
@@ -118,20 +177,32 @@ const RoutesManagement = () => {
       destination_city: formData.destination_city,
       distance_km: Number(formData.distance_km) || null,
       estimated_duration_hours: Number(formData.estimated_duration_hours) || null,
+      partner_id: partnerId,
     };
 
     try {
       if (editingRoute) {
-        await update(editingRoute.route_id, routeData);
+        const { error } = await supabase
+          .from('routes')
+          .update(routeData)
+          .eq('route_id', editingRoute.route_id);
+        if (error) throw error;
+        toast({ title: "تم التحديث", description: "تم تحديث المسار بنجاح" });
       } else {
-        await create(routeData);
+        const { error } = await supabase
+          .from('routes')
+          .insert(routeData);
+        if (error) throw error;
+        toast({ title: "تمت الإضافة", description: "تم إضافة المسار بنجاح" });
       }
 
       setFormData({ origin_city: "", destination_city: "", distance_km: "", estimated_duration_hours: "" });
       setEditingRoute(null);
       setIsAddDialogOpen(false);
-    } catch (error) {
+      fetchRoutes();
+    } catch (error: any) {
       console.error('Submit error:', error);
+      toast({ title: "خطأ", description: error.message, variant: "destructive" });
     } finally {
       setIsSubmitting(false);
     }
@@ -150,9 +221,61 @@ const RoutesManagement = () => {
 
   const handleDelete = async () => {
     if (deleteId) {
-      await remove(deleteId);
+      const { error } = await supabase.from('routes').delete().eq('route_id', deleteId);
+      if (error) {
+        toast({ title: "خطأ", description: error.message, variant: "destructive" });
+      } else {
+        toast({ title: "تم الحذف", description: "تم حذف المسار بنجاح" });
+        fetchRoutes();
+      }
       setDeleteId(null);
     }
+  };
+
+  const handleAddStop = async () => {
+    if (!stopFormData.stop_name || !selectedRouteForStop) {
+      toast({ title: "خطأ", description: "يرجى ملء اسم المحطة", variant: "destructive" });
+      return;
+    }
+
+    setIsSubmitting(true);
+    const currentStops = routeStops[selectedRouteForStop] || [];
+    const nextOrder = currentStops.length + 1;
+
+    const { error } = await supabase
+      .from('route_stops')
+      .insert({
+        route_id: selectedRouteForStop,
+        stop_name: stopFormData.stop_name,
+        stop_location: stopFormData.stop_location || null,
+        stop_order: nextOrder,
+        preparation_time: stopFormData.preparation_time || null
+      });
+
+    if (error) {
+      toast({ title: "خطأ", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "تمت الإضافة", description: "تم إضافة نقطة الصعود بنجاح" });
+      setStopFormData({ stop_name: "", stop_location: "", preparation_time: "" });
+      setIsAddStopDialogOpen(false);
+      fetchRoutes();
+    }
+    setIsSubmitting(false);
+  };
+
+  const handleDeleteStop = async (stopId: number) => {
+    const { error } = await supabase.from('route_stops').delete().eq('stop_id', stopId);
+    if (error) {
+      toast({ title: "خطأ", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "تم الحذف", description: "تم حذف نقطة الصعود" });
+      fetchRoutes();
+    }
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/login');
   };
 
   return (
@@ -165,7 +288,7 @@ const RoutesManagement = () => {
           </div>
           <div>
             <span className="text-lg font-bold">احجزلي</span>
-            <p className="text-xs text-sidebar-foreground/60">شركة السفر الذهبي</p>
+            <p className="text-xs text-sidebar-foreground/60">{partner?.company_name || "شركتي"}</p>
           </div>
         </div>
 
@@ -187,11 +310,13 @@ const RoutesManagement = () => {
         </nav>
 
         <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-sidebar-border">
-          <Button variant="ghost" className="w-full justify-start text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50" asChild>
-            <Link to="/">
-              <LogOut className="w-5 h-5 ml-2" />
-              تسجيل الخروج
-            </Link>
+          <Button 
+            variant="ghost" 
+            className="w-full justify-start text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
+            onClick={handleSignOut}
+          >
+            <LogOut className="w-5 h-5 ml-2" />
+            تسجيل الخروج
           </Button>
         </div>
       </aside>
@@ -203,7 +328,7 @@ const RoutesManagement = () => {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-xl font-bold text-foreground">إدارة المسارات</h1>
-              <p className="text-sm text-muted-foreground">إضافة وإدارة مسارات الرحلات</p>
+              <p className="text-sm text-muted-foreground">إضافة وإدارة مسارات الرحلات ونقاط الصعود</p>
             </div>
             <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
               <DialogTrigger asChild>
@@ -276,7 +401,7 @@ const RoutesManagement = () => {
 
         <div className="p-6">
           {/* Stats */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
             <div className="bg-card rounded-xl border border-border p-4">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -291,7 +416,20 @@ const RoutesManagement = () => {
             <div className="bg-card rounded-xl border border-border p-4">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-lg bg-secondary/10 flex items-center justify-center">
-                  <Navigation className="w-5 h-5 text-secondary" />
+                  <MapPin className="w-5 h-5 text-secondary" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-foreground">
+                    {Object.values(routeStops).flat().length}
+                  </p>
+                  <p className="text-sm text-muted-foreground">نقاط الصعود</p>
+                </div>
+              </div>
+            </div>
+            <div className="bg-card rounded-xl border border-border p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center">
+                  <Navigation className="w-5 h-5 text-accent" />
                 </div>
                 <div>
                   <p className="text-2xl font-bold text-foreground">
@@ -317,7 +455,7 @@ const RoutesManagement = () => {
           </div>
 
           {/* Loading State */}
-          {loading && routes.length === 0 && (
+          {loading && (
             <div className="space-y-4">
               {[1, 2, 3].map((i) => (
                 <div key={i} className="bg-card rounded-xl border border-border p-5">
@@ -351,73 +489,197 @@ const RoutesManagement = () => {
           {/* Routes List */}
           <div className="space-y-4">
             {filteredRoutes.map((route) => (
-              <div key={route.route_id} className="bg-card rounded-xl border border-border p-5 hover:shadow-elegant transition-shadow">
-                <div className="flex flex-col lg:flex-row lg:items-center gap-4">
-                  {/* Route Info */}
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className="w-12 h-12 rounded-xl gradient-primary flex items-center justify-center">
-                        <Route className="w-6 h-6 text-primary-foreground" />
+              <div key={route.route_id} className="bg-card rounded-xl border border-border overflow-hidden">
+                {/* Route Header */}
+                <div className="p-5 hover:bg-muted/30 transition-colors">
+                  <div className="flex flex-col lg:flex-row lg:items-center gap-4">
+                    {/* Route Info */}
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-3">
+                        <div className="w-12 h-12 rounded-xl gradient-primary flex items-center justify-center">
+                          <Route className="w-6 h-6 text-primary-foreground" />
+                        </div>
+                        <div>
+                          <h3 className="font-bold text-foreground text-lg">
+                            {route.origin_city} - {route.destination_city}
+                          </h3>
+                        </div>
                       </div>
-                      <div>
-                        <h3 className="font-bold text-foreground text-lg">
-                          {route.origin_city} - {route.destination_city}
-                        </h3>
+
+                      {/* Route Details */}
+                      <div className="flex flex-wrap items-center gap-4 text-sm">
+                        <div className="flex items-center gap-2">
+                          <MapPin className="w-4 h-4 text-primary" />
+                          <span className="text-foreground">{route.origin_city}</span>
+                          <span className="text-muted-foreground">←</span>
+                          <span className="text-foreground">{route.destination_city}</span>
+                        </div>
+                        {route.distance_km && route.distance_km > 0 && (
+                          <div className="flex items-center gap-2 text-muted-foreground">
+                            <Navigation className="w-4 h-4" />
+                            <span>{route.distance_km} كم</span>
+                          </div>
+                        )}
+                        {route.estimated_duration_hours && route.estimated_duration_hours > 0 && (
+                          <div className="flex items-center gap-2 text-muted-foreground">
+                            <Clock className="w-4 h-4" />
+                            <span>{route.estimated_duration_hours} ساعة</span>
+                          </div>
+                        )}
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                          <GripVertical className="w-4 h-4" />
+                          <span>{(routeStops[route.route_id] || []).length} محطات</span>
+                        </div>
                       </div>
                     </div>
 
-                    {/* Route Details */}
-                    <div className="flex flex-wrap items-center gap-4 text-sm">
-                      <div className="flex items-center gap-2">
-                        <MapPin className="w-4 h-4 text-primary" />
-                        <span className="text-foreground">{route.origin_city}</span>
-                        <span className="text-muted-foreground">←</span>
-                        <span className="text-foreground">{route.destination_city}</span>
-                      </div>
-                      {route.distance_km && route.distance_km > 0 && (
-                        <div className="flex items-center gap-2 text-muted-foreground">
-                          <Navigation className="w-4 h-4" />
-                          <span>{route.distance_km} كم</span>
-                        </div>
-                      )}
-                      {route.estimated_duration_hours && route.estimated_duration_hours > 0 && (
-                        <div className="flex items-center gap-2 text-muted-foreground">
-                          <Clock className="w-4 h-4" />
-                          <span>{route.estimated_duration_hours} ساعة</span>
-                        </div>
-                      )}
+                    {/* Actions */}
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setExpandedRouteId(expandedRouteId === route.route_id ? null : route.route_id)}
+                      >
+                        {expandedRouteId === route.route_id ? (
+                          <>
+                            <ChevronUp className="w-4 h-4 ml-1" />
+                            إخفاء المحطات
+                          </>
+                        ) : (
+                          <>
+                            <ChevronDown className="w-4 h-4 ml-1" />
+                            عرض المحطات
+                          </>
+                        )}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setSelectedRouteForStop(route.route_id);
+                          setIsAddStopDialogOpen(true);
+                        }}
+                      >
+                        <Plus className="w-4 h-4 ml-1" />
+                        إضافة محطة
+                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon">
+                            <MoreVertical className="w-5 h-5" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => handleEdit(route)}>
+                            <Edit className="w-4 h-4 ml-2" />
+                            تعديل
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            onClick={() => setDeleteId(route.route_id)}
+                            className="text-destructive"
+                          >
+                            <Trash2 className="w-4 h-4 ml-2" />
+                            حذف
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="flex items-center gap-4">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <MoreVertical className="w-5 h-5" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleEdit(route)}>
-                          <Edit className="w-4 h-4 ml-2" />
-                          تعديل
-                        </DropdownMenuItem>
-                        <DropdownMenuItem 
-                          onClick={() => setDeleteId(route.route_id)}
-                          className="text-destructive"
-                        >
-                          <Trash2 className="w-4 h-4 ml-2" />
-                          حذف
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
                   </div>
                 </div>
+
+                {/* Route Stops */}
+                {expandedRouteId === route.route_id && (
+                  <div className="border-t border-border bg-muted/20 p-4">
+                    <h4 className="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
+                      <MapPin className="w-4 h-4 text-primary" />
+                      نقاط الصعود والنزول
+                    </h4>
+                    {(routeStops[route.route_id] || []).length === 0 ? (
+                      <p className="text-sm text-muted-foreground text-center py-4">
+                        لا توجد محطات لهذا المسار
+                      </p>
+                    ) : (
+                      <div className="space-y-2">
+                        {(routeStops[route.route_id] || []).map((stop, index) => (
+                          <div key={stop.stop_id} className="flex items-center gap-3 bg-card rounded-lg p-3 border border-border">
+                            <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium text-primary">
+                              {index + 1}
+                            </div>
+                            <div className="flex-1">
+                              <p className="font-medium text-foreground">{stop.stop_name}</p>
+                              {stop.stop_location && (
+                                <p className="text-xs text-muted-foreground">{stop.stop_location}</p>
+                              )}
+                            </div>
+                            {stop.preparation_time && (
+                              <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                <Clock className="w-3 h-3" />
+                                {stop.preparation_time}
+                              </span>
+                            )}
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-8 w-8"
+                              onClick={() => handleDeleteStop(stop.stop_id)}
+                            >
+                              <Trash2 className="w-4 h-4 text-destructive" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             ))}
           </div>
         </div>
       </main>
+
+      {/* Add Stop Dialog */}
+      <Dialog open={isAddStopDialogOpen} onOpenChange={setIsAddStopDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>إضافة نقطة صعود</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 mt-4">
+            <div className="space-y-2">
+              <Label>اسم المحطة *</Label>
+              <Input 
+                placeholder="مثال: محطة الرياض الرئيسية"
+                value={stopFormData.stop_name}
+                onChange={(e) => setStopFormData({...stopFormData, stop_name: e.target.value})}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>الموقع التفصيلي</Label>
+              <Input 
+                placeholder="العنوان أو رابط الخريطة"
+                value={stopFormData.stop_location}
+                onChange={(e) => setStopFormData({...stopFormData, stop_location: e.target.value})}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>وقت التجهيز</Label>
+              <Input 
+                type="time"
+                value={stopFormData.preparation_time}
+                onChange={(e) => setStopFormData({...stopFormData, preparation_time: e.target.value})}
+              />
+            </div>
+            <div className="flex gap-3 pt-4">
+              <Button onClick={handleAddStop} className="flex-1" disabled={isSubmitting}>
+                {isSubmitting && <Loader2 className="w-4 h-4 ml-2 animate-spin" />}
+                إضافة المحطة
+              </Button>
+              <Button variant="outline" onClick={() => setIsAddStopDialogOpen(false)}>
+                إلغاء
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
@@ -425,7 +687,7 @@ const RoutesManagement = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>تأكيد الحذف</AlertDialogTitle>
             <AlertDialogDescription>
-              هل أنت متأكد من حذف هذا المسار؟ لا يمكن التراجع عن هذا الإجراء.
+              هل أنت متأكد من حذف هذا المسار؟ سيتم حذف جميع نقاط الصعود المرتبطة به. لا يمكن التراجع عن هذا الإجراء.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

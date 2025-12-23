@@ -1919,6 +1919,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_current_partner_id: { Args: never; Returns: number }
       get_user_partner_id: { Args: { _user_id: string }; Returns: number }
       get_user_role: {
         Args: { _user_id: string }
