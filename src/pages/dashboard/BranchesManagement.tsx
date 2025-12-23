@@ -16,11 +16,11 @@ import {
   Search,
   MapPin,
   Phone,
-  Mail,
   MoreVertical,
   Edit,
   Trash2,
-  Ticket
+  Ticket,
+  Loader2
 } from "lucide-react";
 import {
   Dialog,
@@ -35,9 +35,20 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { useToast } from "@/hooks/use-toast";
+import { useNeonCRUD } from "@/hooks/useNeonCRUD";
+import { Skeleton } from "@/components/ui/skeleton";
 
 // Sidebar navigation
 const sidebarLinks = [
@@ -53,134 +64,92 @@ const sidebarLinks = [
   { href: "/dashboard/settings", label: "الإعدادات", icon: Settings }
 ];
 
-// Sample branches data
-const initialBranches = [
-  { 
-    id: 1, 
-    name: "الفرع الرئيسي - الرياض", 
-    city: "الرياض",
-    address: "شارع الملك فهد، حي العليا",
-    phone: "0112345678",
-    email: "riyadh@example.com",
-    manager: "أحمد السعيد",
-    employees: 15,
-    status: "active"
-  },
-  { 
-    id: 2, 
-    name: "فرع جدة", 
-    city: "جدة",
-    address: "شارع التحلية، حي الروضة",
-    phone: "0123456789",
-    email: "jeddah@example.com",
-    manager: "محمد العلي",
-    employees: 10,
-    status: "active"
-  },
-  { 
-    id: 3, 
-    name: "فرع الدمام", 
-    city: "الدمام",
-    address: "شارع الملك سعود، حي الفيصلية",
-    phone: "0134567890",
-    email: "dammam@example.com",
-    manager: "سعد الحربي",
-    employees: 8,
-    status: "active"
-  },
-  { 
-    id: 4, 
-    name: "فرع مكة", 
-    city: "مكة المكرمة",
-    address: "شارع أجياد، حي العزيزية",
-    phone: "0125678901",
-    email: "makkah@example.com",
-    manager: "خالد المطيري",
-    employees: 12,
-    status: "inactive"
-  }
-];
+interface BranchRecord {
+  branch_id: number;
+  partner_id: number;
+  branch_name: string;
+  city: string;
+  address: string;
+  phone: string;
+  status: string;
+  created_at: string;
+}
 
 const BranchesManagement = () => {
   const location = useLocation();
-  const { toast } = useToast();
-  const [branches, setBranches] = useState(initialBranches);
+  const { 
+    data: branches, 
+    loading, 
+    create, 
+    update, 
+    remove 
+  } = useNeonCRUD<BranchRecord>({ 
+    tableName: 'branches',
+    primaryKey: 'branch_id',
+    initialFetch: true
+  });
+
   const [searchTerm, setSearchTerm] = useState("");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [editingBranch, setEditingBranch] = useState<typeof initialBranches[0] | null>(null);
+  const [editingBranch, setEditingBranch] = useState<BranchRecord | null>(null);
+  const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
-    name: "",
+    branch_name: "",
     city: "",
     address: "",
-    phone: "",
-    email: "",
-    manager: ""
+    phone: ""
   });
 
   const filteredBranches = branches.filter(branch => 
-    branch.name.includes(searchTerm) || 
-    branch.city.includes(searchTerm) ||
-    branch.manager.includes(searchTerm)
+    branch.branch_name?.includes(searchTerm) || 
+    branch.city?.includes(searchTerm)
   );
 
-  const handleSubmit = () => {
-    if (!formData.name || !formData.city || !formData.address) {
-      toast({
-        title: "خطأ",
-        description: "يرجى ملء جميع الحقول المطلوبة",
-        variant: "destructive"
-      });
+  const handleSubmit = async () => {
+    if (!formData.branch_name || !formData.city || !formData.address) {
       return;
     }
 
+    setIsSubmitting(true);
+
+    const branchData = {
+      branch_name: formData.branch_name,
+      city: formData.city,
+      address: formData.address,
+      phone: formData.phone,
+      partner_id: 1,
+      status: 'active'
+    };
+
     if (editingBranch) {
-      setBranches(branches.map(b => 
-        b.id === editingBranch.id 
-          ? { ...b, ...formData }
-          : b
-      ));
-      toast({
-        title: "تم التحديث",
-        description: "تم تحديث بيانات الفرع بنجاح"
-      });
+      await update(editingBranch.branch_id, branchData);
     } else {
-      const newBranch = {
-        id: Date.now(),
-        ...formData,
-        employees: 0,
-        status: "active" as const
-      };
-      setBranches([...branches, newBranch]);
-      toast({
-        title: "تمت الإضافة",
-        description: "تم إضافة الفرع الجديد بنجاح"
-      });
+      await create(branchData);
     }
 
-    setFormData({ name: "", city: "", address: "", phone: "", email: "", manager: "" });
+    setFormData({ branch_name: "", city: "", address: "", phone: "" });
     setEditingBranch(null);
     setIsAddDialogOpen(false);
+    setIsSubmitting(false);
   };
 
-  const handleEdit = (branch: typeof initialBranches[0]) => {
+  const handleEdit = (branch: BranchRecord) => {
     setEditingBranch(branch);
     setFormData({
-      name: branch.name,
+      branch_name: branch.branch_name,
       city: branch.city,
       address: branch.address,
-      phone: branch.phone,
-      email: branch.email,
-      manager: branch.manager
+      phone: branch.phone || ""
     });
     setIsAddDialogOpen(true);
   };
 
-  const handleDelete = (id: number) => {
-    setBranches(branches.filter(b => b.id !== id));
-    toast({
-      title: "تم الحذف",
-      description: "تم حذف الفرع بنجاح"
-    });
+  const handleDelete = async () => {
+    if (deleteId) {
+      await remove(deleteId);
+      setDeleteId(null);
+    }
   };
 
   return (
@@ -237,7 +206,7 @@ const BranchesManagement = () => {
               <DialogTrigger asChild>
                 <Button onClick={() => {
                   setEditingBranch(null);
-                  setFormData({ name: "", city: "", address: "", phone: "", email: "", manager: "" });
+                  setFormData({ branch_name: "", city: "", address: "", phone: "" });
                 }}>
                   <Plus className="w-4 h-4 ml-2" />
                   إضافة فرع
@@ -252,8 +221,8 @@ const BranchesManagement = () => {
                     <Label>اسم الفرع *</Label>
                     <Input 
                       placeholder="مثال: الفرع الرئيسي - الرياض"
-                      value={formData.name}
-                      onChange={(e) => setFormData({...formData, name: e.target.value})}
+                      value={formData.branch_name}
+                      onChange={(e) => setFormData({...formData, branch_name: e.target.value})}
                     />
                   </div>
                   <div className="space-y-2">
@@ -272,35 +241,17 @@ const BranchesManagement = () => {
                       onChange={(e) => setFormData({...formData, address: e.target.value})}
                     />
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>رقم الهاتف</Label>
-                      <Input 
-                        placeholder="05xxxxxxxx"
-                        value={formData.phone}
-                        onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>البريد الإلكتروني</Label>
-                      <Input 
-                        type="email"
-                        placeholder="branch@example.com"
-                        value={formData.email}
-                        onChange={(e) => setFormData({...formData, email: e.target.value})}
-                      />
-                    </div>
-                  </div>
                   <div className="space-y-2">
-                    <Label>مدير الفرع</Label>
+                    <Label>رقم الهاتف</Label>
                     <Input 
-                      placeholder="اسم مدير الفرع"
-                      value={formData.manager}
-                      onChange={(e) => setFormData({...formData, manager: e.target.value})}
+                      placeholder="05xxxxxxxx"
+                      value={formData.phone}
+                      onChange={(e) => setFormData({...formData, phone: e.target.value})}
                     />
                   </div>
                   <div className="flex gap-3 pt-4">
-                    <Button onClick={handleSubmit} className="flex-1">
+                    <Button onClick={handleSubmit} className="flex-1" disabled={isSubmitting}>
+                      {isSubmitting && <Loader2 className="w-4 h-4 ml-2 animate-spin" />}
                       {editingBranch ? "حفظ التغييرات" : "إضافة الفرع"}
                     </Button>
                     <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
@@ -327,17 +278,47 @@ const BranchesManagement = () => {
             </div>
           </div>
 
+          {/* Loading State */}
+          {loading && branches.length === 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="bg-card rounded-xl border border-border p-5">
+                  <div className="flex items-center gap-4">
+                    <Skeleton className="w-12 h-12 rounded-xl" />
+                    <div className="flex-1 space-y-2">
+                      <Skeleton className="h-5 w-32" />
+                      <Skeleton className="h-4 w-24" />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Empty State */}
+          {!loading && branches.length === 0 && (
+            <div className="text-center py-12">
+              <Building2 className="w-16 h-16 mx-auto text-muted-foreground/50 mb-4" />
+              <h3 className="text-lg font-medium text-foreground mb-2">لا توجد فروع</h3>
+              <p className="text-muted-foreground mb-4">ابدأ بإضافة فرع جديد</p>
+              <Button onClick={() => setIsAddDialogOpen(true)}>
+                <Plus className="w-4 h-4 ml-2" />
+                إضافة فرع
+              </Button>
+            </div>
+          )}
+
           {/* Branches Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {filteredBranches.map((branch) => (
-              <div key={branch.id} className="bg-card rounded-xl border border-border p-5 hover:shadow-elegant transition-shadow">
+              <div key={branch.branch_id} className="bg-card rounded-xl border border-border p-5 hover:shadow-elegant transition-shadow">
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center gap-3">
                     <div className="w-12 h-12 rounded-xl gradient-primary flex items-center justify-center">
                       <Building2 className="w-6 h-6 text-primary-foreground" />
                     </div>
                     <div>
-                      <h3 className="font-semibold text-foreground">{branch.name}</h3>
+                      <h3 className="font-semibold text-foreground">{branch.branch_name}</h3>
                       <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
                         branch.status === "active" 
                           ? "bg-secondary/10 text-secondary" 
@@ -360,7 +341,7 @@ const BranchesManagement = () => {
                       </DropdownMenuItem>
                       <DropdownMenuItem 
                         className="text-destructive focus:text-destructive"
-                        onClick={() => handleDelete(branch.id)}
+                        onClick={() => setDeleteId(branch.branch_id)}
                       >
                         <Trash2 className="w-4 h-4 ml-2" />
                         حذف
@@ -372,38 +353,38 @@ const BranchesManagement = () => {
                 <div className="space-y-3 text-sm">
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <MapPin className="w-4 h-4" />
-                    <span>{branch.address}</span>
+                    <span>{branch.city} - {branch.address}</span>
                   </div>
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Phone className="w-4 h-4" />
-                    <span dir="ltr">{branch.phone}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Mail className="w-4 h-4" />
-                    <span>{branch.email}</span>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between mt-4 pt-4 border-t border-border">
-                  <div className="flex items-center gap-2">
-                    <Users className="w-4 h-4 text-primary" />
-                    <span className="text-sm text-muted-foreground">{branch.employees} موظف</span>
-                  </div>
-                  <span className="text-sm text-muted-foreground">المدير: {branch.manager}</span>
+                  {branch.phone && (
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Phone className="w-4 h-4" />
+                      <span dir="ltr">{branch.phone}</span>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
           </div>
-
-          {filteredBranches.length === 0 && (
-            <div className="text-center py-12">
-              <Building2 className="w-16 h-16 mx-auto text-muted-foreground/50 mb-4" />
-              <h3 className="text-lg font-medium text-foreground mb-2">لا توجد فروع</h3>
-              <p className="text-muted-foreground mb-4">لم يتم العثور على فروع مطابقة للبحث</p>
-            </div>
-          )}
         </div>
       </main>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>تأكيد الحذف</AlertDialogTitle>
+            <AlertDialogDescription>
+              هل أنت متأكد من حذف هذا الفرع؟ لا يمكن التراجع عن هذا الإجراء.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>إلغاء</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              حذف
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
