@@ -18,6 +18,7 @@ import PaymentsManagement from "./pages/dashboard/PaymentsManagement";
 import ReportsManagement from "./pages/dashboard/ReportsManagement";
 import SettingsPage from "./pages/dashboard/SettingsPage";
 import NotFound from "./pages/NotFound";
+import ProtectedRoute from "./components/auth/ProtectedRoute";
 
 const queryClient = new QueryClient();
 
@@ -31,17 +32,61 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/apply" element={<Apply />} />
           <Route path="/login" element={<Login />} />
-          <Route path="/admin" element={<AdminDashboard />} />
-          <Route path="/dashboard" element={<CompanyDashboard />} />
-          <Route path="/dashboard/fleet" element={<FleetManagement />} />
-          <Route path="/dashboard/trips" element={<TripsManagement />} />
-          <Route path="/dashboard/bookings" element={<BookingsManagement />} />
-          <Route path="/dashboard/branches" element={<BranchesManagement />} />
-          <Route path="/dashboard/employees" element={<EmployeesManagement />} />
-          <Route path="/dashboard/routes" element={<RoutesManagement />} />
-          <Route path="/dashboard/payments" element={<PaymentsManagement />} />
-          <Route path="/dashboard/reports" element={<ReportsManagement />} />
-          <Route path="/dashboard/settings" element={<SettingsPage />} />
+          <Route path="/admin" element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <AdminDashboard />
+            </ProtectedRoute>
+          } />
+          <Route path="/dashboard" element={
+            <ProtectedRoute allowedRoles={['partner', 'employee']}>
+              <CompanyDashboard />
+            </ProtectedRoute>
+          } />
+          <Route path="/dashboard/fleet" element={
+            <ProtectedRoute allowedRoles={['partner', 'employee']}>
+              <FleetManagement />
+            </ProtectedRoute>
+          } />
+          <Route path="/dashboard/trips" element={
+            <ProtectedRoute allowedRoles={['partner', 'employee']}>
+              <TripsManagement />
+            </ProtectedRoute>
+          } />
+          <Route path="/dashboard/bookings" element={
+            <ProtectedRoute allowedRoles={['partner', 'employee']}>
+              <BookingsManagement />
+            </ProtectedRoute>
+          } />
+          <Route path="/dashboard/branches" element={
+            <ProtectedRoute allowedRoles={['partner', 'employee']}>
+              <BranchesManagement />
+            </ProtectedRoute>
+          } />
+          <Route path="/dashboard/employees" element={
+            <ProtectedRoute allowedRoles={['partner', 'employee']}>
+              <EmployeesManagement />
+            </ProtectedRoute>
+          } />
+          <Route path="/dashboard/routes" element={
+            <ProtectedRoute allowedRoles={['partner', 'employee']}>
+              <RoutesManagement />
+            </ProtectedRoute>
+          } />
+          <Route path="/dashboard/payments" element={
+            <ProtectedRoute allowedRoles={['partner', 'employee']}>
+              <PaymentsManagement />
+            </ProtectedRoute>
+          } />
+          <Route path="/dashboard/reports" element={
+            <ProtectedRoute allowedRoles={['partner', 'employee']}>
+              <ReportsManagement />
+            </ProtectedRoute>
+          } />
+          <Route path="/dashboard/settings" element={
+            <ProtectedRoute allowedRoles={['partner', 'employee']}>
+              <SettingsPage />
+            </ProtectedRoute>
+          } />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

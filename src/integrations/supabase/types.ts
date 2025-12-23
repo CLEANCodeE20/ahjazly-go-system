@@ -1740,6 +1740,38 @@ export type Database = {
           },
         ]
       }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          partner_id: number | null
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          partner_id?: number | null
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          partner_id?: number | null
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_roles_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["partner_id"]
+          },
+        ]
+      }
       users: {
         Row: {
           account_status: Database["public"]["Enums"]["account_status"] | null
@@ -1804,10 +1836,22 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_user_partner_id: { Args: { _user_id: string }; Returns: number }
+      get_user_role: {
+        Args: { _user_id: string }
+        Returns: Database["public"]["Enums"]["app_role"]
+      }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
       account_status: "active" | "inactive" | "suspended" | "pending"
+      app_role: "admin" | "partner" | "employee"
       booking_status:
         | "pending"
         | "confirmed"
@@ -1969,6 +2013,7 @@ export const Constants = {
   public: {
     Enums: {
       account_status: ["active", "inactive", "suspended", "pending"],
+      app_role: ["admin", "partner", "employee"],
       booking_status: [
         "pending",
         "confirmed",
