@@ -6,10 +6,11 @@ import { Label } from "@/components/ui/label";
 import Header from "@/components/layout/Header";
 import { Bus, Mail, Lock, Eye, EyeOff, ArrowLeft } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
 const Login = () => {
   const navigate = useNavigate();
+  const { user, userRole, isLoading: authLoading, signIn, signUp } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
@@ -19,27 +20,16 @@ const Login = () => {
     password: ""
   });
 
-  // Check if user is already logged in
+  // Redirect if already logged in
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        if (session?.user) {
-          // Redirect based on user type
-          setTimeout(() => {
-            navigate("/dashboard");
-          }, 0);
-        }
-      }
-    );
-
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
+    if (!authLoading && user && userRole) {
+      if (userRole.role === 'admin') {
+        navigate("/admin");
+      } else {
         navigate("/dashboard");
       }
-    });
-
-    return () => subscription.unsubscribe();
-  }, [navigate]);
+    }
+  }, [user, userRole, authLoading, navigate]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -51,14 +41,7 @@ const Login = () => {
 
     try {
       if (isSignUp) {
-        // Sign up
-        const { error } = await supabase.auth.signUp({
-          email: formData.email,
-          password: formData.password,
-          options: {
-            emailRedirectTo: `${window.location.origin}/dashboard`
-          }
-        });
+        const { error } = await signUp(formData.email, formData.password);
 
         if (error) {
           if (error.message.includes("already registered")) {
@@ -79,14 +62,10 @@ const Login = () => {
 
         toast({
           title: "تم إنشاء الحساب بنجاح",
-          description: "مرحباً بك في منصة احجزلي",
+          description: "مرحباً بك في منصة احجزلي. يرجى انتظار تعيين الصلاحيات من المسؤول.",
         });
       } else {
-        // Sign in
-        const { error } = await supabase.auth.signInWithPassword({
-          email: formData.email,
-          password: formData.password,
-        });
+        const { error } = await signIn(formData.email, formData.password);
 
         if (error) {
           if (error.message.includes("Invalid login credentials")) {
@@ -109,12 +88,7 @@ const Login = () => {
           title: "تم تسجيل الدخول بنجاح",
           description: "مرحباً بك في منصة احجزلي",
         });
-
-        if (loginType === "admin") {
-          navigate("/admin");
-        } else {
-          navigate("/dashboard");
-        }
+        // Navigation will be handled by useEffect when userRole is fetched
       }
     } catch (err) {
       toast({
