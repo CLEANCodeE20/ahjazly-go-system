@@ -47,7 +47,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { useNeonCRUD } from "@/hooks/useNeonCRUD";
+import { useSupabaseCRUD } from "@/hooks/useSupabaseCRUD";
 import { Skeleton } from "@/components/ui/skeleton";
 
 // Sidebar navigation
@@ -66,12 +66,12 @@ const sidebarLinks = [
 
 interface BranchRecord {
   branch_id: number;
-  partner_id: number;
+  partner_id: number | null;
   branch_name: string;
-  city: string;
-  address: string;
-  phone: string;
-  status: string;
+  city: string | null;
+  address: string | null;
+  phone: string | null;
+  status: string | null;
   created_at: string;
 }
 
@@ -83,7 +83,7 @@ const BranchesManagement = () => {
     create, 
     update, 
     remove 
-  } = useNeonCRUD<BranchRecord>({ 
+  } = useSupabaseCRUD<BranchRecord>({ 
     tableName: 'branches',
     primaryKey: 'branch_id',
     initialFetch: true
@@ -117,29 +117,33 @@ const BranchesManagement = () => {
       branch_name: formData.branch_name,
       city: formData.city,
       address: formData.address,
-      phone: formData.phone,
-      partner_id: 1,
+      phone: formData.phone || null,
       status: 'active'
     };
 
-    if (editingBranch) {
-      await update(editingBranch.branch_id, branchData);
-    } else {
-      await create(branchData);
-    }
+    try {
+      if (editingBranch) {
+        await update(editingBranch.branch_id, branchData);
+      } else {
+        await create(branchData);
+      }
 
-    setFormData({ branch_name: "", city: "", address: "", phone: "" });
-    setEditingBranch(null);
-    setIsAddDialogOpen(false);
-    setIsSubmitting(false);
+      setFormData({ branch_name: "", city: "", address: "", phone: "" });
+      setEditingBranch(null);
+      setIsAddDialogOpen(false);
+    } catch (error) {
+      console.error('Submit error:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleEdit = (branch: BranchRecord) => {
     setEditingBranch(branch);
     setFormData({
       branch_name: branch.branch_name,
-      city: branch.city,
-      address: branch.address,
+      city: branch.city || "",
+      address: branch.address || "",
       phone: branch.phone || ""
     });
     setIsAddDialogOpen(true);
