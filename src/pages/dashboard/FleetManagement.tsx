@@ -51,6 +51,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useSupabaseCRUD } from "@/hooks/useSupabaseCRUD";
+import { usePartner } from "@/hooks/usePartner";
+import { toast } from "@/hooks/use-toast";
 
 // Sidebar navigation
 const sidebarLinks = [
@@ -80,10 +82,12 @@ interface BusRecord {
 }
 
 const FleetManagement = () => {
+  const { partner } = usePartner();
   const { 
     data: buses, 
     loading, 
     create, 
+    update,
     remove 
   } = useSupabaseCRUD<BusRecord>({ 
     tableName: 'buses',
@@ -93,8 +97,10 @@ const FleetManagement = () => {
 
   const [searchQuery, setSearchQuery] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editingBus, setEditingBus] = useState<BusRecord | null>(null);
   const [newBus, setNewBus] = useState({
     license_plate: "",
     model: "",
@@ -117,8 +123,33 @@ const FleetManagement = () => {
       });
       setNewBus({ license_plate: "", model: "", capacity: "", bus_type: "standard", status: "active" });
       setIsDialogOpen(false);
+      toast({ title: "تمت الإضافة", description: "تم إضافة الحافلة بنجاح" });
     } catch (error) {
       console.error('Add bus error:', error);
+      toast({ title: "خطأ", description: "فشل في إضافة الحافلة", variant: "destructive" });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleEditBus = async () => {
+    if (!editingBus) return;
+    
+    setIsSubmitting(true);
+    try {
+      await update(editingBus.bus_id, {
+        license_plate: editingBus.license_plate,
+        model: editingBus.model,
+        capacity: editingBus.capacity,
+        bus_type: editingBus.bus_type as "standard" | "vip" | "sleeper" | "double_decker",
+        status: editingBus.status as "active" | "maintenance" | "inactive" | "retired"
+      });
+      setIsEditDialogOpen(false);
+      setEditingBus(null);
+      toast({ title: "تم التحديث", description: "تم تحديث بيانات الحافلة بنجاح" });
+    } catch (error) {
+      console.error('Edit bus error:', error);
+      toast({ title: "خطأ", description: "فشل في تحديث الحافلة", variant: "destructive" });
     } finally {
       setIsSubmitting(false);
     }
@@ -126,9 +157,28 @@ const FleetManagement = () => {
 
   const handleDeleteBus = async () => {
     if (deleteId) {
-      await remove(deleteId);
+      try {
+        await remove(deleteId);
+        toast({ title: "تم الحذف", description: "تم حذف الحافلة بنجاح" });
+      } catch (error) {
+        toast({ title: "خطأ", description: "فشل في حذف الحافلة", variant: "destructive" });
+      }
       setDeleteId(null);
     }
+  };
+
+  const handleStatusChange = async (busId: number, newStatus: string) => {
+    try {
+      await update(busId, { status: newStatus as "active" | "maintenance" | "inactive" | "retired" });
+      toast({ title: "تم التحديث", description: "تم تغيير حالة الحافلة" });
+    } catch (error) {
+      toast({ title: "خطأ", description: "فشل في تغيير الحالة", variant: "destructive" });
+    }
+  };
+
+  const openEditDialog = (bus: BusRecord) => {
+    setEditingBus({ ...bus });
+    setIsEditDialogOpen(true);
   };
 
   const filteredBuses = buses.filter(bus => 
@@ -160,7 +210,7 @@ const FleetManagement = () => {
           </div>
           <div>
             <span className="text-lg font-bold">احجزلي</span>
-            <p className="text-xs text-sidebar-foreground/60">شركة السفر الذهبي</p>
+            <p className="text-xs text-sidebar-foreground/60">{partner?.company_name || "لوحة التحكم"}</p>
           </div>
         </div>
 
@@ -362,7 +412,7 @@ const FleetManagement = () => {
                     <Bus className="w-6 h-6 text-primary-foreground" />
                   </div>
                   <div className="flex items-center gap-1">
-                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditDialog(bus)}>
                       <Edit className="w-4 h-4" />
                     </Button>
                     <Button 
@@ -390,12 +440,103 @@ const FleetManagement = () => {
                   </div>
                 </div>
 
-                {getStatusBadge(bus.status)}
+                <div className="flex items-center justify-between">
+                  {getStatusBadge(bus.status)}
+                  <Select value={bus.status || "active"} onValueChange={(v) => handleStatusChange(bus.bus_id, v)}>
+                    <SelectTrigger className="w-28 h-8 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="active">نشطة</SelectItem>
+                      <SelectItem value="maintenance">صيانة</SelectItem>
+                      <SelectItem value="inactive">غير نشطة</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             ))}
           </div>
         </div>
       </main>
+
+      {/* Edit Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>تعديل بيانات الحافلة</DialogTitle>
+            <DialogDescription>
+              قم بتعديل بيانات الحافلة
+            </DialogDescription>
+          </DialogHeader>
+          {editingBus && (
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>رقم اللوحة *</Label>
+                  <Input
+                    value={editingBus.license_plate}
+                    onChange={(e) => setEditingBus({ ...editingBus, license_plate: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>الموديل *</Label>
+                  <Input
+                    value={editingBus.model || ""}
+                    onChange={(e) => setEditingBus({ ...editingBus, model: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>عدد المقاعد</Label>
+                  <Input
+                    type="number"
+                    value={editingBus.capacity || ""}
+                    onChange={(e) => setEditingBus({ ...editingBus, capacity: parseInt(e.target.value) || null })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>نوع الحافلة</Label>
+                  <Select value={editingBus.bus_type || "standard"} onValueChange={(v) => setEditingBus({ ...editingBus, bus_type: v })}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="standard">عادية</SelectItem>
+                      <SelectItem value="vip">VIP</SelectItem>
+                      <SelectItem value="sleeper">نوم</SelectItem>
+                      <SelectItem value="double_decker">طابقين</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>الحالة</Label>
+                <Select value={editingBus.status || "active"} onValueChange={(v) => setEditingBus({ ...editingBus, status: v })}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="active">نشطة</SelectItem>
+                    <SelectItem value="maintenance">صيانة</SelectItem>
+                    <SelectItem value="inactive">غير نشطة</SelectItem>
+                    <SelectItem value="retired">متقاعدة</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+              إلغاء
+            </Button>
+            <Button onClick={handleEditBus} disabled={isSubmitting}>
+              {isSubmitting && <Loader2 className="w-4 h-4 ml-2 animate-spin" />}
+              حفظ التغييرات
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>

@@ -21,6 +21,7 @@ import {
   Calendar
 } from "lucide-react";
 import { useSupabaseCRUD } from "@/hooks/useSupabaseCRUD";
+import { usePartner } from "@/hooks/usePartner";
 import {
   ChartContainer,
   ChartTooltip,
@@ -82,6 +83,7 @@ const CHART_COLORS = {
 const CompanyDashboard = () => {
   const location = useLocation();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const { partner } = usePartner();
 
   const { data: trips, loading: tripsLoading } = useSupabaseCRUD<TripRecord>({
     tableName: 'trips',
@@ -252,7 +254,7 @@ const CompanyDashboard = () => {
           </div>
           <div>
             <span className="text-lg font-bold">احجزلي</span>
-            <p className="text-xs text-sidebar-foreground/60">شركة السفر الذهبي</p>
+            <p className="text-xs text-sidebar-foreground/60">{partner?.company_name || "لوحة التحكم"}</p>
           </div>
         </div>
 

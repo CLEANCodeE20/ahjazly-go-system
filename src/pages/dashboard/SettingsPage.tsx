@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,15 +20,14 @@ import {
   Bell,
   Shield,
   Palette,
-  Globe,
   Mail,
   Phone,
   Upload,
   Save,
-  User,
   Lock,
   Eye,
-  EyeOff
+  EyeOff,
+  Loader2
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -38,6 +37,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { usePartner } from "@/hooks/usePartner";
+import { supabase } from "@/integrations/supabase/client";
 
 // Sidebar navigation
 const sidebarLinks = [
@@ -56,16 +57,16 @@ const sidebarLinks = [
 const SettingsPage = () => {
   const location = useLocation();
   const { toast } = useToast();
+  const { partner, partnerId, isLoading: partnerLoading } = usePartner();
   const [activeTab, setActiveTab] = useState("company");
   const [showPassword, setShowPassword] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   
   const [companyData, setCompanyData] = useState({
-    name: "شركة السفر الذهبي",
-    email: "info@golden-travel.com",
-    phone: "0112345678",
-    address: "شارع الملك فهد، حي العليا، الرياض",
-    description: "شركة رائدة في مجال النقل البري منذ عام 2010",
-    website: "www.golden-travel.com"
+    company_name: "",
+    contact_person: "",
+    address: "",
+    commission_percentage: 10
   });
 
   const [notifications, setNotifications] = useState({
@@ -80,15 +81,51 @@ const SettingsPage = () => {
   const [security, setSecurity] = useState({
     currentPassword: "",
     newPassword: "",
-    confirmPassword: "",
-    twoFactor: false
+    confirmPassword: ""
   });
 
-  const handleSaveCompany = () => {
-    toast({
-      title: "تم الحفظ",
-      description: "تم حفظ بيانات الشركة بنجاح"
-    });
+  // Load partner data when available
+  useEffect(() => {
+    if (partner) {
+      setCompanyData({
+        company_name: partner.company_name || "",
+        contact_person: partner.contact_person || "",
+        address: "",
+        commission_percentage: partner.commission_percentage || 10
+      });
+    }
+  }, [partner]);
+
+  const handleSaveCompany = async () => {
+    if (!partnerId) return;
+    
+    setIsSaving(true);
+    try {
+      const { error } = await supabase
+        .from('partners')
+        .update({
+          company_name: companyData.company_name,
+          contact_person: companyData.contact_person,
+          address: companyData.address
+        })
+        .eq('partner_id', partnerId);
+
+      if (error) throw error;
+      
+      toast({
+        title: "تم الحفظ",
+        description: "تم حفظ بيانات الشركة بنجاح"
+      });
+    } catch (error) {
+      console.error('Save error:', error);
+      toast({
+        title: "خطأ",
+        description: "فشل في حفظ البيانات",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleSaveNotifications = () => {
@@ -98,7 +135,7 @@ const SettingsPage = () => {
     });
   };
 
-  const handleChangePassword = () => {
+  const handleChangePassword = async () => {
     if (security.newPassword !== security.confirmPassword) {
       toast({
         title: "خطأ",
@@ -107,11 +144,39 @@ const SettingsPage = () => {
       });
       return;
     }
-    toast({
-      title: "تم التغيير",
-      description: "تم تغيير كلمة المرور بنجاح"
-    });
-    setSecurity({ ...security, currentPassword: "", newPassword: "", confirmPassword: "" });
+
+    if (security.newPassword.length < 6) {
+      toast({
+        title: "خطأ",
+        description: "كلمة المرور يجب أن تكون 6 أحرف على الأقل",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: security.newPassword
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "تم التغيير",
+        description: "تم تغيير كلمة المرور بنجاح"
+      });
+      setSecurity({ currentPassword: "", newPassword: "", confirmPassword: "" });
+    } catch (error) {
+      console.error('Password change error:', error);
+      toast({
+        title: "خطأ",
+        description: "فشل في تغيير كلمة المرور",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const tabs = [
@@ -131,7 +196,7 @@ const SettingsPage = () => {
           </div>
           <div>
             <span className="text-lg font-bold">احجزلي</span>
-            <p className="text-xs text-sidebar-foreground/60">شركة السفر الذهبي</p>
+            <p className="text-xs text-sidebar-foreground/60">{partner?.company_name || "لوحة التحكم"}</p>
           </div>
         </div>
 
@@ -198,77 +263,72 @@ const SettingsPage = () => {
             <div className="bg-card rounded-xl border border-border p-6">
               <h2 className="text-lg font-semibold text-foreground mb-6">بيانات الشركة</h2>
               
-              <div className="flex items-center gap-6 mb-8">
-                <div className="w-24 h-24 rounded-2xl gradient-primary flex items-center justify-center">
-                  <Bus className="w-12 h-12 text-primary-foreground" />
+              {partnerLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="w-8 h-8 animate-spin text-primary" />
                 </div>
-                <div>
-                  <Button variant="outline" size="sm">
-                    <Upload className="w-4 h-4 ml-2" />
-                    تغيير الشعار
-                  </Button>
-                  <p className="text-xs text-muted-foreground mt-2">PNG, JPG حتى 2MB</p>
-                </div>
-              </div>
-
-              <div className="grid gap-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>اسم الشركة</Label>
-                    <Input 
-                      value={companyData.name}
-                      onChange={(e) => setCompanyData({...companyData, name: e.target.value})}
-                    />
+              ) : (
+                <>
+                  <div className="flex items-center gap-6 mb-8">
+                    <div className="w-24 h-24 rounded-2xl gradient-primary flex items-center justify-center">
+                      <Bus className="w-12 h-12 text-primary-foreground" />
+                    </div>
+                    <div>
+                      <Button variant="outline" size="sm">
+                        <Upload className="w-4 h-4 ml-2" />
+                        تغيير الشعار
+                      </Button>
+                      <p className="text-xs text-muted-foreground mt-2">PNG, JPG حتى 2MB</p>
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label>الموقع الإلكتروني</Label>
-                    <Input 
-                      value={companyData.website}
-                      onChange={(e) => setCompanyData({...companyData, website: e.target.value})}
-                    />
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>البريد الإلكتروني</Label>
-                    <Input 
-                      type="email"
-                      value={companyData.email}
-                      onChange={(e) => setCompanyData({...companyData, email: e.target.value})}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>رقم الهاتف</Label>
-                    <Input 
-                      value={companyData.phone}
-                      onChange={(e) => setCompanyData({...companyData, phone: e.target.value})}
-                    />
-                  </div>
-                </div>
 
-                <div className="space-y-2">
-                  <Label>العنوان</Label>
-                  <Input 
-                    value={companyData.address}
-                    onChange={(e) => setCompanyData({...companyData, address: e.target.value})}
-                  />
-                </div>
+                  <div className="grid gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>اسم الشركة</Label>
+                        <Input 
+                          value={companyData.company_name}
+                          onChange={(e) => setCompanyData({...companyData, company_name: e.target.value})}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>الشخص المسؤول</Label>
+                        <Input 
+                          value={companyData.contact_person}
+                          onChange={(e) => setCompanyData({...companyData, contact_person: e.target.value})}
+                        />
+                      </div>
+                    </div>
 
-                <div className="space-y-2">
-                  <Label>وصف الشركة</Label>
-                  <Textarea 
-                    value={companyData.description}
-                    onChange={(e) => setCompanyData({...companyData, description: e.target.value})}
-                    rows={3}
-                  />
-                </div>
+                    <div className="space-y-2">
+                      <Label>العنوان</Label>
+                      <Input 
+                        value={companyData.address}
+                        onChange={(e) => setCompanyData({...companyData, address: e.target.value})}
+                      />
+                    </div>
 
-                <Button onClick={handleSaveCompany} className="w-fit">
-                  <Save className="w-4 h-4 ml-2" />
-                  حفظ التغييرات
-                </Button>
-              </div>
+                    <div className="space-y-2">
+                      <Label>نسبة العمولة</Label>
+                      <div className="flex items-center gap-2">
+                        <Input 
+                          type="number"
+                          value={companyData.commission_percentage}
+                          disabled
+                          className="w-24"
+                        />
+                        <span className="text-muted-foreground">%</span>
+                        <span className="text-xs text-muted-foreground">(يتم تحديدها من قبل الإدارة)</span>
+                      </div>
+                    </div>
+
+                    <Button onClick={handleSaveCompany} disabled={isSaving} className="w-fit">
+                      {isSaving ? <Loader2 className="w-4 h-4 ml-2 animate-spin" /> : <Save className="w-4 h-4 ml-2" />}
+                      حفظ التغييرات
+                    </Button>
+                  </div>
+                </>
+              )}
             </div>
           )}
 
@@ -362,12 +422,13 @@ const SettingsPage = () => {
                 
                 <div className="grid gap-4 max-w-md">
                   <div className="space-y-2">
-                    <Label>كلمة المرور الحالية</Label>
+                    <Label>كلمة المرور الجديدة</Label>
                     <div className="relative">
                       <Input 
                         type={showPassword ? "text" : "password"}
-                        value={security.currentPassword}
-                        onChange={(e) => setSecurity({...security, currentPassword: e.target.value})}
+                        value={security.newPassword}
+                        onChange={(e) => setSecurity({...security, newPassword: e.target.value})}
+                        placeholder="أدخل كلمة المرور الجديدة"
                       />
                       <button 
                         type="button"
@@ -379,38 +440,38 @@ const SettingsPage = () => {
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label>كلمة المرور الجديدة</Label>
-                    <Input 
-                      type="password"
-                      value={security.newPassword}
-                      onChange={(e) => setSecurity({...security, newPassword: e.target.value})}
-                    />
-                  </div>
-                  <div className="space-y-2">
                     <Label>تأكيد كلمة المرور</Label>
                     <Input 
                       type="password"
                       value={security.confirmPassword}
                       onChange={(e) => setSecurity({...security, confirmPassword: e.target.value})}
+                      placeholder="أعد إدخال كلمة المرور"
                     />
                   </div>
-                  <Button onClick={handleChangePassword} className="w-fit">
-                    <Lock className="w-4 h-4 ml-2" />
+                  <Button onClick={handleChangePassword} disabled={isSaving} className="w-fit">
+                    {isSaving ? <Loader2 className="w-4 h-4 ml-2 animate-spin" /> : <Lock className="w-4 h-4 ml-2" />}
                     تغيير كلمة المرور
                   </Button>
                 </div>
               </div>
 
               <div className="bg-card rounded-xl border border-border p-6">
-                <h2 className="text-lg font-semibold text-foreground mb-4">المصادقة الثنائية</h2>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-muted-foreground">أضف طبقة حماية إضافية لحسابك</p>
+                <h2 className="text-lg font-semibold text-foreground mb-4">معلومات الحساب</h2>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between py-3 border-b border-border">
+                    <span className="text-muted-foreground">نوع الحساب</span>
+                    <span className="font-medium text-foreground">شريك</span>
                   </div>
-                  <Switch 
-                    checked={security.twoFactor}
-                    onCheckedChange={(checked) => setSecurity({...security, twoFactor: checked})}
-                  />
+                  <div className="flex items-center justify-between py-3 border-b border-border">
+                    <span className="text-muted-foreground">حالة الحساب</span>
+                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-secondary/10 text-secondary">
+                      {partner?.status === 'approved' ? 'نشط' : partner?.status || 'غير محدد'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between py-3">
+                    <span className="text-muted-foreground">رقم الشريك</span>
+                    <span className="font-mono text-foreground">#{partnerId || '-'}</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -425,7 +486,7 @@ const SettingsPage = () => {
                 <div className="space-y-2">
                   <Label>اللغة</Label>
                   <Select defaultValue="ar">
-                    <SelectTrigger className="w-48">
+                    <SelectTrigger className="w-64">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -436,32 +497,36 @@ const SettingsPage = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label>المنطقة الزمنية</Label>
-                  <Select defaultValue="asia-riyadh">
+                  <Label>المظهر</Label>
+                  <Select defaultValue="light">
                     <SelectTrigger className="w-64">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="asia-riyadh">الرياض (GMT+3)</SelectItem>
-                      <SelectItem value="asia-dubai">دبي (GMT+4)</SelectItem>
-                      <SelectItem value="africa-cairo">القاهرة (GMT+2)</SelectItem>
+                      <SelectItem value="light">فاتح</SelectItem>
+                      <SelectItem value="dark">داكن</SelectItem>
+                      <SelectItem value="system">تلقائي (حسب النظام)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div className="space-y-2">
-                  <Label>تنسيق التاريخ</Label>
-                  <Select defaultValue="dd-mm-yyyy">
-                    <SelectTrigger className="w-48">
+                  <Label>التقويم</Label>
+                  <Select defaultValue="hijri">
+                    <SelectTrigger className="w-64">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="dd-mm-yyyy">DD/MM/YYYY</SelectItem>
-                      <SelectItem value="mm-dd-yyyy">MM/DD/YYYY</SelectItem>
-                      <SelectItem value="yyyy-mm-dd">YYYY-MM-DD</SelectItem>
+                      <SelectItem value="hijri">هجري</SelectItem>
+                      <SelectItem value="gregorian">ميلادي</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
+
+                <Button className="w-fit">
+                  <Save className="w-4 h-4 ml-2" />
+                  حفظ التغييرات
+                </Button>
               </div>
             </div>
           )}
