@@ -113,6 +113,7 @@ const RoutesManagement = () => {
     distance_km: "",
     estimated_duration_hours: "",
   });
+  const [newStops, setNewStops] = useState<{name: string; location: string; time: string}[]>([]);
   const [stopFormData, setStopFormData] = useState({
     stop_name: "",
     stop_location: "",
@@ -189,14 +190,37 @@ const RoutesManagement = () => {
         if (error) throw error;
         toast({ title: "تم التحديث", description: "تم تحديث المسار بنجاح" });
       } else {
-        const { error } = await supabase
+        const { data: newRoute, error } = await supabase
           .from('routes')
-          .insert(routeData);
+          .insert(routeData)
+          .select()
+          .single();
         if (error) throw error;
-        toast({ title: "تمت الإضافة", description: "تم إضافة المسار بنجاح" });
+        
+        // Add stops if any were added
+        if (newStops.length > 0 && newRoute) {
+          const stopsToInsert = newStops.map((stop, index) => ({
+            route_id: newRoute.route_id,
+            stop_name: stop.name,
+            stop_location: stop.location || null,
+            stop_order: index + 1,
+            preparation_time: stop.time || null
+          }));
+          
+          const { error: stopsError } = await supabase
+            .from('route_stops')
+            .insert(stopsToInsert);
+          
+          if (stopsError) {
+            console.error('Error adding stops:', stopsError);
+          }
+        }
+        
+        toast({ title: "تمت الإضافة", description: "تم إضافة المسار ونقاط الصعود بنجاح" });
       }
 
       setFormData({ origin_city: "", destination_city: "", distance_km: "", estimated_duration_hours: "" });
+      setNewStops([]);
       setEditingRoute(null);
       setIsAddDialogOpen(false);
       fetchRoutes();
@@ -206,6 +230,20 @@ const RoutesManagement = () => {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const addNewStop = () => {
+    setNewStops([...newStops, { name: "", location: "", time: "" }]);
+  };
+
+  const updateNewStop = (index: number, field: 'name' | 'location' | 'time', value: string) => {
+    const updated = [...newStops];
+    updated[index][field] = value;
+    setNewStops(updated);
+  };
+
+  const removeNewStop = (index: number) => {
+    setNewStops(newStops.filter((_, i) => i !== index));
   };
 
   const handleEdit = (route: RouteRecord) => {
@@ -340,7 +378,7 @@ const RoutesManagement = () => {
                   إضافة مسار
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-md">
+              <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>{editingRoute ? "تعديل المسار" : "إضافة مسار جديد"}</DialogTitle>
                 </DialogHeader>
@@ -349,7 +387,7 @@ const RoutesManagement = () => {
                     <div className="space-y-2">
                       <Label>مدينة الانطلاق *</Label>
                       <Input 
-                        placeholder="الرياض"
+                        placeholder="تعز"
                         value={formData.origin_city}
                         onChange={(e) => setFormData({...formData, origin_city: e.target.value})}
                       />
@@ -357,7 +395,7 @@ const RoutesManagement = () => {
                     <div className="space-y-2">
                       <Label>مدينة الوصول *</Label>
                       <Input 
-                        placeholder="جدة"
+                        placeholder="الرياض"
                         value={formData.destination_city}
                         onChange={(e) => setFormData({...formData, destination_city: e.target.value})}
                       />
@@ -384,12 +422,74 @@ const RoutesManagement = () => {
                       />
                     </div>
                   </div>
+                  
+                  {/* نقاط الصعود */}
+                  {!editingRoute && (
+                    <div className="space-y-3 border-t pt-4">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-base font-semibold">نقاط الصعود</Label>
+                        <Button type="button" variant="outline" size="sm" onClick={addNewStop}>
+                          <Plus className="w-4 h-4 ml-1" />
+                          إضافة نقطة
+                        </Button>
+                      </div>
+                      
+                      {newStops.length === 0 ? (
+                        <p className="text-sm text-muted-foreground text-center py-4 bg-muted/50 rounded-lg">
+                          لا توجد نقاط صعود. اضغط "إضافة نقطة" لإضافة محطات على المسار
+                        </p>
+                      ) : (
+                        <div className="space-y-3">
+                          {newStops.map((stop, index) => (
+                            <div key={index} className="flex items-start gap-2 p-3 bg-muted/50 rounded-lg">
+                              <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-bold mt-1">
+                                {index + 1}
+                              </div>
+                              <div className="flex-1 space-y-2">
+                                <Input
+                                  placeholder="اسم نقطة الصعود (مثال: تعز، إب، صنعاء)"
+                                  value={stop.name}
+                                  onChange={(e) => updateNewStop(index, 'name', e.target.value)}
+                                />
+                                <div className="grid grid-cols-2 gap-2">
+                                  <Input
+                                    placeholder="الموقع (اختياري)"
+                                    value={stop.location}
+                                    onChange={(e) => updateNewStop(index, 'location', e.target.value)}
+                                  />
+                                  <Input
+                                    type="time"
+                                    placeholder="وقت الاستعداد"
+                                    value={stop.time}
+                                    onChange={(e) => updateNewStop(index, 'time', e.target.value)}
+                                  />
+                                </div>
+                              </div>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="text-destructive hover:text-destructive"
+                                onClick={() => removeNewStop(index)}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  
                   <div className="flex gap-3 pt-4">
                     <Button onClick={handleSubmit} className="flex-1" disabled={isSubmitting}>
                       {isSubmitting && <Loader2 className="w-4 h-4 ml-2 animate-spin" />}
                       {editingRoute ? "حفظ التغييرات" : "إضافة المسار"}
                     </Button>
-                    <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
+                    <Button variant="outline" onClick={() => {
+                      setIsAddDialogOpen(false);
+                      setNewStops([]);
+                    }}>
                       إلغاء
                     </Button>
                   </div>
