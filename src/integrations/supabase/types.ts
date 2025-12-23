@@ -938,6 +938,89 @@ export type Database = {
           },
         ]
       }
+      partner_applications: {
+        Row: {
+          application_id: number
+          auth_user_id: string | null
+          commercial_register_url: string | null
+          company_address: string | null
+          company_city: string
+          company_email: string | null
+          company_name: string
+          company_phone: string | null
+          created_at: string
+          description: string | null
+          fleet_size: number | null
+          owner_email: string
+          owner_id_number: string | null
+          owner_name: string
+          owner_phone: string
+          partner_id: number | null
+          rejection_reason: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          tax_certificate_url: string | null
+          updated_at: string
+        }
+        Insert: {
+          application_id?: number
+          auth_user_id?: string | null
+          commercial_register_url?: string | null
+          company_address?: string | null
+          company_city: string
+          company_email?: string | null
+          company_name: string
+          company_phone?: string | null
+          created_at?: string
+          description?: string | null
+          fleet_size?: number | null
+          owner_email: string
+          owner_id_number?: string | null
+          owner_name: string
+          owner_phone: string
+          partner_id?: number | null
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          tax_certificate_url?: string | null
+          updated_at?: string
+        }
+        Update: {
+          application_id?: number
+          auth_user_id?: string | null
+          commercial_register_url?: string | null
+          company_address?: string | null
+          company_city?: string
+          company_email?: string | null
+          company_name?: string
+          company_phone?: string | null
+          created_at?: string
+          description?: string | null
+          fleet_size?: number | null
+          owner_email?: string
+          owner_id_number?: string | null
+          owner_name?: string
+          owner_phone?: string
+          partner_id?: number | null
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          tax_certificate_url?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_applications_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["partner_id"]
+          },
+        ]
+      }
       partner_invoice_items: {
         Row: {
           booking_amount: number | null
