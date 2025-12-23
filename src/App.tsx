@@ -7,6 +7,7 @@ import Index from "./pages/Index";
 import Apply from "./pages/Apply";
 import Login from "./pages/Login";
 import AdminDashboard from "./pages/admin/AdminDashboard";
+import SetupAdmin from "./pages/admin/SetupAdmin";
 import CompanyDashboard from "./pages/dashboard/CompanyDashboard";
 import FleetManagement from "./pages/dashboard/FleetManagement";
 import TripsManagement from "./pages/dashboard/TripsManagement";
@@ -32,6 +33,7 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/apply" element={<Apply />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/setup-admin" element={<SetupAdmin />} />
           <Route path="/admin" element={
             <ProtectedRoute allowedRoles={['admin']}>
               <AdminDashboard />
