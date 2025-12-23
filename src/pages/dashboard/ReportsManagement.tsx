@@ -21,7 +21,9 @@ import {
   ArrowDownRight,
   PieChart,
   Activity,
-  Loader2
+  Loader2,
+  FileSpreadsheet,
+  FileText
 } from "lucide-react";
 import {
   Select,
@@ -30,7 +32,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useSupabaseCRUD } from "@/hooks/useSupabaseCRUD";
+import { toast } from "sonner";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
+import * as XLSX from "xlsx";
 
 // Sidebar navigation
 const sidebarLinks = [
@@ -192,6 +204,169 @@ const ReportsManagement = () => {
     }));
   }, [branches]);
 
+  // Export to Excel
+  const exportToExcel = () => {
+    try {
+      const workbook = XLSX.utils.book_new();
+
+      // Summary sheet
+      const summaryData = stats.map(stat => ({
+        "المؤشر": stat.label,
+        "القيمة": stat.value,
+        "التغيير": stat.change
+      }));
+      const summarySheet = XLSX.utils.json_to_sheet(summaryData);
+      XLSX.utils.book_append_sheet(workbook, summarySheet, "ملخص");
+
+      // Monthly revenue sheet
+      const revenueData = monthlyRevenue.map(m => ({
+        "الشهر": m.month,
+        "الإيرادات (ر.س)": m.revenue,
+        "عدد الرحلات": m.trips,
+        "عدد الحجوزات": m.bookings
+      }));
+      const revenueSheet = XLSX.utils.json_to_sheet(revenueData);
+      XLSX.utils.book_append_sheet(workbook, revenueSheet, "الإيرادات الشهرية");
+
+      // Top routes sheet
+      const routesData = topRoutes.map(r => ({
+        "المسار": r.route,
+        "عدد الرحلات": r.trips,
+        "الإيرادات (ر.س)": r.revenue,
+        "النسبة %": r.percentage
+      }));
+      const routesSheet = XLSX.utils.json_to_sheet(routesData);
+      XLSX.utils.book_append_sheet(workbook, routesSheet, "أفضل المسارات");
+
+      // Branch performance sheet
+      const branchData = branchPerformance.map(b => ({
+        "الفرع": b.branch,
+        "الإيرادات (ر.س)": b.revenue,
+        "الحجوزات": b.bookings,
+        "النمو %": b.growth
+      }));
+      const branchSheet = XLSX.utils.json_to_sheet(branchData);
+      XLSX.utils.book_append_sheet(workbook, branchSheet, "أداء الفروع");
+
+      // Download file
+      const date = new Date().toLocaleDateString('ar-SA');
+      XLSX.writeFile(workbook, `تقرير_الأداء_${date}.xlsx`);
+      toast.success("تم تصدير التقرير بنجاح بصيغة Excel");
+    } catch (error) {
+      console.error("Error exporting to Excel:", error);
+      toast.error("حدث خطأ أثناء تصدير التقرير");
+    }
+  };
+
+  // Export to PDF
+  const exportToPDF = () => {
+    try {
+      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      
+      // Add Arabic font support - using built-in helvetica for now
+      doc.setFont("helvetica");
+      
+      // Title
+      doc.setFontSize(20);
+      doc.text("Company Performance Report", 105, 20, { align: 'center' });
+      
+      const date = new Date().toLocaleDateString('en-US');
+      doc.setFontSize(10);
+      doc.text(`Report Date: ${date}`, 105, 28, { align: 'center' });
+
+      let yPos = 40;
+
+      // Summary Stats
+      doc.setFontSize(14);
+      doc.text("Summary Statistics", 14, yPos);
+      yPos += 8;
+
+      autoTable(doc, {
+        startY: yPos,
+        head: [['Indicator', 'Value', 'Change']],
+        body: stats.map(stat => [stat.label, stat.value, stat.change]),
+        theme: 'striped',
+        headStyles: { fillColor: [59, 130, 246] },
+        styles: { halign: 'center' }
+      });
+
+      yPos = (doc as any).lastAutoTable.finalY + 15;
+
+      // Monthly Revenue
+      doc.setFontSize(14);
+      doc.text("Monthly Revenue", 14, yPos);
+      yPos += 8;
+
+      autoTable(doc, {
+        startY: yPos,
+        head: [['Month', 'Revenue (SAR)', 'Trips', 'Bookings']],
+        body: monthlyRevenue.map(m => [m.month, m.revenue.toLocaleString(), m.trips, m.bookings]),
+        theme: 'striped',
+        headStyles: { fillColor: [16, 185, 129] },
+        styles: { halign: 'center' }
+      });
+
+      yPos = (doc as any).lastAutoTable.finalY + 15;
+
+      // Check if we need a new page
+      if (yPos > 240) {
+        doc.addPage();
+        yPos = 20;
+      }
+
+      // Top Routes
+      doc.setFontSize(14);
+      doc.text("Top Routes", 14, yPos);
+      yPos += 8;
+
+      autoTable(doc, {
+        startY: yPos,
+        head: [['Route', 'Trips', 'Revenue (SAR)', 'Percentage']],
+        body: topRoutes.map(r => [r.route, r.trips, r.revenue.toLocaleString(), `${r.percentage}%`]),
+        theme: 'striped',
+        headStyles: { fillColor: [139, 92, 246] },
+        styles: { halign: 'center' }
+      });
+
+      yPos = (doc as any).lastAutoTable.finalY + 15;
+
+      // Check if we need a new page
+      if (yPos > 200) {
+        doc.addPage();
+        yPos = 20;
+      }
+
+      // Branch Performance
+      doc.setFontSize(14);
+      doc.text("Branch Performance", 14, yPos);
+      yPos += 8;
+
+      autoTable(doc, {
+        startY: yPos,
+        head: [['Branch', 'Revenue (SAR)', 'Bookings', 'Growth']],
+        body: branchPerformance.map(b => [b.branch, b.revenue.toLocaleString(), b.bookings, `${b.growth}%`]),
+        theme: 'striped',
+        headStyles: { fillColor: [245, 158, 11] },
+        styles: { halign: 'center' }
+      });
+
+      // Footer
+      const pageCount = doc.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
+        doc.text(`Page ${i} of ${pageCount}`, 105, 290, { align: 'center' });
+      }
+
+      // Download file
+      doc.save(`Performance_Report_${date}.pdf`);
+      toast.success("تم تصدير التقرير بنجاح بصيغة PDF");
+    } catch (error) {
+      console.error("Error exporting to PDF:", error);
+      toast.error("حدث خطأ أثناء تصدير التقرير");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-muted/30">
       {/* Sidebar */}
@@ -254,10 +429,24 @@ const ReportsManagement = () => {
                   <SelectItem value="year">آخر سنة</SelectItem>
                 </SelectContent>
               </Select>
-              <Button variant="outline">
-                <Download className="w-4 h-4 ml-2" />
-                تصدير
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline">
+                    <Download className="w-4 h-4 ml-2" />
+                    تصدير
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={exportToExcel} className="cursor-pointer">
+                    <FileSpreadsheet className="w-4 h-4 ml-2 text-green-600" />
+                    تصدير Excel
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={exportToPDF} className="cursor-pointer">
+                    <FileText className="w-4 h-4 ml-2 text-red-600" />
+                    تصدير PDF
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
         </header>
