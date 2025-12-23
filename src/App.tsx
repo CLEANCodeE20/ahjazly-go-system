@@ -8,6 +8,7 @@ import Apply from "./pages/Apply";
 import Login from "./pages/Login";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import SetupAdmin from "./pages/admin/SetupAdmin";
+import CommissionsManagement from "./pages/admin/CommissionsManagement";
 import CompanyDashboard from "./pages/dashboard/CompanyDashboard";
 import FleetManagement from "./pages/dashboard/FleetManagement";
 import TripsManagement from "./pages/dashboard/TripsManagement";
@@ -38,6 +39,11 @@ const App = () => (
           <Route path="/admin" element={
             <ProtectedRoute allowedRoles={['admin']}>
               <AdminDashboard />
+            </ProtectedRoute>
+          } />
+          <Route path="/admin/commissions" element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <CommissionsManagement />
             </ProtectedRoute>
           } />
           <Route path="/dashboard" element={
