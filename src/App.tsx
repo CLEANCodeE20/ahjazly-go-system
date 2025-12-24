@@ -38,6 +38,7 @@ const App = () => (
           <Route path="/apply" element={<Apply />} />
           <Route path="/login" element={<Login />} />
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
           <Route path="/setup-admin" element={<SetupAdmin />} />
           <Route path="/admin" element={
             <ProtectedRoute allowedRoles={['admin']}>
@@ -110,6 +111,8 @@ const App = () => (
             </ProtectedRoute>
           } />
 =======
+=======
+>>>>>>> Stashed changes
           <Route path="/features" element={<Features />} />
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/dashboard" element={<CompanyDashboard />} />
