@@ -2,9 +2,9 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
+import SDUIBanner from "@/components/sdui/SDUIBanner";
 import { 
   Bus, 
-  MapPin, 
   Users, 
   CreditCard, 
   Shield, 
@@ -14,7 +14,6 @@ import {
   Building2,
   Route
 } from "lucide-react";
-
 const features = [
   {
     icon: Bus,
@@ -61,6 +60,9 @@ const Index = () => {
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
+      
+      {/* SDUI Dynamic Content */}
+      <SDUIBanner page="home" />
       
       {/* Hero Section */}
       <section className="pt-24 pb-16 md:pt-32 md:pb-24 gradient-hero relative overflow-hidden">
