@@ -3,8 +3,8 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { 
-  Bus, 
+import {
+  Bus,
   Home,
   Route,
   Users,
@@ -83,13 +83,13 @@ interface BusRecord {
 
 const FleetManagement = () => {
   const { partner } = usePartner();
-  const { 
-    data: buses, 
-    loading, 
-    create, 
+  const {
+    data: buses,
+    loading,
+    create,
     update,
-    remove 
-  } = useSupabaseCRUD<BusRecord>({ 
+    remove
+  } = useSupabaseCRUD<BusRecord>({
     tableName: 'buses',
     primaryKey: 'bus_id',
     initialFetch: true
@@ -111,10 +111,11 @@ const FleetManagement = () => {
 
   const handleAddBus = async () => {
     if (!newBus.license_plate || !newBus.model) return;
-    
+
     setIsSubmitting(true);
     try {
       await create({
+        partner_id: partner?.partner_id, // Add partner_id explicitly
         license_plate: newBus.license_plate,
         model: newBus.model,
         capacity: parseInt(newBus.capacity) || 40,
@@ -134,7 +135,7 @@ const FleetManagement = () => {
 
   const handleEditBus = async () => {
     if (!editingBus) return;
-    
+
     setIsSubmitting(true);
     try {
       await update(editingBus.bus_id, {
@@ -181,8 +182,8 @@ const FleetManagement = () => {
     setIsEditDialogOpen(true);
   };
 
-  const filteredBuses = buses.filter(bus => 
-    bus.license_plate?.includes(searchQuery) || 
+  const filteredBuses = buses.filter(bus =>
+    bus.license_plate?.includes(searchQuery) ||
     bus.model?.includes(searchQuery)
   );
 
@@ -219,11 +220,10 @@ const FleetManagement = () => {
             <Link
               key={link.href}
               to={link.href}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${
-                link.href === "/dashboard/fleet"
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${link.href === "/dashboard/fleet"
                   ? "bg-sidebar-accent text-sidebar-accent-foreground"
                   : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
-              }`}
+                }`}
             >
               <link.icon className="w-5 h-5" />
               <span>{link.label}</span>
@@ -415,20 +415,20 @@ const FleetManagement = () => {
                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditDialog(bus)}>
                       <Edit className="w-4 h-4" />
                     </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className="h-8 w-8 text-destructive" 
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-destructive"
                       onClick={() => setDeleteId(bus.bus_id)}
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>
                   </div>
                 </div>
-                
+
                 <h3 className="font-bold text-foreground text-lg mb-1">{bus.license_plate}</h3>
                 <p className="text-muted-foreground text-sm mb-4">{bus.model}</p>
-                
+
                 <div className="space-y-2 mb-4">
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-muted-foreground">النوع</span>
