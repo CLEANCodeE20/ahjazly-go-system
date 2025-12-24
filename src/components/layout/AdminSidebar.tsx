@@ -27,8 +27,8 @@ const AdminSidebar = () => {
     const { signOut } = useAuth();
 
     return (
-        <aside className="fixed top-0 right-0 bottom-0 w-64 bg-sidebar text-sidebar-foreground p-4 hidden lg:block border-l border-sidebar-border">
-            <div className="flex items-center gap-3 mb-8 px-2">
+        <aside className="fixed top-0 right-0 bottom-0 w-64 bg-sidebar text-sidebar-foreground hidden lg:flex lg:flex-col border-l border-sidebar-border">
+            <div className="flex items-center gap-3 p-4 mb-4 shrink-0">
                 <div className="w-10 h-10 rounded-xl bg-sidebar-primary flex items-center justify-center">
                     <Bus className="w-6 h-6 text-sidebar-primary-foreground" />
                 </div>
@@ -38,29 +38,29 @@ const AdminSidebar = () => {
                 </div>
             </div>
 
-            <nav className="space-y-1">
+            <nav className="space-y-1 px-2 flex-1 overflow-y-auto custom-scrollbar">
                 {adminSidebarLinks.map((link) => (
                     <Link
                         key={link.href}
                         to={link.href}
                         className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${location.pathname === link.href
-                                ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                                : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+                            ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                            : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
                             }`}
                     >
-                        <link.icon className="w-5 h-5" />
+                        <link.icon className="w-5 h-5 shrink-0" />
                         <span>{link.label}</span>
                     </Link>
                 ))}
             </nav>
 
-            <div className="absolute bottom-4 left-4 right-4">
+            <div className="p-4 shrink-0 mt-auto border-t border-sidebar-border/50">
                 <Button
                     variant="ghost"
                     className="w-full justify-start text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
                     onClick={() => signOut()}
                 >
-                    <LogOut className="w-5 h-5 ml-2" />
+                    <LogOut className="w-5 h-5 ml-2 shrink-0" />
                     تسجيل الخروج
                 </Button>
             </div>
