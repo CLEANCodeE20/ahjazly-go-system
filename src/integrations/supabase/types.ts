@@ -1788,6 +1788,351 @@ export type Database = {
           },
         ]
       }
+      ui_advertisements: {
+        Row: {
+          ad_id: number
+          ad_name: string
+          ad_position: string
+          ad_type: string
+          advertiser_name: string | null
+          alt_text: string | null
+          click_count: number | null
+          cost_per_click: number | null
+          cost_per_impression: number | null
+          created_at: string | null
+          daily_budget: number | null
+          end_date: string | null
+          image_url: string | null
+          impression_count: number | null
+          is_active: boolean | null
+          link_url: string | null
+          mobile_image_url: string | null
+          priority: number | null
+          start_date: string | null
+          target_audience: Json | null
+          target_pages: Database["public"]["Enums"]["ui_target_page"][] | null
+          total_budget: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          ad_id?: number
+          ad_name: string
+          ad_position: string
+          ad_type: string
+          advertiser_name?: string | null
+          alt_text?: string | null
+          click_count?: number | null
+          cost_per_click?: number | null
+          cost_per_impression?: number | null
+          created_at?: string | null
+          daily_budget?: number | null
+          end_date?: string | null
+          image_url?: string | null
+          impression_count?: number | null
+          is_active?: boolean | null
+          link_url?: string | null
+          mobile_image_url?: string | null
+          priority?: number | null
+          start_date?: string | null
+          target_audience?: Json | null
+          target_pages?: Database["public"]["Enums"]["ui_target_page"][] | null
+          total_budget?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          ad_id?: number
+          ad_name?: string
+          ad_position?: string
+          ad_type?: string
+          advertiser_name?: string | null
+          alt_text?: string | null
+          click_count?: number | null
+          cost_per_click?: number | null
+          cost_per_impression?: number | null
+          created_at?: string | null
+          daily_budget?: number | null
+          end_date?: string | null
+          image_url?: string | null
+          impression_count?: number | null
+          is_active?: boolean | null
+          link_url?: string | null
+          mobile_image_url?: string | null
+          priority?: number | null
+          start_date?: string | null
+          target_audience?: Json | null
+          target_pages?: Database["public"]["Enums"]["ui_target_page"][] | null
+          total_budget?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      ui_component_placements: {
+        Row: {
+          component_id: number | null
+          created_at: string | null
+          custom_config: Json | null
+          display_order: number | null
+          is_visible: boolean | null
+          layout_id: number | null
+          placement_id: number
+          position: string
+        }
+        Insert: {
+          component_id?: number | null
+          created_at?: string | null
+          custom_config?: Json | null
+          display_order?: number | null
+          is_visible?: boolean | null
+          layout_id?: number | null
+          placement_id?: number
+          position?: string
+        }
+        Update: {
+          component_id?: number | null
+          created_at?: string | null
+          custom_config?: Json | null
+          display_order?: number | null
+          is_visible?: boolean | null
+          layout_id?: number | null
+          placement_id?: number
+          position?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ui_component_placements_component_id_fkey"
+            columns: ["component_id"]
+            isOneToOne: false
+            referencedRelation: "ui_components"
+            referencedColumns: ["component_id"]
+          },
+          {
+            foreignKeyName: "ui_component_placements_layout_id_fkey"
+            columns: ["layout_id"]
+            isOneToOne: false
+            referencedRelation: "ui_page_layouts"
+            referencedColumns: ["layout_id"]
+          },
+        ]
+      }
+      ui_components: {
+        Row: {
+          background_image: string | null
+          button_style: string | null
+          button_text: string | null
+          button_url: string | null
+          click_count: number | null
+          component_id: number
+          component_name: string
+          component_type: Database["public"]["Enums"]["ui_component_type"]
+          content: string | null
+          created_at: string | null
+          created_by: string | null
+          custom_data: Json | null
+          custom_styles: Json | null
+          end_date: string | null
+          image_url: string | null
+          link_text: string | null
+          link_url: string | null
+          priority: number | null
+          start_date: string | null
+          status: Database["public"]["Enums"]["ui_component_status"] | null
+          subtitle: string | null
+          title: string | null
+          updated_at: string | null
+          view_count: number | null
+        }
+        Insert: {
+          background_image?: string | null
+          button_style?: string | null
+          button_text?: string | null
+          button_url?: string | null
+          click_count?: number | null
+          component_id?: number
+          component_name: string
+          component_type: Database["public"]["Enums"]["ui_component_type"]
+          content?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          custom_data?: Json | null
+          custom_styles?: Json | null
+          end_date?: string | null
+          image_url?: string | null
+          link_text?: string | null
+          link_url?: string | null
+          priority?: number | null
+          start_date?: string | null
+          status?: Database["public"]["Enums"]["ui_component_status"] | null
+          subtitle?: string | null
+          title?: string | null
+          updated_at?: string | null
+          view_count?: number | null
+        }
+        Update: {
+          background_image?: string | null
+          button_style?: string | null
+          button_text?: string | null
+          button_url?: string | null
+          click_count?: number | null
+          component_id?: number
+          component_name?: string
+          component_type?: Database["public"]["Enums"]["ui_component_type"]
+          content?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          custom_data?: Json | null
+          custom_styles?: Json | null
+          end_date?: string | null
+          image_url?: string | null
+          link_text?: string | null
+          link_url?: string | null
+          priority?: number | null
+          start_date?: string | null
+          status?: Database["public"]["Enums"]["ui_component_status"] | null
+          subtitle?: string | null
+          title?: string | null
+          updated_at?: string | null
+          view_count?: number | null
+        }
+        Relationships: []
+      }
+      ui_page_layouts: {
+        Row: {
+          created_at: string | null
+          is_active: boolean | null
+          layout_id: number
+          meta_description: string | null
+          meta_title: string | null
+          page_description: string | null
+          page_key: Database["public"]["Enums"]["ui_target_page"]
+          page_title: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          is_active?: boolean | null
+          layout_id?: number
+          meta_description?: string | null
+          meta_title?: string | null
+          page_description?: string | null
+          page_key: Database["public"]["Enums"]["ui_target_page"]
+          page_title: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          is_active?: boolean | null
+          layout_id?: number
+          meta_description?: string | null
+          meta_title?: string | null
+          page_description?: string | null
+          page_key?: Database["public"]["Enums"]["ui_target_page"]
+          page_title?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      ui_promotions: {
+        Row: {
+          applicable_partners: number[] | null
+          applicable_routes: number[] | null
+          banner_image: string | null
+          created_at: string | null
+          discount_value: number | null
+          display_on_home: boolean | null
+          end_date: string
+          is_active: boolean | null
+          max_discount: number | null
+          min_booking_amount: number | null
+          per_user_limit: number | null
+          promo_code: string | null
+          promo_id: number
+          promo_name: string
+          promo_type: string
+          start_date: string
+          terms_conditions: string | null
+          updated_at: string | null
+          usage_count: number | null
+          usage_limit: number | null
+        }
+        Insert: {
+          applicable_partners?: number[] | null
+          applicable_routes?: number[] | null
+          banner_image?: string | null
+          created_at?: string | null
+          discount_value?: number | null
+          display_on_home?: boolean | null
+          end_date: string
+          is_active?: boolean | null
+          max_discount?: number | null
+          min_booking_amount?: number | null
+          per_user_limit?: number | null
+          promo_code?: string | null
+          promo_id?: number
+          promo_name: string
+          promo_type: string
+          start_date: string
+          terms_conditions?: string | null
+          updated_at?: string | null
+          usage_count?: number | null
+          usage_limit?: number | null
+        }
+        Update: {
+          applicable_partners?: number[] | null
+          applicable_routes?: number[] | null
+          banner_image?: string | null
+          created_at?: string | null
+          discount_value?: number | null
+          display_on_home?: boolean | null
+          end_date?: string
+          is_active?: boolean | null
+          max_discount?: number | null
+          min_booking_amount?: number | null
+          per_user_limit?: number | null
+          promo_code?: string | null
+          promo_id?: number
+          promo_name?: string
+          promo_type?: string
+          start_date?: string
+          terms_conditions?: string | null
+          updated_at?: string | null
+          usage_count?: number | null
+          usage_limit?: number | null
+        }
+        Relationships: []
+      }
+      ui_site_settings: {
+        Row: {
+          description: string | null
+          is_public: boolean | null
+          setting_group: string | null
+          setting_id: number
+          setting_key: string
+          setting_type: string | null
+          setting_value: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          description?: string | null
+          is_public?: boolean | null
+          setting_group?: string | null
+          setting_id?: number
+          setting_key: string
+          setting_type?: string | null
+          setting_value?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          description?: string | null
+          is_public?: boolean | null
+          setting_group?: string | null
+          setting_id?: number
+          setting_key?: string
+          setting_type?: string | null
+          setting_value?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       user_device_tokens: {
         Row: {
           created_at: string | null
@@ -1968,6 +2313,28 @@ export type Database = {
         | "completed"
         | "cancelled"
         | "delayed"
+      ui_component_status: "draft" | "published" | "scheduled" | "archived"
+      ui_component_type:
+        | "banner"
+        | "hero_section"
+        | "text_block"
+        | "image_gallery"
+        | "promo_carousel"
+        | "cta_button"
+        | "feature_grid"
+        | "testimonials"
+        | "faq_section"
+        | "search_widget"
+        | "partner_logos"
+        | "popular_routes"
+        | "custom_html"
+      ui_target_page:
+        | "home"
+        | "search"
+        | "booking"
+        | "about"
+        | "contact"
+        | "all"
       user_type: "customer" | "partner" | "admin" | "driver" | "employee"
       verification_status: "pending" | "approved" | "rejected"
     }
@@ -2134,6 +2501,23 @@ export const Constants = {
         "cancelled",
         "delayed",
       ],
+      ui_component_status: ["draft", "published", "scheduled", "archived"],
+      ui_component_type: [
+        "banner",
+        "hero_section",
+        "text_block",
+        "image_gallery",
+        "promo_carousel",
+        "cta_button",
+        "feature_grid",
+        "testimonials",
+        "faq_section",
+        "search_widget",
+        "partner_logos",
+        "popular_routes",
+        "custom_html",
+      ],
+      ui_target_page: ["home", "search", "booking", "about", "contact", "all"],
       user_type: ["customer", "partner", "admin", "driver", "employee"],
       verification_status: ["pending", "approved", "rejected"],
     },
