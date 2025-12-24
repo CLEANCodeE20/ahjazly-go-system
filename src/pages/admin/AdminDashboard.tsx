@@ -350,8 +350,14 @@ const AdminDashboard = () => {
                   <tbody>
                     {filteredApplications.length === 0 ? (
                       <tr>
-                        <td colSpan={7} className="py-12 text-center text-muted-foreground">
-                          لا توجد طلبات
+                        <td colSpan={7} className="py-20 text-center">
+                          <div className="flex flex-col items-center justify-center text-muted-foreground">
+                            <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
+                              <FileText className="w-8 h-8 opacity-20" />
+                            </div>
+                            <p className="text-lg font-medium">لا توجد طلبات انضمام حالياً</p>
+                            <p className="text-sm">سيتم عرض جميع الطلبات الجديدة هنا للمراجعة</p>
+                          </div>
                         </td>
                       </tr>
                     ) : (

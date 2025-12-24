@@ -6,11 +6,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
-import { 
-  Building2, 
-  User, 
-  Mail, 
-  Phone, 
+import {
+  Building2,
+  User,
+  Mail,
+  Phone,
   FileText,
   Upload,
   CheckCircle2,
@@ -79,26 +79,26 @@ const Apply = () => {
   const uploadFile = async (file: File, path: string): Promise<string | null> => {
     const fileExt = file.name.split('.').pop();
     const fileName = `${path}/${Date.now()}.${fileExt}`;
-    
+
     const { data, error } = await supabase.storage
       .from('partner-documents')
       .upload(fileName, file);
-    
+
     if (error) {
       console.error('Upload error:', error);
       return null;
     }
-    
+
     const { data: urlData } = supabase.storage
       .from('partner-documents')
       .getPublicUrl(data.path);
-    
+
     return urlData.publicUrl;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Validate password match
     if (formData.password !== formData.confirmPassword) {
       toast({
@@ -160,14 +160,14 @@ const Apply = () => {
 
       if (formData.commercialRegister) {
         commercialRegisterUrl = await uploadFile(
-          formData.commercialRegister, 
+          formData.commercialRegister,
           `applications/${userId || 'anonymous'}/commercial`
         );
       }
 
       if (formData.taxCertificate) {
         taxCertificateUrl = await uploadFile(
-          formData.taxCertificate, 
+          formData.taxCertificate,
           `applications/${userId || 'anonymous'}/tax`
         );
       }
@@ -198,13 +198,7 @@ const Apply = () => {
       // Sign out the user since they need to wait for approval
       await supabase.auth.signOut();
 
-      toast({
-        title: "تم إرسال الطلب بنجاح!",
-        description: "سنراجع طلبك ونتواصل معك خلال 48 ساعة عمل. سيتم تفعيل حسابك بعد الموافقة.",
-      });
-
-      // Navigate to success page or home
-      setTimeout(() => navigate('/'), 3000);
+      setSubmitted(true);
 
     } catch (error: any) {
       console.error('Error submitting application:', error);
@@ -217,6 +211,31 @@ const Apply = () => {
       setIsSubmitting(false);
     }
   };
+
+  const [submitted, setSubmitted] = useState(false);
+
+  if (submitted) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Header />
+        <main className="flex-1 flex items-center justify-center pt-24 pb-16">
+          <div className="max-w-md w-full px-4 text-center animate-fade-in">
+            <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-6">
+              <CheckCircle2 className="w-10 h-10 text-green-600" />
+            </div>
+            <h1 className="text-3xl font-bold text-foreground mb-4">تم إرسال طلبك بنجاح!</h1>
+            <p className="text-muted-foreground mb-8 text-lg">
+              شكراً لاهتمامك بالانضمام إلى منصة "احجزلي". سنقوم بمراجعة طلبك والتواصل معك عبر البريد الإلكتروني خلال 48 ساعة عمل.
+            </p>
+            <Button size="lg" className="w-full" asChild>
+              <Link to="/">العودة للرئيسية</Link>
+            </Button>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 
   const validateStep = (stepNum: number): boolean => {
     if (stepNum === 1) {
@@ -273,13 +292,13 @@ const Apply = () => {
       setStep(step + 1);
     }
   };
-  
+
   const prevStep = () => setStep(step - 1);
 
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
-      
+
       <main className="flex-1 pt-24 pb-16">
         <div className="container mx-auto px-4">
           {/* Page Header */}
@@ -302,11 +321,10 @@ const Apply = () => {
               ].map((s, index) => (
                 <div key={s.num} className="flex items-center">
                   <div className="flex flex-col items-center">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold transition-all ${
-                      step >= s.num 
-                        ? "gradient-primary text-primary-foreground" 
-                        : "bg-muted text-muted-foreground"
-                    }`}>
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold transition-all ${step >= s.num
+                      ? "gradient-primary text-primary-foreground"
+                      : "bg-muted text-muted-foreground"
+                      }`}>
                       {step > s.num ? <CheckCircle2 className="w-5 h-5" /> : s.num}
                     </div>
                     <span className={`text-sm mt-2 ${step >= s.num ? "text-foreground" : "text-muted-foreground"}`}>
@@ -314,9 +332,8 @@ const Apply = () => {
                     </span>
                   </div>
                   {index < 2 && (
-                    <div className={`w-24 md:w-32 h-1 mx-2 rounded-full transition-all ${
-                      step > s.num ? "bg-primary" : "bg-muted"
-                    }`} />
+                    <div className={`w-24 md:w-32 h-1 mx-2 rounded-full transition-all ${step > s.num ? "bg-primary" : "bg-muted"
+                      }`} />
                   )}
                 </div>
               ))}
@@ -326,7 +343,7 @@ const Apply = () => {
           {/* Form */}
           <form onSubmit={handleSubmit} className="max-w-2xl mx-auto">
             <div className="bg-card rounded-2xl border border-border p-6 md:p-8 shadow-elegant">
-              
+
               {/* Step 1: Owner Info */}
               {step === 1 && (
                 <div className="space-y-6 animate-fade-in">
@@ -551,11 +568,10 @@ const Apply = () => {
 
                   <div className="space-y-4">
                     {/* Commercial Register */}
-                    <div className={`border-2 border-dashed rounded-xl p-6 text-center transition-colors ${
-                      formData.commercialRegister 
-                        ? "border-primary bg-primary/5" 
-                        : "border-border hover:border-primary/50"
-                    }`}>
+                    <div className={`border-2 border-dashed rounded-xl p-6 text-center transition-colors ${formData.commercialRegister
+                      ? "border-primary bg-primary/5"
+                      : "border-border hover:border-primary/50"
+                      }`}>
                       {formData.commercialRegister ? (
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
@@ -594,11 +610,10 @@ const Apply = () => {
                     </div>
 
                     {/* Tax Certificate */}
-                    <div className={`border-2 border-dashed rounded-xl p-6 text-center transition-colors ${
-                      formData.taxCertificate 
-                        ? "border-primary bg-primary/5" 
-                        : "border-border hover:border-primary/50"
-                    }`}>
+                    <div className={`border-2 border-dashed rounded-xl p-6 text-center transition-colors ${formData.taxCertificate
+                      ? "border-primary bg-primary/5"
+                      : "border-border hover:border-primary/50"
+                      }`}>
                       {formData.taxCertificate ? (
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
@@ -663,6 +678,18 @@ const Apply = () => {
                       <p className="text-foreground">{formData.ownerEmail}</p>
                     </div>
                   </div>
+
+                  <div className="flex items-center space-x-2 space-x-reverse mt-6">
+                    <input
+                      type="checkbox"
+                      id="terms"
+                      className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
+                      required
+                    />
+                    <Label htmlFor="terms" className="text-sm font-normal text-muted-foreground mr-2">
+                      أوافق على <Link to="/terms" className="text-primary hover:underline">شروط الاستخدام</Link> و <Link to="/privacy" className="text-primary hover:underline">سياسة الخصوصية</Link> الخاصة بالمنصة
+                    </Label>
+                  </div>
                 </div>
               )}
 
@@ -676,7 +703,7 @@ const Apply = () => {
                 ) : (
                   <div />
                 )}
-                
+
                 {step < 3 ? (
                   <Button type="button" onClick={nextStep}>
                     التالي
@@ -710,7 +737,7 @@ const Apply = () => {
           </p>
         </div>
       </main>
-      
+
       <Footer />
     </div>
   );
