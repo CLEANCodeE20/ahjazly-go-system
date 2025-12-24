@@ -38,7 +38,7 @@ export const usePermissions = () => {
                     const { data: empData, error: empError } = await supabase
                         .from('employees')
                         .select('role_in_company')
-                        .eq('user_id', user.id)
+                        .eq('user_id', user.id as any)
                         .single();
 
                     if (!empError && empData) {
@@ -57,11 +57,11 @@ export const usePermissions = () => {
                 // If a partner has overridden a role, we might want to ONLY show partner permissions, or merge.
                 // For now, let's assume we fetch all matches.
 
-                const { data, error } = await supabase
-                    .from('role_permissions')
+                const { data, error } = await (supabase
+                    .from('role_permissions' as any)
                     .select('permission_code')
                     .eq('role', roleName)
-                    .or(`partner_id.eq.${partnerId},partner_id.is.null`);
+                    .or(`partner_id.eq.${partnerId},partner_id.is.null`)) as any;
 
                 if (error) {
                     console.error('Error fetching permissions:', error);

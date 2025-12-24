@@ -22,7 +22,6 @@ import {
   Shield
 } from "lucide-react";
 import { useSupabaseCRUD } from "@/hooks/useSupabaseCRUD";
-import { useSupabaseCRUD } from "@/hooks/useSupabaseCRUD";
 import { usePartner } from "@/hooks/usePartner";
 import { usePermissions } from "@/hooks/usePermissions";
 import {
@@ -266,14 +265,17 @@ const CompanyDashboard = () => {
         <nav className="p-3 space-y-1 flex-1 overflow-y-auto custom-scrollbar">
           {sidebarLinks.map((link) => {
             // Permission check for sidebar items
-            if (link.href === "/dashboard/permissions" && !can('employees.manage')) return null;
-            if (link.href === "/dashboard/fleet" && !can('fleet.view')) return null;
-            if (link.href === "/dashboard/routes" && !can('routes.view')) return null;
-            if (link.href === "/dashboard/trips" && !can('trips.view')) return null;
-            if (link.href === "/dashboard/employees" && !can('employees.view')) return null;
-            if (link.href === "/dashboard/bookings" && !can('bookings.view')) return null;
-            if (link.href === "/dashboard/reports" && !can('reports.view')) return null;
-            // Add more specific checks if needed
+            // Allow if user is Partner (Owner) OR has specific permission
+            const isOwner = !!partner;
+
+            if (link.href === "/dashboard/permissions" && !isOwner && !can('employees.manage')) return null;
+            if (link.href === "/dashboard/fleet" && !isOwner && !can('fleet.view')) return null;
+            if (link.href === "/dashboard/routes" && !isOwner && !can('routes.view')) return null;
+            if (link.href === "/dashboard/trips" && !isOwner && !can('trips.view')) return null;
+            if (link.href === "/dashboard/employees" && !isOwner && !can('employees.view')) return null;
+            if (link.href === "/dashboard/bookings" && !isOwner && !can('bookings.view')) return null;
+            if (link.href === "/dashboard/reports" && !isOwner && !can('reports.view')) return null;
+            if (link.href === "/dashboard/settings" && !isOwner && !can('settings.manage')) return null;
 
             return (
               <Link

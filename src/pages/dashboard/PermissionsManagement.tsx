@@ -54,10 +54,10 @@ const PermissionsManagement = () => {
 
     const fetchMetadata = async () => {
         try {
-            const { data, error } = await supabase
-                .from('permissions')
+            const { data, error } = await (supabase
+                .from('permissions' as any)
                 .select('*')
-                .order('category');
+                .order('category')) as any;
 
             if (error) throw error;
             setPermissions(data || []);
@@ -73,11 +73,11 @@ const PermissionsManagement = () => {
             // Actually, for editing, we want to know what is currently active.
             // But if we want to "Customize", we load the current effective permissions.
 
-            const { data, error } = await supabase
-                .from('role_permissions')
+            const { data, error } = await (supabase
+                .from('role_permissions' as any)
                 .select('permission_code')
                 .eq('role', role)
-                .or(`partner_id.eq.${partnerId},partner_id.is.null`);
+                .or(`partner_id.eq.${partnerId},partner_id.is.null`)) as any;
 
             if (error) throw error;
 
@@ -122,11 +122,11 @@ const PermissionsManagement = () => {
             // FIX: We will just delete all previous specific partner permissions and insert the selected ones.
             // Ideally, we'd want to "Take over" control.
 
-            const { error: deleteError } = await supabase
-                .from('role_permissions')
+            const { error: deleteError } = await (supabase
+                .from('role_permissions' as any)
                 .delete()
                 .eq('partner_id', partnerId)
-                .eq('role', selectedRole);
+                .eq('role', selectedRole)) as any;
 
             if (deleteError) throw deleteError;
 
@@ -137,9 +137,9 @@ const PermissionsManagement = () => {
             }));
 
             if (newRows.length > 0) {
-                const { error: insertError } = await supabase
-                    .from('role_permissions')
-                    .insert(newRows);
+                const { error: insertError } = await (supabase
+                    .from('role_permissions' as any)
+                    .insert(newRows)) as any;
 
                 if (insertError) throw insertError;
             }
