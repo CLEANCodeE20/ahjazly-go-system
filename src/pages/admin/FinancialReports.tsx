@@ -3,12 +3,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
-import { 
+import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
   LineChart, Line, PieChart, Pie, Cell, AreaChart, Area
 } from 'recharts';
-import { 
-  TrendingUp, DollarSign, Users, Calendar, Download, 
+import {
+  TrendingUp, DollarSign, Users, Calendar, Download,
   ArrowUpRight, ArrowDownRight, Building2, CreditCard
 } from "lucide-react";
 import { format, subMonths, startOfMonth, endOfMonth } from 'date-fns';
@@ -37,6 +37,8 @@ interface PartnerData {
   bookings: number;
 }
 
+import AdminSidebar from "@/components/layout/AdminSidebar";
+
 const COLORS = ['hsl(var(--primary))', 'hsl(var(--secondary))', 'hsl(142, 76%, 36%)', 'hsl(38, 92%, 50%)', 'hsl(0, 84%, 60%)'];
 
 const FinancialReports = () => {
@@ -51,7 +53,7 @@ const FinancialReports = () => {
   });
   const [monthlyData, setMonthlyData] = useState<MonthlyData[]>([]);
   const [partnerData, setPartnerData] = useState<PartnerData[]>([]);
-  const [paymentMethodData, setPaymentMethodData] = useState<{name: string; value: number}[]>([]);
+  const [paymentMethodData, setPaymentMethodData] = useState<{ name: string; value: number }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -61,7 +63,7 @@ const FinancialReports = () => {
   const getDateRange = () => {
     const now = new Date();
     let startDate: Date;
-    
+
     switch (period) {
       case '1month':
         startDate = subMonths(now, 1);
@@ -78,7 +80,7 @@ const FinancialReports = () => {
       default:
         startDate = subMonths(now, 6);
     }
-    
+
     return { startDate, endDate: now };
   };
 
@@ -109,7 +111,7 @@ const FinancialReports = () => {
         const totalRevenue = bookings.reduce((sum, b) => sum + (b.total_price || 0), 0);
         const platformCommission = bookings.reduce((sum, b) => sum + (b.platform_commission || 0), 0);
         const partnerRevenue = bookings.reduce((sum, b) => sum + (b.partner_revenue || 0), 0);
-        
+
         // Calculate growth rate (compare with previous period)
         const previousStart = subMonths(startDate, period === '1month' ? 1 : period === '3months' ? 3 : period === '6months' ? 6 : 12);
         const { data: previousBookings } = await supabase
@@ -118,7 +120,7 @@ const FinancialReports = () => {
           .gte('booking_date', previousStart.toISOString())
           .lt('booking_date', startDate.toISOString())
           .eq('payment_status', 'paid');
-        
+
         const previousRevenue = previousBookings?.reduce((sum, b) => sum + (b.total_price || 0), 0) || 0;
         const growthRate = previousRevenue > 0 ? ((totalRevenue - previousRevenue) / previousRevenue) * 100 : 0;
 
@@ -229,224 +231,227 @@ const FinancialReports = () => {
   );
 
   return (
-    <div className="min-h-screen bg-background p-6" dir="rtl">
-      <div className="max-w-7xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div>
-            <h1 className="text-3xl font-bold">التقارير المالية</h1>
-            <p className="text-muted-foreground mt-1">تحليل شامل للإيرادات والعمولات</p>
-          </div>
-          <div className="flex gap-3">
-            <Select value={period} onValueChange={setPeriod}>
-              <SelectTrigger className="w-40">
-                <SelectValue placeholder="الفترة" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="1month">شهر واحد</SelectItem>
-                <SelectItem value="3months">3 أشهر</SelectItem>
-                <SelectItem value="6months">6 أشهر</SelectItem>
-                <SelectItem value="1year">سنة</SelectItem>
-              </SelectContent>
-            </Select>
-            <Button variant="outline">
-              <Download className="h-4 w-4 ml-2" />
-              تصدير PDF
-            </Button>
-          </div>
-        </div>
-
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard
-            title="إجمالي الإيرادات"
-            value={formatCurrency(stats.totalRevenue)}
-            icon={DollarSign}
-            trend={stats.growthRate >= 0 ? 'up' : 'down'}
-            trendValue={`${Math.abs(stats.growthRate).toFixed(1)}% عن الفترة السابقة`}
-            color="bg-primary"
-          />
-          <StatCard
-            title="عمولة المنصة"
-            value={formatCurrency(stats.platformCommission)}
-            icon={TrendingUp}
-            color="bg-green-600"
-          />
-          <StatCard
-            title="إيرادات الشركاء"
-            value={formatCurrency(stats.partnerRevenue)}
-            icon={Building2}
-            color="bg-blue-600"
-          />
-          <StatCard
-            title="عدد الحجوزات"
-            value={stats.totalBookings.toLocaleString('ar-SA')}
-            icon={CreditCard}
-            color="bg-purple-600"
-          />
-        </div>
-
-        {/* Charts Row 1 */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Revenue Trend */}
-          <Card>
-            <CardHeader>
-              <CardTitle>تطور الإيرادات</CardTitle>
-              <CardDescription>الإيرادات الشهرية خلال الفترة المحددة</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <AreaChart data={monthlyData}>
-                  <defs>
-                    <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
-                      <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                  <XAxis dataKey="month" className="text-xs" />
-                  <YAxis className="text-xs" tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`} />
-                  <Tooltip 
-                    formatter={(value: number) => [formatCurrency(value), 'الإيرادات']}
-                    contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }}
-                  />
-                  <Area 
-                    type="monotone" 
-                    dataKey="revenue" 
-                    stroke="hsl(var(--primary))" 
-                    fillOpacity={1} 
-                    fill="url(#colorRevenue)" 
-                    strokeWidth={2}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-
-          {/* Commission vs Partner Revenue */}
-          <Card>
-            <CardHeader>
-              <CardTitle>العمولات vs إيرادات الشركاء</CardTitle>
-              <CardDescription>مقارنة شهرية بين عمولة المنصة وإيرادات الشركاء</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={monthlyData}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                  <XAxis dataKey="month" className="text-xs" />
-                  <YAxis className="text-xs" tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`} />
-                  <Tooltip 
-                    formatter={(value: number, name: string) => [
-                      formatCurrency(value), 
-                      name === 'commission' ? 'عمولة المنصة' : 'إيرادات الشركاء'
-                    ]}
-                    contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }}
-                  />
-                  <Legend formatter={(value) => value === 'commission' ? 'عمولة المنصة' : 'الإيرادات'} />
-                  <Bar dataKey="commission" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="revenue" fill="hsl(142, 76%, 36%)" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Charts Row 2 */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Top Partners */}
-          <Card className="lg:col-span-2">
-            <CardHeader>
-              <CardTitle>أفضل الشركاء أداءً</CardTitle>
-              <CardDescription>الشركاء الأكثر إيرادات خلال الفترة المحددة</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={partnerData} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                  <XAxis type="number" className="text-xs" tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`} />
-                  <YAxis dataKey="name" type="category" className="text-xs" width={100} />
-                  <Tooltip 
-                    formatter={(value: number) => [formatCurrency(value), 'الإيرادات']}
-                    contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }}
-                  />
-                  <Bar dataKey="revenue" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]}>
-                    {partnerData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-
-          {/* Payment Methods */}
-          <Card>
-            <CardHeader>
-              <CardTitle>طرق الدفع</CardTitle>
-              <CardDescription>توزيع الإيرادات حسب طريقة الدفع</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
-                  <Pie
-                    data={paymentMethodData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={100}
-                    paddingAngle={5}
-                    dataKey="value"
-                  >
-                    {paymentMethodData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip 
-                    formatter={(value: number) => [formatCurrency(value), 'المبلغ']}
-                    contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }}
-                  />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Summary Table */}
-        <Card>
-          <CardHeader>
-            <CardTitle>ملخص أداء الشركاء</CardTitle>
-            <CardDescription>تفاصيل الإيرادات والعمولات لكل شريك</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-right py-3 px-4 font-medium">الشريك</th>
-                    <th className="text-right py-3 px-4 font-medium">الحجوزات</th>
-                    <th className="text-right py-3 px-4 font-medium">إجمالي الإيرادات</th>
-                    <th className="text-right py-3 px-4 font-medium">عمولة المنصة</th>
-                    <th className="text-right py-3 px-4 font-medium">صافي الشريك</th>
-                    <th className="text-right py-3 px-4 font-medium">متوسط الحجز</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {partnerData.map((partner, index) => (
-                    <tr key={index} className="border-b hover:bg-muted/50">
-                      <td className="py-3 px-4 font-medium">{partner.name}</td>
-                      <td className="py-3 px-4">{partner.bookings}</td>
-                      <td className="py-3 px-4">{formatCurrency(partner.revenue)}</td>
-                      <td className="py-3 px-4 text-primary">{formatCurrency(partner.commission)}</td>
-                      <td className="py-3 px-4 text-green-600">{formatCurrency(partner.revenue - partner.commission)}</td>
-                      <td className="py-3 px-4">{formatCurrency(partner.bookings > 0 ? partner.revenue / partner.bookings : 0)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+    <div className="min-h-screen bg-muted/30" dir="rtl">
+      <AdminSidebar />
+      <div className="lg:mr-64 p-6">
+        <div className="max-w-7xl mx-auto space-y-6">
+          {/* Header */}
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div>
+              <h1 className="text-3xl font-bold">التقارير المالية</h1>
+              <p className="text-muted-foreground mt-1">تحليل شامل للإيرادات والعمولات</p>
             </div>
-          </CardContent>
-        </Card>
+            <div className="flex gap-3">
+              <Select value={period} onValueChange={setPeriod}>
+                <SelectTrigger className="w-40">
+                  <SelectValue placeholder="الفترة" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1month">شهر واحد</SelectItem>
+                  <SelectItem value="3months">3 أشهر</SelectItem>
+                  <SelectItem value="6months">6 أشهر</SelectItem>
+                  <SelectItem value="1year">سنة</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button variant="outline">
+                <Download className="h-4 w-4 ml-2" />
+                تصدير PDF
+              </Button>
+            </div>
+          </div>
+
+          {/* Stats Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <StatCard
+              title="إجمالي الإيرادات"
+              value={formatCurrency(stats.totalRevenue)}
+              icon={DollarSign}
+              trend={stats.growthRate >= 0 ? 'up' : 'down'}
+              trendValue={`${Math.abs(stats.growthRate).toFixed(1)}% عن الفترة السابقة`}
+              color="bg-primary"
+            />
+            <StatCard
+              title="عمولة المنصة"
+              value={formatCurrency(stats.platformCommission)}
+              icon={TrendingUp}
+              color="bg-green-600"
+            />
+            <StatCard
+              title="إيرادات الشركاء"
+              value={formatCurrency(stats.partnerRevenue)}
+              icon={Building2}
+              color="bg-blue-600"
+            />
+            <StatCard
+              title="عدد الحجوزات"
+              value={stats.totalBookings.toLocaleString('ar-SA')}
+              icon={CreditCard}
+              color="bg-purple-600"
+            />
+          </div>
+
+          {/* Charts Row 1 */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Revenue Trend */}
+            <Card>
+              <CardHeader>
+                <CardTitle>تطور الإيرادات</CardTitle>
+                <CardDescription>الإيرادات الشهرية خلال الفترة المحددة</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <AreaChart data={monthlyData}>
+                    <defs>
+                      <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis dataKey="month" className="text-xs" />
+                    <YAxis className="text-xs" tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`} />
+                    <Tooltip
+                      formatter={(value: number) => [formatCurrency(value), 'الإيرادات']}
+                      contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="revenue"
+                      stroke="hsl(var(--primary))"
+                      fillOpacity={1}
+                      fill="url(#colorRevenue)"
+                      strokeWidth={2}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+
+            {/* Commission vs Partner Revenue */}
+            <Card>
+              <CardHeader>
+                <CardTitle>العمولات vs إيرادات الشركاء</CardTitle>
+                <CardDescription>مقارنة شهرية بين عمولة المنصة وإيرادات الشركاء</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={monthlyData}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis dataKey="month" className="text-xs" />
+                    <YAxis className="text-xs" tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`} />
+                    <Tooltip
+                      formatter={(value: number, name: string) => [
+                        formatCurrency(value),
+                        name === 'commission' ? 'عمولة المنصة' : 'إيرادات الشركاء'
+                      ]}
+                      contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }}
+                    />
+                    <Legend formatter={(value) => value === 'commission' ? 'عمولة المنصة' : 'الإيرادات'} />
+                    <Bar dataKey="commission" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="revenue" fill="hsl(142, 76%, 36%)" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Charts Row 2 */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Top Partners */}
+            <Card className="lg:col-span-2">
+              <CardHeader>
+                <CardTitle>أفضل الشركاء أداءً</CardTitle>
+                <CardDescription>الشركاء الأكثر إيرادات خلال الفترة المحددة</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={partnerData} layout="vertical">
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis type="number" className="text-xs" tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`} />
+                    <YAxis dataKey="name" type="category" className="text-xs" width={100} />
+                    <Tooltip
+                      formatter={(value: number) => [formatCurrency(value), 'الإيرادات']}
+                      contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }}
+                    />
+                    <Bar dataKey="revenue" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]}>
+                      {partnerData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+
+            {/* Payment Methods */}
+            <Card>
+              <CardHeader>
+                <CardTitle>طرق الدفع</CardTitle>
+                <CardDescription>توزيع الإيرادات حسب طريقة الدفع</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <PieChart>
+                    <Pie
+                      data={paymentMethodData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={100}
+                      paddingAngle={5}
+                      dataKey="value"
+                    >
+                      {paymentMethodData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      formatter={(value: number) => [formatCurrency(value), 'المبلغ']}
+                      contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }}
+                    />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Summary Table */}
+          <Card>
+            <CardHeader>
+              <CardTitle>ملخص أداء الشركاء</CardTitle>
+              <CardDescription>تفاصيل الإيرادات والعمولات لكل شريك</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="text-right py-3 px-4 font-medium">الشريك</th>
+                      <th className="text-right py-3 px-4 font-medium">الحجوزات</th>
+                      <th className="text-right py-3 px-4 font-medium">إجمالي الإيرادات</th>
+                      <th className="text-right py-3 px-4 font-medium">عمولة المنصة</th>
+                      <th className="text-right py-3 px-4 font-medium">صافي الشريك</th>
+                      <th className="text-right py-3 px-4 font-medium">متوسط الحجز</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {partnerData.map((partner, index) => (
+                      <tr key={index} className="border-b hover:bg-muted/50">
+                        <td className="py-3 px-4 font-medium">{partner.name}</td>
+                        <td className="py-3 px-4">{partner.bookings}</td>
+                        <td className="py-3 px-4">{formatCurrency(partner.revenue)}</td>
+                        <td className="py-3 px-4 text-primary">{formatCurrency(partner.commission)}</td>
+                        <td className="py-3 px-4 text-green-600">{formatCurrency(partner.revenue - partner.commission)}</td>
+                        <td className="py-3 px-4">{formatCurrency(partner.bookings > 0 ? partner.revenue / partner.bookings : 0)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );

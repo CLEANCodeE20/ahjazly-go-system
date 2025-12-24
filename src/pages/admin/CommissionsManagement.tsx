@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { 
+import {
   LayoutDashboard,
   Users,
   FileText,
@@ -82,6 +82,8 @@ interface InvoiceRecord {
   created_at: string | null;
 }
 
+import AdminSidebar from "@/components/layout/AdminSidebar";
+
 const CommissionsManagement = () => {
   const location = useLocation();
   const [searchTerm, setSearchTerm] = useState("");
@@ -115,7 +117,7 @@ const CommissionsManagement = () => {
     const pendingCommissions = commissions.filter(c => c.status === 'pending');
     const totalCommission = confirmedCommissions.reduce((sum, c) => sum + (c.commission_amount || 0), 0);
     const pendingCommission = pendingCommissions.reduce((sum, c) => sum + (c.commission_amount || 0), 0);
-    const totalPartnerRevenue = confirmedCommissions.reduce((sum, c) => sum + (c.partner_revenue || 0), 0);
+    const totalPartnerRevenue = confirmedCommissions.reduce((sum, b) => sum + (b.partner_revenue || 0), 0);
 
     return {
       totalCommission,
@@ -129,7 +131,7 @@ const CommissionsManagement = () => {
   const filteredCommissions = commissions.filter(commission => {
     const partner = partners.find(p => p.partner_id === commission.partner_id);
     const matchesSearch = partner?.company_name?.includes(searchTerm) ||
-                         commission.booking_id?.toString().includes(searchTerm);
+      commission.booking_id?.toString().includes(searchTerm);
     const matchesStatus = filterStatus === "all" || commission.status === filterStatus;
     const matchesPartner = filterPartner === "all" || commission.partner_id?.toString() === filterPartner;
     return matchesSearch && matchesStatus && matchesPartner;
@@ -158,7 +160,7 @@ const CommissionsManagement = () => {
   // Generate monthly invoice for partner
   const generateInvoice = async () => {
     if (!selectedPartner) return;
-    
+
     setGeneratingInvoice(true);
     try {
       const now = new Date();
@@ -166,7 +168,7 @@ const CommissionsManagement = () => {
       const periodEnd = new Date(now.getFullYear(), now.getMonth(), 0);
 
       // Get commissions for this period
-      const partnerCommissions = commissions.filter(c => 
+      const partnerCommissions = commissions.filter(c =>
         c.partner_id === selectedPartner.partner_id &&
         c.status === 'confirmed' &&
         c.created_at &&
@@ -230,44 +232,7 @@ const CommissionsManagement = () => {
 
   return (
     <div className="min-h-screen bg-muted/30">
-      {/* Sidebar */}
-      <aside className="fixed top-0 right-0 bottom-0 w-64 bg-sidebar text-sidebar-foreground hidden lg:block">
-        <div className="flex items-center gap-3 p-4 border-b border-sidebar-border">
-          <div className="w-10 h-10 rounded-xl bg-sidebar-primary flex items-center justify-center">
-            <LayoutDashboard className="w-6 h-6 text-sidebar-primary-foreground" />
-          </div>
-          <div>
-            <span className="text-lg font-bold">احجزلي</span>
-            <p className="text-xs text-sidebar-foreground/60">لوحة المسؤول</p>
-          </div>
-        </div>
-
-        <nav className="p-3 space-y-1">
-          {adminSidebarLinks.map((link) => (
-            <Link
-              key={link.href}
-              to={link.href}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${
-                location.pathname === link.href
-                  ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                  : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
-              }`}
-            >
-              <link.icon className="w-5 h-5" />
-              <span>{link.label}</span>
-            </Link>
-          ))}
-        </nav>
-
-        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-sidebar-border">
-          <Button variant="ghost" className="w-full justify-start text-sidebar-foreground/70" asChild>
-            <Link to="/">
-              <LogOut className="w-5 h-5 ml-2" />
-              تسجيل الخروج
-            </Link>
-          </Button>
-        </div>
-      </aside>
+      <AdminSidebar />
 
       {/* Main Content */}
       <main className="lg:mr-64 min-h-screen">
@@ -323,8 +288,8 @@ const CommissionsManagement = () => {
                         </div>
                       </div>
                     )}
-                    <Button 
-                      className="w-full" 
+                    <Button
+                      className="w-full"
                       onClick={generateInvoice}
                       disabled={!selectedPartner || generatingInvoice}
                     >
@@ -392,7 +357,7 @@ const CommissionsManagement = () => {
             <div className="flex flex-col md:flex-row gap-4">
               <div className="relative flex-1">
                 <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                <Input 
+                <Input
                   placeholder="بحث برقم الحجز أو اسم الشركة..."
                   className="pr-10"
                   value={searchTerm}

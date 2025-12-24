@@ -3,13 +3,13 @@ import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { 
-  Bus, 
-  Building2, 
-  FileText, 
-  Users, 
-  CheckCircle2, 
-  XCircle, 
+import {
+  Bus,
+  Building2,
+  FileText,
+  Users,
+  CheckCircle2,
+  XCircle,
   Clock,
   Search,
   Bell,
@@ -55,6 +55,8 @@ interface PartnerApplication {
   created_at: string;
   auth_user_id: string | null;
 }
+
+import AdminSidebar from "@/components/layout/AdminSidebar";
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -102,8 +104,8 @@ const AdminDashboard = () => {
         .insert({
           company_name: application.company_name,
           contact_person: application.owner_name,
-          address: application.company_address 
-            ? `${application.company_address}, ${application.company_city}` 
+          address: application.company_address
+            ? `${application.company_address}, ${application.company_city}`
             : application.company_city,
           status: 'approved',
           commission_percentage: 10
@@ -131,7 +133,7 @@ const AdminDashboard = () => {
       // 3. Update application status
       const { error: updateError } = await supabase
         .from('partner_applications')
-        .update({ 
+        .update({
           status: 'approved',
           partner_id: partner.partner_id,
           reviewed_at: new Date().toISOString(),
@@ -176,7 +178,7 @@ const AdminDashboard = () => {
     try {
       const { error } = await supabase
         .from('partner_applications')
-        .update({ 
+        .update({
           status: 'rejected',
           rejection_reason: rejectionReason,
           reviewed_at: new Date().toISOString(),
@@ -214,9 +216,9 @@ const AdminDashboard = () => {
   };
 
   const filteredApplications = applications.filter(app => {
-    const matchesSearch = app.company_name?.includes(searchQuery) || 
-                         app.owner_name?.includes(searchQuery) || 
-                         app.owner_email?.includes(searchQuery);
+    const matchesSearch = app.company_name?.includes(searchQuery) ||
+      app.owner_name?.includes(searchQuery) ||
+      app.owner_email?.includes(searchQuery);
     const matchesFilter = filterStatus === "all" || app.status === filterStatus;
     return matchesSearch && matchesFilter;
   });
@@ -259,49 +261,7 @@ const AdminDashboard = () => {
 
   return (
     <div className="min-h-screen bg-muted/30">
-      {/* Sidebar */}
-      <aside className="fixed top-0 right-0 bottom-0 w-64 bg-sidebar text-sidebar-foreground p-4 hidden lg:block">
-        <div className="flex items-center gap-3 mb-8 px-2">
-          <div className="w-10 h-10 rounded-xl bg-sidebar-primary flex items-center justify-center">
-            <Bus className="w-6 h-6 text-sidebar-primary-foreground" />
-          </div>
-          <div>
-            <span className="text-lg font-bold">احجزلي</span>
-            <p className="text-xs text-sidebar-foreground/60">لوحة الإدارة</p>
-          </div>
-        </div>
-
-        <nav className="space-y-1">
-          <Link to="/admin" className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-sidebar-accent text-sidebar-accent-foreground">
-            <FileText className="w-5 h-5" />
-            <span>طلبات الانضمام</span>
-            {pendingCount > 0 && (
-              <span className="mr-auto bg-destructive text-destructive-foreground text-xs px-2 py-0.5 rounded-full">
-                {pendingCount}
-              </span>
-            )}
-          </Link>
-          <Link to="/admin/companies" className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sidebar-foreground/70 hover:bg-sidebar-accent/50 transition-colors">
-            <Building2 className="w-5 h-5" />
-            <span>الشركات المسجلة</span>
-          </Link>
-          <Link to="/admin/users" className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sidebar-foreground/70 hover:bg-sidebar-accent/50 transition-colors">
-            <Users className="w-5 h-5" />
-            <span>المستخدمين</span>
-          </Link>
-        </nav>
-
-        <div className="absolute bottom-4 left-4 right-4">
-          <Button 
-            variant="ghost" 
-            className="w-full justify-start text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
-            onClick={handleSignOut}
-          >
-            <LogOut className="w-5 h-5 ml-2" />
-            تسجيل الخروج
-          </Button>
-        </div>
-      </aside>
+      <AdminSidebar />
 
       {/* Main Content */}
       <main className="lg:mr-64 min-h-screen">
@@ -417,8 +377,8 @@ const AdminDashboard = () => {
                           </td>
                           <td className="py-4 px-4">
                             <div className="flex items-center gap-2">
-                              <Button 
-                                size="sm" 
+                              <Button
+                                size="sm"
                                 variant="ghost"
                                 onClick={() => {
                                   setSelectedApplication(app);
@@ -429,18 +389,18 @@ const AdminDashboard = () => {
                               </Button>
                               {app.status === "pending" && (
                                 <>
-                                  <Button 
-                                    size="sm" 
-                                    variant="default" 
-                                    onClick={() => handleApprove(app)} 
+                                  <Button
+                                    size="sm"
+                                    variant="default"
+                                    onClick={() => handleApprove(app)}
                                     className="bg-secondary hover:bg-secondary/90"
                                     disabled={processing}
                                   >
                                     <CheckCircle2 className="w-4 h-4" />
                                   </Button>
-                                  <Button 
-                                    size="sm" 
-                                    variant="destructive" 
+                                  <Button
+                                    size="sm"
+                                    variant="destructive"
                                     onClick={() => {
                                       setSelectedApplication(app);
                                       setRejectDialogOpen(true);
@@ -548,9 +508,9 @@ const AdminDashboard = () => {
                 </h3>
                 <div className="flex flex-wrap gap-3">
                   {selectedApplication.commercial_register_url ? (
-                    <a 
-                      href={selectedApplication.commercial_register_url} 
-                      target="_blank" 
+                    <a
+                      href={selectedApplication.commercial_register_url}
+                      target="_blank"
                       rel="noopener noreferrer"
                       className="flex items-center gap-2 px-3 py-2 bg-card rounded-lg border border-border hover:border-primary transition-colors"
                     >
@@ -562,9 +522,9 @@ const AdminDashboard = () => {
                     <span className="text-sm text-muted-foreground">لم يتم رفع السجل التجاري</span>
                   )}
                   {selectedApplication.tax_certificate_url ? (
-                    <a 
-                      href={selectedApplication.tax_certificate_url} 
-                      target="_blank" 
+                    <a
+                      href={selectedApplication.tax_certificate_url}
+                      target="_blank"
                       rel="noopener noreferrer"
                       className="flex items-center gap-2 px-3 py-2 bg-card rounded-lg border border-border hover:border-primary transition-colors"
                     >
@@ -599,14 +559,14 @@ const AdminDashboard = () => {
           <DialogFooter className="gap-2">
             {selectedApplication?.status === 'pending' && (
               <>
-                <Button 
-                  variant="destructive" 
+                <Button
+                  variant="destructive"
                   onClick={() => setRejectDialogOpen(true)}
                   disabled={processing}
                 >
                   رفض الطلب
                 </Button>
-                <Button 
+                <Button
                   onClick={() => selectedApplication && handleApprove(selectedApplication)}
                   disabled={processing}
                   className="bg-secondary hover:bg-secondary/90"
@@ -651,8 +611,8 @@ const AdminDashboard = () => {
             <Button variant="outline" onClick={() => setRejectDialogOpen(false)}>
               إلغاء
             </Button>
-            <Button 
-              variant="destructive" 
+            <Button
+              variant="destructive"
               onClick={handleReject}
               disabled={processing || !rejectionReason.trim()}
             >

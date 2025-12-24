@@ -11,6 +11,9 @@ import AdminDashboard from "./pages/admin/AdminDashboard";
 import SetupAdmin from "./pages/admin/SetupAdmin";
 import CommissionsManagement from "./pages/admin/CommissionsManagement";
 import FinancialReports from "./pages/admin/FinancialReports";
+import PartnersManagement from "./pages/admin/PartnersManagement";
+import UsersManagement from "./pages/admin/UsersManagement";
+import PlatformSettings from "./pages/admin/PlatformSettings";
 import CompanyDashboard from "./pages/dashboard/CompanyDashboard";
 import FleetManagement from "./pages/dashboard/FleetManagement";
 import TripsManagement from "./pages/dashboard/TripsManagement";
@@ -52,6 +55,21 @@ const App = () => (
           <Route path="/admin/reports" element={
             <ProtectedRoute allowedRoles={['admin']}>
               <FinancialReports />
+            </ProtectedRoute>
+          } />
+          <Route path="/admin/partners" element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <PartnersManagement />
+            </ProtectedRoute>
+          } />
+          <Route path="/admin/users" element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <UsersManagement />
+            </ProtectedRoute>
+          } />
+          <Route path="/admin/settings" element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <PlatformSettings />
             </ProtectedRoute>
           } />
           <Route path="/dashboard" element={
