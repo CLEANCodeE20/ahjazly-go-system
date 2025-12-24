@@ -13,6 +13,7 @@ interface AuthState {
   user: User | null;
   session: Session | null;
   userRole: UserRole | null;
+  userStatus: string | null;
   isLoading: boolean;
 }
 
@@ -21,6 +22,7 @@ export const useAuth = () => {
     user: null,
     session: null,
     userRole: null,
+    userStatus: null,
     isLoading: true,
   });
 
@@ -69,19 +71,32 @@ export const useAuth = () => {
 
   const fetchUserRole = async (userId: string) => {
     try {
-      const { data, error } = await supabase
+      // 1. Fetch role
+      const { data: roleData, error: roleError } = await supabase
         .from('user_roles')
         .select('role, partner_id')
         .eq('user_id', userId)
         .single();
 
-      if (error && error.code !== 'PGRST116') {
-        console.error('Error fetching user role:', error);
+      if (roleError && roleError.code !== 'PGRST116') {
+        console.error('Error fetching user role:', roleError);
+      }
+
+      // 2. Fetch account status
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('account_status')
+        .eq('auth_id', userId)
+        .single();
+
+      if (userError && userError.code !== 'PGRST116') {
+        console.error('Error fetching user status:', userError);
       }
 
       setAuthState(prev => ({
         ...prev,
-        userRole: data ? { role: data.role as AppRole, partner_id: data.partner_id } : null,
+        userRole: roleData ? { role: roleData.role as AppRole, partner_id: roleData.partner_id } : null,
+        userStatus: userData?.account_status || 'active', // Default to active if not found (legacy or admin)
         isLoading: false,
       }));
     } catch (err) {

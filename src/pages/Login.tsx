@@ -10,7 +10,7 @@ import { useAuth } from "@/hooks/useAuth";
 
 const Login = () => {
   const navigate = useNavigate();
-  const { user, userRole, isLoading: authLoading, signIn, signUp } = useAuth();
+  const { user, userRole, userStatus, isLoading: authLoading, signIn, signUp } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
@@ -23,6 +23,18 @@ const Login = () => {
   // Redirect if already logged in
   useEffect(() => {
     if (!authLoading && user && userRole) {
+      if (userStatus && userStatus !== 'active' && userRole.role !== 'admin') {
+        // If not active and not admin, stay on login and show message
+        toast({
+          title: "الحساب غير نشط",
+          description: userStatus === 'pending'
+            ? "حسابك قيد المراجعة حالياً، يرجى الانتظار حتى يتم تفعيله من قبل الإدارة."
+            : "هذا الحساب معطل حالياً، يرجى التواصل مع الدعم الفني.",
+          variant: "destructive"
+        });
+        return;
+      }
+
       if (userRole.role === 'admin') {
         navigate("/admin");
       } else {
@@ -104,7 +116,7 @@ const Login = () => {
   return (
     <div className="min-h-screen flex flex-col bg-muted/30">
       <Header />
-      
+
       <main className="flex-1 flex items-center justify-center pt-20 pb-12 px-4">
         <div className="w-full max-w-md">
           {/* Logo */}
@@ -125,22 +137,20 @@ const Login = () => {
             <div className="flex bg-muted rounded-xl p-1 mb-6">
               <button
                 type="button"
-                className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-medium transition-all ${
-                  loginType === "company"
-                    ? "bg-card text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
+                className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-medium transition-all ${loginType === "company"
+                  ? "bg-card text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+                  }`}
                 onClick={() => setLoginType("company")}
               >
                 دخول الشركات
               </button>
               <button
                 type="button"
-                className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-medium transition-all ${
-                  loginType === "admin"
-                    ? "bg-card text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
+                className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-medium transition-all ${loginType === "admin"
+                  ? "bg-card text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+                  }`}
                 onClick={() => setLoginType("admin")}
               >
                 دخول الإدارة

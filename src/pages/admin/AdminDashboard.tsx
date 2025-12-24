@@ -128,6 +128,16 @@ const AdminDashboard = () => {
         if (roleError) {
           console.error('Error assigning role:', roleError);
         }
+
+        // 2.1 Update user status to active
+        const { error: statusError } = await supabase
+          .from('users')
+          .update({ account_status: 'active' })
+          .eq('auth_id', application.auth_user_id);
+
+        if (statusError) {
+          console.error('Error activating user account:', statusError);
+        }
       }
 
       // 3. Update application status

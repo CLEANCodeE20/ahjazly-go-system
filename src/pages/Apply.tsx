@@ -195,6 +195,24 @@ const Apply = () => {
 
       if (applicationError) throw applicationError;
 
+      // 4. Create user record in public.users table (tracking status)
+      if (userId) {
+        const { error: userTableError } = await supabase
+          .from('users')
+          .insert({
+            auth_id: userId,
+            full_name: formData.ownerName,
+            email: formData.ownerEmail,
+            phone_number: formData.ownerPhone,
+            user_type: 'partner',
+            account_status: 'pending'
+          });
+
+        if (userTableError) {
+          console.error('Error creating user record:', userTableError);
+        }
+      }
+
       // Sign out the user since they need to wait for approval
       await supabase.auth.signOut();
 
