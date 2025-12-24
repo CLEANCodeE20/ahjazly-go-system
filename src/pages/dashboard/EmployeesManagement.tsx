@@ -2,8 +2,8 @@ import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { 
-  Bus, 
+import {
+  Bus,
   Home,
   Route,
   Users,
@@ -97,6 +97,9 @@ interface EmployeeRecord {
   role_in_company: string | null;
   status: string | null;
   created_at: string | null;
+  full_name: string | null;
+  email: string | null;
+  phone_number: string | null;
 }
 
 interface BranchRecord {
@@ -134,6 +137,9 @@ const EmployeesManagement = () => {
   const [deleteDriverId, setDeleteDriverId] = useState<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
+    full_name: "",
+    email: "",
+    phone_number: "",
     branch_id: "",
     role_in_company: "",
     status: "active"
@@ -151,7 +157,7 @@ const EmployeesManagement = () => {
 
   const fetchData = async () => {
     setLoading(true);
-    
+
     const [employeesRes, branchesRes, driversRes] = await Promise.all([
       supabase.from('employees').select('*').order('created_at', { ascending: false }),
       supabase.from('branches').select('branch_id, branch_name, city'),
@@ -161,14 +167,18 @@ const EmployeesManagement = () => {
     if (!employeesRes.error) setEmployees(employeesRes.data || []);
     if (!branchesRes.error) setBranches(branchesRes.data || []);
     if (!driversRes.error) setDrivers(driversRes.data || []);
-    
+
     setLoading(false);
   };
 
   const filteredEmployees = employees.filter(employee => {
     const matchesRole = filterRole === "all" || employee.role_in_company === filterRole;
     const matchesBranch = filterBranch === "all" || employee.branch_id?.toString() === filterBranch;
-    return matchesRole && matchesBranch;
+    const matchesSearch = !searchTerm ||
+      employee.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      employee.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      employee.phone_number?.includes(searchTerm);
+    return matchesRole && matchesBranch && matchesSearch;
   });
 
   const filteredDrivers = drivers.filter(driver =>
@@ -176,14 +186,17 @@ const EmployeesManagement = () => {
   );
 
   const handleSubmit = async () => {
-    if (!formData.role_in_company || !formData.branch_id) {
-      toast({ title: "خطأ", description: "يرجى ملء جميع الحقول المطلوبة", variant: "destructive" });
+    if (!formData.full_name || !formData.role_in_company || !formData.branch_id) {
+      toast({ title: "خطأ", description: "يرجى ملء الحقول المطلوبة (الاسم، الوظيفة، الفرع)", variant: "destructive" });
       return;
     }
 
     setIsSubmitting(true);
 
     const employeeData = {
+      full_name: formData.full_name,
+      email: formData.email,
+      phone_number: formData.phone_number,
       branch_id: parseInt(formData.branch_id),
       role_in_company: formData.role_in_company,
       status: formData.status,
@@ -252,6 +265,9 @@ const EmployeesManagement = () => {
   const handleEdit = (employee: EmployeeRecord) => {
     setEditingEmployee(employee);
     setFormData({
+      full_name: employee.full_name || "",
+      email: employee.email || "",
+      phone_number: employee.phone_number || "",
       branch_id: employee.branch_id?.toString() || "",
       role_in_company: employee.role_in_company || "",
       status: employee.status || "active"
@@ -312,11 +328,10 @@ const EmployeesManagement = () => {
             <Link
               key={link.href}
               to={link.href}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${
-                location.pathname === link.href
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${location.pathname === link.href
                   ? "bg-sidebar-accent text-sidebar-accent-foreground"
                   : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
-              }`}
+                }`}
             >
               <link.icon className="w-5 h-5" />
               <span>{link.label}</span>
@@ -325,8 +340,8 @@ const EmployeesManagement = () => {
         </nav>
 
         <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-sidebar-border">
-          <Button 
-            variant="ghost" 
+          <Button
+            variant="ghost"
             className="w-full justify-start text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
             onClick={handleSignOut}
           >
@@ -360,35 +375,35 @@ const EmployeesManagement = () => {
                   <div className="space-y-4 mt-4">
                     <div className="space-y-2">
                       <Label>الاسم الكامل *</Label>
-                      <Input 
+                      <Input
                         placeholder="اسم السائق"
                         value={driverFormData.full_name}
-                        onChange={(e) => setDriverFormData({...driverFormData, full_name: e.target.value})}
+                        onChange={(e) => setDriverFormData({ ...driverFormData, full_name: e.target.value })}
                       />
                     </div>
                     <div className="space-y-2">
                       <Label>رقم الجوال *</Label>
-                      <Input 
+                      <Input
                         placeholder="05xxxxxxxx"
                         value={driverFormData.phone_number}
-                        onChange={(e) => setDriverFormData({...driverFormData, phone_number: e.target.value})}
+                        onChange={(e) => setDriverFormData({ ...driverFormData, phone_number: e.target.value })}
                       />
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label>رقم الرخصة</Label>
-                        <Input 
+                        <Input
                           placeholder="رقم رخصة القيادة"
                           value={driverFormData.license_number}
-                          onChange={(e) => setDriverFormData({...driverFormData, license_number: e.target.value})}
+                          onChange={(e) => setDriverFormData({ ...driverFormData, license_number: e.target.value })}
                         />
                       </div>
                       <div className="space-y-2">
                         <Label>تاريخ انتهاء الرخصة</Label>
-                        <Input 
+                        <Input
                           type="date"
                           value={driverFormData.license_expiry}
-                          onChange={(e) => setDriverFormData({...driverFormData, license_expiry: e.target.value})}
+                          onChange={(e) => setDriverFormData({ ...driverFormData, license_expiry: e.target.value })}
                         />
                       </div>
                     </div>
@@ -406,7 +421,7 @@ const EmployeesManagement = () => {
                 <DialogTrigger asChild>
                   <Button onClick={() => {
                     setEditingEmployee(null);
-                    setFormData({ branch_id: "", role_in_company: "", status: "active" });
+                    setFormData({ full_name: "", email: "", phone_number: "", branch_id: "", role_in_company: "", status: "active" });
                   }}>
                     <Plus className="w-4 h-4 ml-2" />
                     إضافة موظف
@@ -417,10 +432,37 @@ const EmployeesManagement = () => {
                     <DialogTitle>{editingEmployee ? "تعديل بيانات الموظف" : "إضافة موظف جديد"}</DialogTitle>
                   </DialogHeader>
                   <div className="space-y-4 mt-4">
+                    <div className="space-y-2">
+                      <Label>الاسم الكامل *</Label>
+                      <Input
+                        placeholder="اسم الموظف"
+                        value={formData.full_name}
+                        onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>رقم الهاتف</Label>
+                        <Input
+                          placeholder="05xxxxxxxx"
+                          value={formData.phone_number}
+                          onChange={(e) => setFormData({ ...formData, phone_number: e.target.value })}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>البريد الإلكتروني</Label>
+                        <Input
+                          type="email"
+                          placeholder="example@company.com"
+                          value={formData.email}
+                          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                        />
+                      </div>
+                    </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label>الوظيفة *</Label>
-                        <Select value={formData.role_in_company} onValueChange={(v) => setFormData({...formData, role_in_company: v})}>
+                        <Select value={formData.role_in_company} onValueChange={(v) => setFormData({ ...formData, role_in_company: v })}>
                           <SelectTrigger>
                             <SelectValue placeholder="اختر الوظيفة" />
                           </SelectTrigger>
@@ -433,7 +475,7 @@ const EmployeesManagement = () => {
                       </div>
                       <div className="space-y-2">
                         <Label>الفرع *</Label>
-                        <Select value={formData.branch_id} onValueChange={(v) => setFormData({...formData, branch_id: v})}>
+                        <Select value={formData.branch_id} onValueChange={(v) => setFormData({ ...formData, branch_id: v })}>
                           <SelectTrigger>
                             <SelectValue placeholder="اختر الفرع" />
                           </SelectTrigger>
@@ -449,7 +491,7 @@ const EmployeesManagement = () => {
                     </div>
                     <div className="space-y-2">
                       <Label>الحالة</Label>
-                      <Select value={formData.status} onValueChange={(v) => setFormData({...formData, status: v})}>
+                      <Select value={formData.status} onValueChange={(v) => setFormData({ ...formData, status: v })}>
                         <SelectTrigger>
                           <SelectValue />
                         </SelectTrigger>
@@ -517,7 +559,7 @@ const EmployeesManagement = () => {
           <div className="flex flex-col sm:flex-row gap-4 mb-6">
             <div className="relative flex-1 max-w-md">
               <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-              <Input 
+              <Input
                 placeholder="بحث..."
                 className="pr-10"
                 value={searchTerm}
@@ -598,11 +640,10 @@ const EmployeesManagement = () => {
                           <span className="text-muted-foreground">
                             {driver.license_number ? `رخصة: ${driver.license_number}` : "بدون رخصة"}
                           </span>
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                            driver.status === 'active' 
-                              ? "bg-secondary/10 text-secondary" 
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${driver.status === 'active'
+                              ? "bg-secondary/10 text-secondary"
                               : "bg-muted text-muted-foreground"
-                          }`}>
+                            }`}>
                             {driver.status === 'active' ? 'نشط' : 'غير نشط'}
                           </span>
                         </div>
@@ -627,6 +668,7 @@ const EmployeesManagement = () => {
                     <table className="w-full">
                       <thead className="bg-muted/50">
                         <tr>
+                          <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">الموظف</th>
                           <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">الوظيفة</th>
                           <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">الفرع</th>
                           <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">الحالة</th>
@@ -636,14 +678,24 @@ const EmployeesManagement = () => {
                       <tbody>
                         {filteredEmployees.map((employee) => (
                           <tr key={employee.employee_id} className="border-b border-border last:border-0">
+                            <td className="py-3 px-4">
+                              <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                                  <User className="w-4 h-4 text-primary" />
+                                </div>
+                                <div>
+                                  <p className="font-medium text-foreground">{employee.full_name || "موظف"}</p>
+                                  <p className="text-xs text-muted-foreground">{employee.email || employee.phone_number || "-"}</p>
+                                </div>
+                              </div>
+                            </td>
                             <td className="py-3 px-4 text-foreground">{getRoleLabel(employee.role_in_company)}</td>
                             <td className="py-3 px-4 text-muted-foreground">{getBranchName(employee.branch_id)}</td>
                             <td className="py-3 px-4">
-                              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                                employee.status === 'active' 
-                                  ? "bg-secondary/10 text-secondary" 
+                              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${employee.status === 'active'
+                                  ? "bg-secondary/10 text-secondary"
                                   : "bg-muted text-muted-foreground"
-                              }`}>
+                                }`}>
                                 {employee.status === 'active' ? 'نشط' : 'غير نشط'}
                               </span>
                             </td>
