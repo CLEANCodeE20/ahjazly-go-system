@@ -166,7 +166,7 @@ const EmployeesManagement = () => {
       supabase.from('drivers').select('*').order('created_at', { ascending: false })
     ]);
 
-    if (!employeesRes.error) setEmployees(employeesRes.data || []);
+    if (!employeesRes.error) setEmployees((employeesRes.data as any) || []);
     if (!branchesRes.error) setBranches(branchesRes.data || []);
     if (!driversRes.error) setDrivers(driversRes.data || []);
 
@@ -267,7 +267,12 @@ const EmployeesManagement = () => {
           }
         });
 
-        if (authError) throw authError;
+        if (authError) {
+          if (authError.message.includes("already registered") || authError.message.includes("already exists")) {
+            throw new Error("البريد الإلكتروني مسجل مسبقاً. يرجى استخدام بريد إلكتروني آخر.");
+          }
+          throw authError;
+        }
         if (!authData.user) throw new Error("فشل إنشاء الحساب");
 
         userId = authData.user.id as any; // Cast to match expected type if needed (DB expects int? check schema. usually UUID for auth_id, int for user_id PK)
