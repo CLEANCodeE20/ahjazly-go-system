@@ -41,7 +41,15 @@ const PermissionsManagement = lazy(() => import("./pages/dashboard/PermissionsMa
 const SettingsPage = lazy(() => import("./pages/dashboard/SettingsPage"));
 const DriverDashboard = lazy(() => import("./pages/dashboard/DriverDashboard"));
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60, // 1 minute
+      gcTime: 1000 * 60 * 5, // 5 minutes
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 const App = () => (
   <QueryClientProvider client={queryClient}>

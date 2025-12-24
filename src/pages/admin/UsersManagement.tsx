@@ -1,14 +1,11 @@
 import { useState, useEffect } from "react";
 import {
-    Users,
     Search,
     MoreVertical,
     Shield,
     UserCog,
     Ban,
-    CheckCircle2,
     Loader2,
-    Mail,
     User,
     History
 } from "lucide-react";
@@ -39,6 +36,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import AdminSidebar from "@/components/layout/AdminSidebar";
+import { PaginationControls } from "@/components/ui/pagination-controls";
 
 interface UserRecord {
     user_id: number;
@@ -50,9 +48,15 @@ interface UserRecord {
 }
 
 const UsersManagement = () => {
+    // Pagination & Search State
     const [users, setUsers] = useState<UserRecord[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState("");
+    const [currentPage, setCurrentPage] = useState(1);
+    const [totalUsers, setTotalUsers] = useState(0);
+    const itemsPerPage = 10;
+
+    // Action State
     const [confirmDialog, setConfirmDialog] = useState<{
         open: boolean;
         userId: string | null;
@@ -63,33 +67,45 @@ const UsersManagement = () => {
     const [showHistory, setShowHistory] = useState(false);
     const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
 
+    // Debounce Search
     useEffect(() => {
-        fetchUsers();
-    }, []);
+        const timer = setTimeout(() => {
+            fetchUsers();
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [searchQuery, currentPage]);
 
     const fetchUsers = async () => {
         setLoading(true);
         try {
-            // Fetch users and their roles
-            const { data: userData, error: userError } = await supabase
+            let query = supabase
                 .from('users')
-                .select('user_id, auth_id, full_name, email, created_at')
-                .order('created_at', { ascending: false });
+                .select('user_id, auth_id, full_name, email, created_at, user_roles(role)', { count: 'exact' });
 
-            if (userError) throw userError;
+            // Server-side Filtering
+            if (searchQuery) {
+                query = query.or(`full_name.ilike.%${searchQuery}%,email.ilike.%${searchQuery}%`);
+            }
 
-            const { data: roleData, error: roleError } = await supabase
-                .from('user_roles')
-                .select('user_id, role');
+            // Server-side Pagination
+            const from = (currentPage - 1) * itemsPerPage;
+            const to = from + itemsPerPage - 1;
 
-            if (roleError) throw roleError;
+            const { data, error, count } = await query
+                .order('created_at', { ascending: false })
+                .range(from, to);
 
-            const usersWithRoles = userData.map(u => ({
+            if (error) throw error;
+
+            // Map joined data
+            const mappedUsers = data.map((u: any) => ({
                 ...u,
-                role: (roleData.find(r => r.user_id === u.auth_id)?.role as any) || 'user'
+                role: u.user_roles?.[0]?.role || 'user'
             }));
 
-            setUsers(usersWithRoles as UserRecord[]);
+            setUsers(mappedUsers as UserRecord[]);
+            setTotalUsers(count || 0);
+
         } catch (error: any) {
             console.error('Error fetching users:', error);
             toast({
@@ -123,7 +139,7 @@ const UsersManagement = () => {
                 title: "تم التحديث",
                 description: "تم تغيير صلاحيات المستخدم بنجاح",
             });
-            fetchUsers();
+            fetchUsers(); // Refresh list to show updated role
             setConfirmDialog({ open: false, userId: null, userName: "", newRole: "user" });
         } catch (error: any) {
             toast({
@@ -155,11 +171,6 @@ const UsersManagement = () => {
         }
     };
 
-    const filteredUsers = users.filter(u =>
-        u.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        u.email?.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-
     const getRoleBadge = (role: string) => {
         switch (role) {
             case 'admin':
@@ -175,6 +186,16 @@ const UsersManagement = () => {
         }
     };
 
+    function getRoleName(role: string) {
+        switch (role) {
+            case 'admin': return 'مدير نظام';
+            case 'partner': return 'شريك';
+            case 'employee': return 'موظف';
+            case 'driver': return 'سائق';
+            default: return 'مستخدم';
+        }
+    }
+
     return (
         <div className="min-h-screen bg-muted/30">
             <AdminSidebar />
@@ -184,105 +205,122 @@ const UsersManagement = () => {
                         <h1 className="text-2xl font-bold text-foreground">إدارة المستخدمين</h1>
                         <p className="text-muted-foreground">التحكم في حسابات المستخدمين وصلاحياتهم</p>
                     </div>
-                    <div className="flex items-center gap-3">
-                        <div className="relative">
-                            <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                            <Input
-                                placeholder="بحث عن مستخدم..."
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                className="pr-9 w-64"
-                            />
-                        </div>
-                    </div>
                 </header>
 
-                <div className="bg-card rounded-xl border border-border overflow-hidden">
-                    {loading ? (
-                        <div className="flex items-center justify-center py-12">
-                            <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                        </div>
-                    ) : (
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead className="text-right">المستخدم</TableHead>
-                                    <TableHead className="text-right">البريد الإلكتروني</TableHead>
-                                    <TableHead className="text-right">الصلاحية</TableHead>
-                                    <TableHead className="text-right">تاريخ التسجيل</TableHead>
-                                    <TableHead className="text-right">الإجراءات</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {filteredUsers.length === 0 ? (
-                                    <TableRow>
-                                        <TableCell colSpan={5} className="text-center py-12 text-muted-foreground">
-                                            لا يوجد مستخدمين مطابقين للبحث
-                                        </TableCell>
-                                    </TableRow>
-                                ) : (
-                                    filteredUsers.map((user) => (
-                                        <TableRow key={user.user_id}>
-                                            <TableCell>
-                                                <div className="flex items-center gap-3">
-                                                    <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
-                                                        <User className="w-4 h-4 text-muted-foreground" />
-                                                    </div>
-                                                    <span className="font-medium">{user.full_name || "مستخدم غير معروف"}</span>
-                                                </div>
-                                            </TableCell>
-                                            <TableCell>{user.email}</TableCell>
-                                            <TableCell>{getRoleBadge(user.role || 'user')}</TableCell>
-                                            <TableCell className="text-sm text-muted-foreground text-left" dir="ltr">
-                                                {new Date(user.created_at).toLocaleDateString('ar-SA')}
-                                            </TableCell>
-                                            <TableCell>
-                                                <DropdownMenu>
-                                                    <DropdownMenuTrigger asChild>
-                                                        <Button variant="ghost" size="sm">
-                                                            <MoreVertical className="w-4 h-4" />
-                                                        </Button>
-                                                    </DropdownMenuTrigger>
-                                                    <DropdownMenuContent align="end">
-                                                        <DropdownMenuItem onClick={() => setConfirmDialog({
-                                                            open: true,
-                                                            userId: user.auth_id,
-                                                            userName: user.full_name || "مستخدم غير معروف",
-                                                            newRole: 'admin'
-                                                        })}>
-                                                            <Shield className="w-4 h-4 ml-2" /> ترقية لمدير
-                                                        </DropdownMenuItem>
-                                                        <DropdownMenuItem onClick={() => setConfirmDialog({
-                                                            open: true,
-                                                            userId: user.auth_id,
-                                                            userName: user.full_name || "مستخدم غير معروف",
-                                                            newRole: 'partner'
-                                                        })}>
-                                                            <UserCog className="w-4 h-4 ml-2" /> تعيين كشريك
-                                                        </DropdownMenuItem>
-                                                        <DropdownMenuItem onClick={() => setConfirmDialog({
-                                                            open: true,
-                                                            userId: user.auth_id,
-                                                            userName: user.full_name || "مستخدم غير معروف",
-                                                            newRole: 'employee'
-                                                        })}>
-                                                            <UserCog className="w-4 h-4 ml-2" /> تعيين كموظف
-                                                        </DropdownMenuItem>
-                                                        <DropdownMenuItem onClick={() => user.auth_id && fetchRoleHistory(user.auth_id)}>
-                                                            <History className="w-4 h-4 ml-2" /> عرض السجل
-                                                        </DropdownMenuItem>
-                                                        <DropdownMenuItem className="text-destructive">
-                                                            <Ban className="w-4 h-4 ml-2" /> حظر المستخدم
-                                                        </DropdownMenuItem>
-                                                    </DropdownMenuContent>
-                                                </DropdownMenu>
-                                            </TableCell>
+                <div className="flex flex-col gap-4">
+                    <div className="flex items-center gap-2 bg-card p-2 rounded-lg border w-fit">
+                        <Search className="w-4 h-4 text-muted-foreground" />
+                        <Input
+                            placeholder="بحث عن مستخدم..."
+                            value={searchQuery}
+                            onChange={(e) => {
+                                setSearchQuery(e.target.value);
+                                setCurrentPage(1);
+                            }}
+                            className="border-none shadow-none focus-visible:ring-0 w-64 h-8"
+                        />
+                    </div>
+
+                    <div className="bg-card rounded-xl border border-border overflow-hidden">
+                        {loading ? (
+                            <div className="flex items-center justify-center py-12">
+                                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                            </div>
+                        ) : (
+                            <>
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead className="text-right">المستخدم</TableHead>
+                                            <TableHead className="text-right">البريد الإلكتروني</TableHead>
+                                            <TableHead className="text-right">الصلاحية</TableHead>
+                                            <TableHead className="text-right">تاريخ التسجيل</TableHead>
+                                            <TableHead className="text-right">الإجراءات</TableHead>
                                         </TableRow>
-                                    ))
+                                    </TableHeader>
+                                    <TableBody>
+                                        {users.length === 0 ? (
+                                            <TableRow>
+                                                <TableCell colSpan={5} className="text-center py-12 text-muted-foreground">
+                                                    لا يوجد مستخدمين مطابقين للبحث
+                                                </TableCell>
+                                            </TableRow>
+                                        ) : (
+                                            users.map((user) => (
+                                                <TableRow key={user.user_id}>
+                                                    <TableCell>
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
+                                                                <User className="w-4 h-4 text-muted-foreground" />
+                                                            </div>
+                                                            <span className="font-medium">{user.full_name || "مستخدم غير معروف"}</span>
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell>{user.email}</TableCell>
+                                                    <TableCell>{getRoleBadge(user.role)}</TableCell>
+                                                    <TableCell className="text-sm text-muted-foreground text-left" dir="ltr">
+                                                        {new Date(user.created_at).toLocaleDateString('ar-SA')}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <DropdownMenu>
+                                                            <DropdownMenuTrigger asChild>
+                                                                <Button variant="ghost" size="sm">
+                                                                    <MoreVertical className="w-4 h-4" />
+                                                                </Button>
+                                                            </DropdownMenuTrigger>
+                                                            <DropdownMenuContent align="end">
+                                                                <DropdownMenuItem onClick={() => setConfirmDialog({
+                                                                    open: true,
+                                                                    userId: user.auth_id,
+                                                                    userName: user.full_name || "مستخدم غير معروف",
+                                                                    newRole: 'admin'
+                                                                })}>
+                                                                    <Shield className="w-4 h-4 ml-2" /> ترقية لمدير
+                                                                </DropdownMenuItem>
+                                                                <DropdownMenuItem onClick={() => setConfirmDialog({
+                                                                    open: true,
+                                                                    userId: user.auth_id,
+                                                                    userName: user.full_name || "مستخدم غير معروف",
+                                                                    newRole: 'partner'
+                                                                })}>
+                                                                    <UserCog className="w-4 h-4 ml-2" /> تعيين كشريك
+                                                                </DropdownMenuItem>
+                                                                <DropdownMenuItem onClick={() => setConfirmDialog({
+                                                                    open: true,
+                                                                    userId: user.auth_id,
+                                                                    userName: user.full_name || "مستخدم غير معروف",
+                                                                    newRole: 'employee'
+                                                                })}>
+                                                                    <UserCog className="w-4 h-4 ml-2" /> تعيين كموظف
+                                                                </DropdownMenuItem>
+                                                                <DropdownMenuItem onClick={() => user.auth_id && fetchRoleHistory(user.auth_id)}>
+                                                                    <History className="w-4 h-4 ml-2" /> عرض السجل
+                                                                </DropdownMenuItem>
+                                                                <DropdownMenuItem className="text-destructive">
+                                                                    <Ban className="w-4 h-4 ml-2" /> حظر المستخدم
+                                                                </DropdownMenuItem>
+                                                            </DropdownMenuContent>
+                                                        </DropdownMenu>
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))
+                                        )}
+                                    </TableBody>
+                                </Table>
+
+                                {/* Pagination Controls */}
+                                {totalUsers > 0 && (
+                                    <PaginationControls
+                                        currentPage={currentPage}
+                                        totalPages={Math.ceil(totalUsers / itemsPerPage)}
+                                        totalItems={totalUsers}
+                                        itemsPerPage={itemsPerPage}
+                                        onPageChange={setCurrentPage}
+                                    />
                                 )}
-                            </TableBody>
-                        </Table>
-                    )}
+                            </>
+                        )}
+                    </div>
                 </div>
 
                 {/* Confirmation Dialog */}
@@ -342,16 +380,6 @@ const UsersManagement = () => {
             </main>
         </div>
     );
-
-    function getRoleName(role: string) {
-        switch (role) {
-            case 'admin': return 'مدير نظام';
-            case 'partner': return 'شريك';
-            case 'employee': return 'موظف';
-            case 'driver': return 'سائق';
-            default: return 'مستخدم';
-        }
-    }
 };
 
 export default UsersManagement;
