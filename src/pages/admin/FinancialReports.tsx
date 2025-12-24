@@ -2,14 +2,23 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
   LineChart, Line, PieChart, Pie, Cell, AreaChart, Area
 } from 'recharts';
+import { useRef } from 'react';
+import { useExport } from "@/hooks/useExport";
 import {
   TrendingUp, DollarSign, Users, Calendar, Download,
-  ArrowUpRight, ArrowDownRight, Building2, CreditCard, Loader2
+  ArrowUpRight, ArrowDownRight, Building2, CreditCard, Loader2,
+  FileSpreadsheet, FileText
 } from "lucide-react";
 import { format, subDays, startOfMonth, endOfMonth, subMonths } from 'date-fns';
 import { ar } from 'date-fns/locale';
@@ -22,7 +31,9 @@ const FinancialReports = () => {
   const [stats, setStats] = useState<any>(null);
   const [dailyRevenue, setDailyRevenue] = useState<any[]>([]);
   const [topPartners, setTopPartners] = useState<any[]>([]);
+  const [topPartners, setTopPartners] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const { exportToExcel, exportToPDF } = useExport();
 
   useEffect(() => {
     fetchAnalytics();
@@ -137,10 +148,48 @@ const FinancialReports = () => {
                   <SelectItem value="year">آخر سنة</SelectItem>
                 </SelectContent>
               </Select>
-              <Button variant="outline">
-                <Download className="h-4 w-4 ml-2" />
-                تصدير PDF
-              </Button>
+
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline">
+                    <Download className="h-4 w-4 ml-2" />
+                    تصدير
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => {
+                    const data = dailyRevenue.map(d => ({
+                      "التاريخ": d.formattedDate,
+                      "الإيرادات": d.total_revenue,
+                      "العمولة": d.platform_revenue,
+                      "صافي الشركاء": d.partner_revenue,
+                      "الحجوزات": d.bookings_count
+                    }));
+                    exportToExcel(data, "financial_report");
+                  }}>
+                    <FileSpreadsheet className="w-4 h-4 ml-2 text-green-600" />
+                    Excel
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => {
+                    const data = dailyRevenue.map(d => ({
+                      "التاريخ": d.formattedDate,
+                      "الإيرادات": formatCurrency(d.total_revenue),
+                      "العمولة": formatCurrency(d.platform_revenue),
+                      "الحجوزات": d.bookings_count
+                    }));
+                    exportToPDF(data, [
+                      { header: "التاريخ", key: "التاريخ" },
+                      { header: "الإيرادات", key: "الإيرادات" },
+                      { header: "العمولة", key: "العمولة" },
+                      { header: "الحجوزات", key: "الحجوزات" }
+                    ], { title: "التقرير المالي" });
+                  }}>
+                    <FileText className="w-4 h-4 ml-2 text-red-600" />
+                    PDF
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
 
@@ -281,8 +330,8 @@ const FinancialReports = () => {
             </>
           )}
         </div>
-      </div>
-    </div>
+      </div >
+    </div >
   );
 };
 

@@ -7,7 +7,10 @@ import {
     Ban,
     Loader2,
     User,
-    History
+    History,
+    Download,
+    FileSpreadsheet,
+    FileText
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,6 +40,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import AdminSidebar from "@/components/layout/AdminSidebar";
 import { PaginationControls } from "@/components/ui/pagination-controls";
+import { useExport } from "@/hooks/useExport";
 
 interface UserRecord {
     user_id: number;
@@ -66,6 +70,7 @@ const UsersManagement = () => {
     const [roleHistory, setRoleHistory] = useState<any[]>([]);
     const [showHistory, setShowHistory] = useState(false);
     const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+    const { exportToExcel, exportToPDF } = useExport();
 
     // Debounce Search
     useEffect(() => {
@@ -115,6 +120,30 @@ const UsersManagement = () => {
             });
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleExport = (type: 'excel' | 'pdf') => {
+        const dataToExport = users.map(u => ({
+            'الاسم': u.full_name || 'غير معروف',
+            'البريد الإلكتروني': u.email,
+            'الصلاحية': getRoleName(u.role),
+            'تاريخ التسجيل': new Date(u.created_at).toLocaleDateString('ar-SA')
+        }));
+
+        if (type === 'excel') {
+            exportToExcel(dataToExport, 'users_list');
+        } else {
+            exportToPDF(
+                dataToExport,
+                [
+                    { header: 'الاسم', key: 'الاسم' },
+                    { header: 'البريد الإلكتروني', key: 'البريد الإلكتروني' },
+                    { header: 'الصلاحية', key: 'الصلاحية' },
+                    { header: 'تاريخ التسجيل', key: 'تاريخ التسجيل' }
+                ],
+                { title: 'قائمة المستخدمين' }
+            );
         }
     };
 
@@ -219,6 +248,27 @@ const UsersManagement = () => {
                             }}
                             className="border-none shadow-none focus-visible:ring-0 w-64 h-8"
                         />
+                    </div>
+
+                    <div className="flex gap-2">
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="outline" className="gap-2">
+                                    <Download className="w-4 h-4" />
+                                    تصدير
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => handleExport('excel')}>
+                                    <FileSpreadsheet className="w-4 h-4 ml-2 text-green-600" />
+                                    Excel
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleExport('pdf')}>
+                                    <FileText className="w-4 h-4 ml-2 text-red-600" />
+                                    PDF
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                     </div>
 
                     <div className="bg-card rounded-xl border border-border overflow-hidden">
