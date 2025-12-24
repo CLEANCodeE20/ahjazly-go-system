@@ -32,11 +32,12 @@ import { toast } from "@/hooks/use-toast";
 import AdminSidebar from "@/components/layout/AdminSidebar";
 
 interface UserRecord {
-    user_id: string;
+    user_id: number;
+    auth_id: string | null;
     full_name: string | null;
     email: string | null;
     created_at: string;
-    role?: string;
+    role: "admin" | "partner" | "employee" | "driver" | "user";
 }
 
 const UsersManagement = () => {
@@ -54,7 +55,7 @@ const UsersManagement = () => {
             // Fetch users and their roles
             const { data: userData, error: userError } = await supabase
                 .from('users')
-                .select('user_id, full_name, email, created_at')
+                .select('user_id, auth_id, full_name, email, created_at')
                 .order('created_at', { ascending: false });
 
             if (userError) throw userError;
@@ -67,7 +68,7 @@ const UsersManagement = () => {
 
             const usersWithRoles = userData.map(u => ({
                 ...u,
-                role: (roleData.find(r => r.user_id === u.user_id)?.role as any) || 'user'
+                role: (roleData.find(r => r.user_id === u.auth_id)?.role as any) || 'user'
             }));
 
             setUsers(usersWithRoles as UserRecord[]);
@@ -83,11 +84,20 @@ const UsersManagement = () => {
         }
     };
 
-    const updateUserRole = async (userId: string, newRole: "admin" | "partner" | "employee" | "driver" | "user") => {
+    const updateUserRole = async (authId: string | null, newRole: "admin" | "partner" | "employee" | "driver" | "user") => {
+        if (!authId) {
+            toast({
+                title: "خطأ",
+                description: "لا يمكن تحديث صلاحيات مستخدم غير مسجل في الهوية",
+                variant: "destructive"
+            });
+            return;
+        }
+
         try {
             const { error } = await supabase
                 .from('user_roles')
-                .upsert({ user_id: userId, role: newRole as any }, { onConflict: 'user_id' });
+                .upsert({ user_id: authId, role: newRole as any }, { onConflict: 'user_id' });
 
             if (error) throw error;
 
@@ -194,10 +204,10 @@ const UsersManagement = () => {
                                                         </Button>
                                                     </DropdownMenuTrigger>
                                                     <DropdownMenuContent align="end">
-                                                        <DropdownMenuItem onClick={() => updateUserRole(user.user_id, 'admin')}>
+                                                        <DropdownMenuItem onClick={() => updateUserRole(user.auth_id, 'admin')}>
                                                             <Shield className="w-4 h-4 ml-2" /> ترقية لمدير
                                                         </DropdownMenuItem>
-                                                        <DropdownMenuItem onClick={() => updateUserRole(user.user_id, 'user')}>
+                                                        <DropdownMenuItem onClick={() => updateUserRole(user.auth_id, 'user')}>
                                                             <UserCog className="w-4 h-4 ml-2" /> سحب الصلاحيات
                                                         </DropdownMenuItem>
                                                         <DropdownMenuItem className="text-destructive">

@@ -38,12 +38,10 @@ interface Partner {
     partner_id: number;
     company_name: string;
     contact_person: string | null;
-    email: string | null;
-    phone: string | null;
     address: string | null;
-    status: string;
-    commission_percentage: number;
-    created_at: string;
+    status: string | null;
+    commission_percentage: number | null;
+    created_at: string | null;
 }
 
 const PartnersManagement = () => {
