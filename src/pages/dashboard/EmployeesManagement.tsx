@@ -284,7 +284,8 @@ const EmployeesManagement = () => {
             full_name: formData.full_name,
             phone_number: formData.phone_number,
             user_type: 'employee',
-            account_status: 'active' // Auto-activate employees
+            account_status: 'active', // Auto-activate employees
+            partner_id: partnerId // Link to partner
           })
           .select()
           .single();
