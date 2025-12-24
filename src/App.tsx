@@ -37,8 +37,7 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/apply" element={<Apply />} />
           <Route path="/login" element={<Login />} />
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
+          <Route path="/features" element={<Features />} />
           <Route path="/setup-admin" element={<SetupAdmin />} />
           <Route path="/admin" element={
             <ProtectedRoute allowedRoles={['admin']}>
@@ -110,22 +109,6 @@ const App = () => (
               <DriverDashboard />
             </ProtectedRoute>
           } />
-=======
-=======
->>>>>>> Stashed changes
-          <Route path="/features" element={<Features />} />
-          <Route path="/admin" element={<AdminDashboard />} />
-          <Route path="/dashboard" element={<CompanyDashboard />} />
-          <Route path="/dashboard/fleet" element={<FleetManagement />} />
-          <Route path="/dashboard/trips" element={<TripsManagement />} />
-          <Route path="/dashboard/bookings" element={<BookingsManagement />} />
-          <Route path="/dashboard/branches" element={<BranchesManagement />} />
-          <Route path="/dashboard/employees" element={<EmployeesManagement />} />
-          <Route path="/dashboard/routes" element={<RoutesManagement />} />
-          <Route path="/dashboard/payments" element={<PaymentsManagement />} />
-          <Route path="/dashboard/reports" element={<ReportsManagement />} />
-          <Route path="/dashboard/settings" element={<SettingsPage />} />
->>>>>>> Stashed changes
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
