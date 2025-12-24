@@ -388,6 +388,7 @@ const EmployeesManagement = () => {
       full_name: employee.full_name || "",
       email: employee.email || "",
       phone_number: employee.phone_number || "",
+      password: "",
       branch_id: employee.branch_id?.toString() || "",
       role_in_company: employee.role_in_company || "",
       status: employee.status || "active"

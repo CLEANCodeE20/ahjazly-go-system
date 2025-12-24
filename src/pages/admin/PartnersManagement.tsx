@@ -73,7 +73,7 @@ const PartnersManagement = () => {
         setLoading(false);
     };
 
-    const updatePartnerStatus = async (partnerId: number, newStatus: string) => {
+    const updatePartnerStatus = async (partnerId: number, newStatus: "approved" | "pending" | "rejected" | "suspended") => {
         const { error } = await supabase
             .from('partners')
             .update({ status: newStatus })
