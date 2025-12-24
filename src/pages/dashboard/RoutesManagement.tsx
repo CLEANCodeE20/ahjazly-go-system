@@ -2,8 +2,8 @@ import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { 
-  Bus, 
+import {
+  Bus,
   Home,
   Route,
   Users,
@@ -95,7 +95,7 @@ const RoutesManagement = () => {
   const navigate = useNavigate();
   const { signOut } = useAuth();
   const { partnerId, partner, isLoading: partnerLoading } = usePartner();
-  
+
   const [routes, setRoutes] = useState<RouteRecord[]>([]);
   const [routeStops, setRouteStops] = useState<Record<number, RouteStop[]>>({});
   const [loading, setLoading] = useState(true);
@@ -113,7 +113,7 @@ const RoutesManagement = () => {
     distance_km: "",
     estimated_duration_hours: "",
   });
-  const [newStops, setNewStops] = useState<{name: string; location: string; time: string}[]>([]);
+  const [newStops, setNewStops] = useState<{ name: string; location: string; time: string }[]>([]);
   const [stopFormData, setStopFormData] = useState({
     stop_name: "",
     stop_location: "",
@@ -144,7 +144,7 @@ const RoutesManagement = () => {
           .select('*')
           .in('route_id', routeIds)
           .order('stop_order', { ascending: true });
-        
+
         if (stopsData) {
           const stopsMap: Record<number, RouteStop[]> = {};
           stopsData.forEach(stop => {
@@ -160,8 +160,8 @@ const RoutesManagement = () => {
     setLoading(false);
   };
 
-  const filteredRoutes = routes.filter(route => 
-    route.origin_city?.includes(searchTerm) || 
+  const filteredRoutes = routes.filter(route =>
+    route.origin_city?.includes(searchTerm) ||
     route.destination_city?.includes(searchTerm)
   );
 
@@ -196,7 +196,7 @@ const RoutesManagement = () => {
           .select()
           .single();
         if (error) throw error;
-        
+
         // Add stops if any were added
         if (newStops.length > 0 && newRoute) {
           const stopsToInsert = newStops.map((stop, index) => ({
@@ -206,16 +206,16 @@ const RoutesManagement = () => {
             stop_order: index + 1,
             preparation_time: stop.time || null
           }));
-          
+
           const { error: stopsError } = await supabase
             .from('route_stops')
             .insert(stopsToInsert);
-          
+
           if (stopsError) {
             console.error('Error adding stops:', stopsError);
           }
         }
-        
+
         toast({ title: "تمت الإضافة", description: "تم إضافة المسار ونقاط الصعود بنجاح" });
       }
 
@@ -335,11 +335,10 @@ const RoutesManagement = () => {
             <Link
               key={link.href}
               to={link.href}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${
-                location.pathname === link.href
-                  ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                  : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
-              }`}
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${location.pathname === link.href
+                ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+                }`}
             >
               <link.icon className="w-5 h-5" />
               <span>{link.label}</span>
@@ -348,8 +347,8 @@ const RoutesManagement = () => {
         </nav>
 
         <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-sidebar-border">
-          <Button 
-            variant="ghost" 
+          <Button
+            variant="ghost"
             className="w-full justify-start text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
             onClick={handleSignOut}
           >
@@ -386,43 +385,43 @@ const RoutesManagement = () => {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label>مدينة الانطلاق *</Label>
-                      <Input 
+                      <Input
                         placeholder="تعز"
                         value={formData.origin_city}
-                        onChange={(e) => setFormData({...formData, origin_city: e.target.value})}
+                        onChange={(e) => setFormData({ ...formData, origin_city: e.target.value })}
                       />
                     </div>
                     <div className="space-y-2">
                       <Label>مدينة الوصول *</Label>
-                      <Input 
+                      <Input
                         placeholder="الرياض"
                         value={formData.destination_city}
-                        onChange={(e) => setFormData({...formData, destination_city: e.target.value})}
+                        onChange={(e) => setFormData({ ...formData, destination_city: e.target.value })}
                       />
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label>المسافة (كم)</Label>
-                      <Input 
+                      <Input
                         type="number"
                         placeholder="950"
                         value={formData.distance_km}
-                        onChange={(e) => setFormData({...formData, distance_km: e.target.value})}
+                        onChange={(e) => setFormData({ ...formData, distance_km: e.target.value })}
                       />
                     </div>
                     <div className="space-y-2">
                       <Label>المدة (ساعات)</Label>
-                      <Input 
+                      <Input
                         type="number"
                         step="0.5"
                         placeholder="6"
                         value={formData.estimated_duration_hours}
-                        onChange={(e) => setFormData({...formData, estimated_duration_hours: e.target.value})}
+                        onChange={(e) => setFormData({ ...formData, estimated_duration_hours: e.target.value })}
                       />
                     </div>
                   </div>
-                  
+
                   {/* نقاط الصعود */}
                   {!editingRoute && (
                     <div className="space-y-3 border-t pt-4">
@@ -433,7 +432,7 @@ const RoutesManagement = () => {
                           إضافة نقطة
                         </Button>
                       </div>
-                      
+
                       {newStops.length === 0 ? (
                         <p className="text-sm text-muted-foreground text-center py-4 bg-muted/50 rounded-lg">
                           لا توجد نقاط صعود. اضغط "إضافة نقطة" لإضافة محطات على المسار
@@ -457,12 +456,17 @@ const RoutesManagement = () => {
                                     value={stop.location}
                                     onChange={(e) => updateNewStop(index, 'location', e.target.value)}
                                   />
-                                  <Input
-                                    type="time"
-                                    placeholder="وقت الاستعداد"
-                                    value={stop.time}
-                                    onChange={(e) => updateNewStop(index, 'time', e.target.value)}
-                                  />
+                                  <div className="relative">
+                                    <Input
+                                      type="time"
+                                      value={stop.time}
+                                      onChange={(e) => updateNewStop(index, 'time', e.target.value)}
+                                      className="pl-10" // Add padding for the icon
+                                    />
+                                    <Clock
+                                      className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none"
+                                    />
+                                  </div>
                                 </div>
                               </div>
                               <Button
@@ -480,7 +484,7 @@ const RoutesManagement = () => {
                       )}
                     </div>
                   )}
-                  
+
                   <div className="flex gap-3 pt-4">
                     <Button onClick={handleSubmit} className="flex-1" disabled={isSubmitting}>
                       {isSubmitting && <Loader2 className="w-4 h-4 ml-2 animate-spin" />}
@@ -545,7 +549,7 @@ const RoutesManagement = () => {
           <div className="mb-6">
             <div className="relative max-w-md">
               <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-              <Input 
+              <Input
                 placeholder="بحث عن مسار..."
                 className="pr-10"
                 value={searchTerm}
@@ -674,7 +678,7 @@ const RoutesManagement = () => {
                             <Edit className="w-4 h-4 ml-2" />
                             تعديل
                           </DropdownMenuItem>
-                          <DropdownMenuItem 
+                          <DropdownMenuItem
                             onClick={() => setDeleteId(route.route_id)}
                             className="text-destructive"
                           >
@@ -717,9 +721,9 @@ const RoutesManagement = () => {
                                 {stop.preparation_time}
                               </span>
                             )}
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
+                            <Button
+                              variant="ghost"
+                              size="icon"
                               className="h-8 w-8"
                               onClick={() => handleDeleteStop(stop.stop_id)}
                             >
@@ -746,27 +750,33 @@ const RoutesManagement = () => {
           <div className="space-y-4 mt-4">
             <div className="space-y-2">
               <Label>اسم المحطة *</Label>
-              <Input 
+              <Input
                 placeholder="مثال: محطة الرياض الرئيسية"
                 value={stopFormData.stop_name}
-                onChange={(e) => setStopFormData({...stopFormData, stop_name: e.target.value})}
+                onChange={(e) => setStopFormData({ ...stopFormData, stop_name: e.target.value })}
               />
             </div>
             <div className="space-y-2">
               <Label>الموقع التفصيلي</Label>
-              <Input 
+              <Input
                 placeholder="العنوان أو رابط الخريطة"
                 value={stopFormData.stop_location}
-                onChange={(e) => setStopFormData({...stopFormData, stop_location: e.target.value})}
+                onChange={(e) => setStopFormData({ ...stopFormData, stop_location: e.target.value })}
               />
             </div>
             <div className="space-y-2">
               <Label>وقت التجهيز</Label>
-              <Input 
-                type="time"
-                value={stopFormData.preparation_time}
-                onChange={(e) => setStopFormData({...stopFormData, preparation_time: e.target.value})}
-              />
+              <div className="relative">
+                <Input
+                  type="time"
+                  value={stopFormData.preparation_time}
+                  onChange={(e) => setStopFormData({ ...stopFormData, preparation_time: e.target.value })}
+                  className="pl-10"
+                />
+                <Clock
+                  className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none"
+                />
+              </div>
             </div>
             <div className="flex gap-3 pt-4">
               <Button onClick={handleAddStop} className="flex-1" disabled={isSubmitting}>
