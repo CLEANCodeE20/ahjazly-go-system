@@ -2,8 +2,8 @@ import { useState, useRef } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { 
-  Bus, 
+import {
+  Bus,
   Home,
   Route,
   Users,
@@ -20,8 +20,18 @@ import {
   Clock,
   Ticket,
   Eye,
-  Printer
+  Printer,
+  Download,
+  FileSpreadsheet,
+  FileText
 } from "lucide-react";
+import { useExport } from "@/hooks/useExport";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useSupabaseCRUD } from "@/hooks/useSupabaseCRUD";
 import { useRealtimeBookings } from "@/hooks/useRealtimeBookings";
@@ -76,25 +86,25 @@ interface UserRecord {
 }
 
 const BookingsManagement = () => {
-  const { data: bookings, loading, update, refetch } = useSupabaseCRUD<BookingRecord>({ 
+  const { data: bookings, loading, update, refetch } = useSupabaseCRUD<BookingRecord>({
     tableName: 'bookings',
     primaryKey: 'booking_id',
     initialFetch: true
   });
 
-  const { data: trips } = useSupabaseCRUD<TripRecord>({ 
+  const { data: trips } = useSupabaseCRUD<TripRecord>({
     tableName: 'trips',
     primaryKey: 'trip_id',
     initialFetch: true
   });
 
-  const { data: routes } = useSupabaseCRUD<RouteRecord>({ 
+  const { data: routes } = useSupabaseCRUD<RouteRecord>({
     tableName: 'routes',
     primaryKey: 'route_id',
     initialFetch: true
   });
 
-  const { data: users } = useSupabaseCRUD<UserRecord>({ 
+  const { data: users } = useSupabaseCRUD<UserRecord>({
     tableName: 'users',
     primaryKey: 'user_id',
     initialFetch: true
@@ -109,6 +119,7 @@ const BookingsManagement = () => {
   const [filterStatus, setFilterStatus] = useState("all");
   const [selectedBooking, setSelectedBooking] = useState<BookingRecord | null>(null);
   const [showPrintDialog, setShowPrintDialog] = useState(false);
+  const { exportToExcel, exportToPDF } = useExport();
   const ticketRef = useRef<HTMLDivElement>(null);
 
   const handlePrint = useReactToPrint({
@@ -165,12 +176,43 @@ const BookingsManagement = () => {
 
   const filteredBookings = bookings.filter(booking => {
     const userInfo = getUserInfo(booking.user_id);
-    const matchesSearch = userInfo.name.includes(searchQuery) || 
-                         userInfo.phone.includes(searchQuery) ||
-                         booking.booking_id.toString().includes(searchQuery);
+    const matchesSearch = userInfo.name.includes(searchQuery) ||
+      userInfo.phone.includes(searchQuery) ||
+      booking.booking_id.toString().includes(searchQuery);
     const matchesFilter = filterStatus === "all" || booking.booking_status === filterStatus;
     return matchesSearch && matchesFilter;
   });
+
+  const handleExport = (type: 'excel' | 'pdf') => {
+    const dataToExport = filteredBookings.map(b => {
+      const user = getUserInfo(b.user_id);
+      const route = getRouteInfo(b.trip_id);
+      const trip = getTripTime(b.trip_id);
+      return {
+        "رقم الحجز": `BK-${b.booking_id}`,
+        "المسافر": user.name,
+        "الجوال": user.phone,
+        "المسار": route,
+        "التاريخ": trip.date,
+        "الوقت": trip.time,
+        "السعر": b.total_price,
+        "الحالة": b.booking_status === 'confirmed' ? 'مؤكد' : b.booking_status === 'pending' ? 'انتظار' : 'ملغي'
+      };
+    });
+
+    if (type === 'excel') {
+      exportToExcel(dataToExport, "bookings_report");
+    } else {
+      exportToPDF(dataToExport, [
+        { header: "رقم الحجز", key: "رقم الحجز" },
+        { header: "المسافر", key: "المسافر" },
+        { header: "المسار", key: "المسار" },
+        { header: "التاريخ", key: "التاريخ" },
+        { header: "السعر", key: "السعر" },
+        { header: "الحالة", key: "الحالة" }
+      ], { title: "تقرير الحجوزات" });
+    }
+  };
 
   const stats = [
     { label: "إجمالي الحجوزات", value: bookings.length, icon: Ticket, color: "text-primary" },
@@ -228,11 +270,10 @@ const BookingsManagement = () => {
             <Link
               key={link.href}
               to={link.href}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${
-                link.href === "/dashboard/bookings"
-                  ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                  : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
-              }`}
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${link.href === "/dashboard/bookings"
+                ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+                }`}
             >
               <link.icon className="w-5 h-5" />
               <span>{link.label}</span>
@@ -259,6 +300,25 @@ const BookingsManagement = () => {
               <h1 className="text-xl font-bold text-foreground">إدارة الحجوزات</h1>
               <p className="text-sm text-muted-foreground">عرض ومتابعة جميع الحجوزات</p>
             </div>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="gap-2">
+                  <Download className="w-4 h-4 ml-2" />
+                  تصدير
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => handleExport('excel')}>
+                  <FileSpreadsheet className="w-4 h-4 ml-2 text-green-600" />
+                  Excel
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExport('pdf')}>
+                  <FileText className="w-4 h-4 ml-2 text-red-600" />
+                  PDF
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </header>
 
@@ -417,7 +477,7 @@ const BookingsManagement = () => {
           <DialogHeader>
             <DialogTitle>طباعة التذكرة</DialogTitle>
           </DialogHeader>
-          
+
           {selectedBooking && (
             <>
               <TicketPrint

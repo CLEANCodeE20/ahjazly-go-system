@@ -19,7 +19,8 @@ import {
   Loader2,
   FileSpreadsheet,
   Receipt,
-  Calendar
+  Calendar,
+  Download
 } from "lucide-react";
 import {
   Select,
@@ -28,6 +29,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Dialog,
   DialogContent,
@@ -38,7 +45,7 @@ import {
 import { useSupabaseCRUD } from "@/hooks/useSupabaseCRUD";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import * as XLSX from "xlsx";
+import { useExport } from "@/hooks/useExport";
 
 // Sidebar navigation for admin
 const adminSidebarLinks = [
@@ -92,6 +99,7 @@ const CommissionsManagement = () => {
   const [selectedPartner, setSelectedPartner] = useState<PartnerRecord | null>(null);
   const [showInvoiceDialog, setShowInvoiceDialog] = useState(false);
   const [generatingInvoice, setGeneratingInvoice] = useState(false);
+  const { exportToExcel, exportToPDF } = useExport();
 
   const { data: commissions, loading } = useSupabaseCRUD<CommissionRecord>({
     tableName: 'commissions',
@@ -209,25 +217,40 @@ const CommissionsManagement = () => {
     }
   };
 
-  // Export to Excel
-  const exportToExcel = () => {
-    const data = filteredCommissions.map(c => ({
-      "رقم العمولة": c.commission_id,
-      "رقم الحجز": c.booking_id,
+  // Export Functionality
+  const handleExport = (type: 'excel' | 'pdf') => {
+    const dataToExport = filteredCommissions.map(c => ({
+      "رقم الحجز": `BK-${c.booking_id}`,
       "الشركة": getPartnerName(c.partner_id),
-      "مبلغ الحجز": c.booking_amount,
-      "نسبة العمولة": `${c.commission_percentage}%`,
-      "مبلغ العمولة": c.commission_amount,
-      "إيراد الشريك": c.partner_revenue,
+      "مبلغ الحجز": (c.booking_amount || 0).toLocaleString(),
+      "العمولة": (c.commission_amount || 0).toLocaleString(),
+      "الإيراد": (c.partner_revenue || 0).toLocaleString(),
       "الحالة": c.status === 'confirmed' ? 'مؤكد' : c.status === 'pending' ? 'قيد الانتظار' : 'ملغي',
       "التاريخ": c.created_at ? new Date(c.created_at).toLocaleDateString('ar-SA') : '-'
     }));
 
-    const ws = XLSX.utils.json_to_sheet(data);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "العمولات");
-    XLSX.writeFile(wb, `تقرير_العمولات_${new Date().toLocaleDateString('ar-SA')}.xlsx`);
-    toast.success("تم تصدير التقرير بنجاح");
+    if (type === 'excel') {
+      const rawData = filteredCommissions.map(c => ({
+        "رقم الحجز": c.booking_id,
+        "الشركة": getPartnerName(c.partner_id),
+        "مبلغ الحجز": c.booking_amount,
+        "العمولة": c.commission_amount,
+        "إيراد الشريك": c.partner_revenue,
+        "الحالة": c.status,
+        "التاريخ": c.created_at
+      }));
+      exportToExcel(rawData, "commissions_report");
+    } else {
+      exportToPDF(dataToExport, [
+        { header: "رقم الحجز", key: "رقم الحجز" },
+        { header: "الشركة", key: "الشركة" },
+        { header: "مبلغ الحجز", key: "مبلغ الحجز" },
+        { header: "العمولة", key: "العمولة" },
+        { header: "الإيراد", key: "الإيراد" },
+        { header: "الحالة", key: "الحالة" },
+        { header: "التاريخ", key: "التاريخ" }
+      ], { title: "تقرير العمولات" });
+    }
   };
 
   return (
@@ -244,10 +267,24 @@ const CommissionsManagement = () => {
               <p className="text-sm text-muted-foreground">متابعة وإدارة عمولات المنصة</p>
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" onClick={exportToExcel}>
-                <FileSpreadsheet className="w-4 h-4 ml-2" />
-                تصدير Excel
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline">
+                    <Download className="w-4 h-4 ml-2" />
+                    تصدير
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => handleExport('excel')}>
+                    <FileSpreadsheet className="w-4 h-4 ml-2 text-green-600" />
+                    Excel
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleExport('pdf')}>
+                    <FileText className="w-4 h-4 ml-2 text-red-600" />
+                    PDF
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
               <Dialog open={showInvoiceDialog} onOpenChange={setShowInvoiceDialog}>
                 <DialogTrigger asChild>
                   <Button>

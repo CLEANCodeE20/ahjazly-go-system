@@ -1,8 +1,8 @@
 import { useState, useMemo } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { 
-  Bus, 
+import {
+  Bus,
   Home,
   Route,
   Users,
@@ -40,9 +40,9 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useSupabaseCRUD } from "@/hooks/useSupabaseCRUD";
 import { toast } from "sonner";
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
-import * as XLSX from "xlsx";
+import { useExport } from "@/hooks/useExport";
+import { supabase } from "@/integrations/supabase/client";
+import { subDays } from "date-fns";
 
 // Sidebar navigation
 const sidebarLinks = [
@@ -88,6 +88,9 @@ interface BranchRecord {
 const ReportsManagement = () => {
   const location = useLocation();
   const [period, setPeriod] = useState("month");
+  const [analyticsData, setAnalyticsData] = useState<any>(null);
+  const [analyticsLoading, setAnalyticsLoading] = useState(true);
+  const { exportToExcel, exportToPDF } = useExport();
 
   const { data: bookings, loading: bookingsLoading } = useSupabaseCRUD<BookingRecord>({
     tableName: 'bookings',
@@ -113,36 +116,61 @@ const ReportsManagement = () => {
     initialFetch: true
   });
 
-  const loading = bookingsLoading || tripsLoading;
+  const fetchAnalytics = async () => {
+    setAnalyticsLoading(true);
+    let startDate;
+    const now = new Date();
+    switch (period) {
+      case 'week': startDate = subDays(now, 7); break;
+      case 'month': startDate = subDays(now, 30); break;
+      case 'quarter': startDate = subDays(now, 90); break;
+      case 'year': startDate = subDays(now, 365); break;
+      default: startDate = subDays(now, 30);
+    }
 
-  // Calculate stats
+    try {
+      const { data, error } = await (supabase.rpc as any)('get_partner_analytics', {
+        start_date: startDate.toISOString(),
+        end_date: now.toISOString()
+      });
+      if (error) throw error;
+      setAnalyticsData(data);
+    } catch (e) {
+      console.error("Error fetching partner analytics:", e);
+    } finally {
+      setAnalyticsLoading(false);
+    }
+  };
+
+  useMemo(() => {
+    fetchAnalytics();
+  }, [period]);
+
+  const loading = bookingsLoading || tripsLoading || analyticsLoading;
+
+  // Calculate stats from analytics Data
   const stats = useMemo(() => {
-    const confirmedBookings = bookings.filter(b => b.booking_status === 'confirmed' || b.booking_status === 'completed');
-    const totalRevenue = confirmedBookings.reduce((sum, b) => sum + (b.total_price || 0), 0);
-    const totalTrips = trips.length;
-    const totalBookings = bookings.length;
-    const completedTrips = trips.filter(t => t.status === 'completed').length;
-    const occupancyRate = totalTrips > 0 ? Math.round((completedTrips / totalTrips) * 100) : 0;
+    if (!analyticsData) return [];
 
     return [
-      { label: "إجمالي الإيرادات", value: totalRevenue.toLocaleString(), change: "+18%", isPositive: true, icon: DollarSign },
-      { label: "عدد الرحلات", value: totalTrips.toString(), change: "+12%", isPositive: true, icon: Route },
-      { label: "عدد الحجوزات", value: totalBookings.toString(), change: "+24%", isPositive: true, icon: Ticket },
-      { label: "معدل الإشغال", value: `${occupancyRate}%`, change: "+5%", isPositive: true, icon: PieChart }
+      { label: "إجمالي الإيرادات", value: (analyticsData.total_revenue || 0).toLocaleString(), change: "+18%", isPositive: true, icon: DollarSign },
+      { label: "عدد الرحلات", value: (analyticsData.total_trips || 0).toString(), change: "+12%", isPositive: true, icon: Route },
+      { label: "عدد الحجوزات", value: (analyticsData.total_bookings || 0).toString(), change: "+24%", isPositive: true, icon: Ticket },
+      { label: "معدل الإشغال", value: `${analyticsData.occupancy_rate || 0}%`, change: "+5%", isPositive: true, icon: PieChart }
     ];
-  }, [bookings, trips]);
+  }, [analyticsData]);
 
   // Top routes by bookings
   const topRoutes = useMemo(() => {
     const routeStats: { [key: number]: { trips: number; revenue: number } } = {};
-    
+
     trips.forEach(trip => {
       if (trip.route_id) {
         if (!routeStats[trip.route_id]) {
           routeStats[trip.route_id] = { trips: 0, revenue: 0 };
         }
         routeStats[trip.route_id].trips += 1;
-        
+
         const tripBookings = bookings.filter(b => b.trip_id === trip.trip_id);
         routeStats[trip.route_id].revenue += tripBookings.reduce((sum, b) => sum + (b.total_price || 0), 0);
       }
@@ -168,7 +196,7 @@ const ReportsManagement = () => {
   const monthlyRevenue = useMemo(() => {
     const months = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
     const currentMonth = new Date().getMonth();
-    
+
     return Array.from({ length: 6 }, (_, i) => {
       const monthIndex = (currentMonth - 5 + i + 12) % 12;
       const monthBookings = bookings.filter(b => {
@@ -176,7 +204,7 @@ const ReportsManagement = () => {
         const bookingMonth = new Date(b.booking_date).getMonth();
         return bookingMonth === monthIndex;
       });
-      
+
       return {
         month: months[monthIndex],
         revenue: monthBookings.reduce((sum, b) => sum + (b.total_price || 0), 0),
@@ -205,166 +233,30 @@ const ReportsManagement = () => {
   }, [branches]);
 
   // Export to Excel
-  const exportToExcel = () => {
-    try {
-      const workbook = XLSX.utils.book_new();
-
-      // Summary sheet
-      const summaryData = stats.map(stat => ({
-        "المؤشر": stat.label,
-        "القيمة": stat.value,
-        "التغيير": stat.change
-      }));
-      const summarySheet = XLSX.utils.json_to_sheet(summaryData);
-      XLSX.utils.book_append_sheet(workbook, summarySheet, "ملخص");
-
-      // Monthly revenue sheet
-      const revenueData = monthlyRevenue.map(m => ({
-        "الشهر": m.month,
-        "الإيرادات (ر.س)": m.revenue,
-        "عدد الرحلات": m.trips,
-        "عدد الحجوزات": m.bookings
-      }));
-      const revenueSheet = XLSX.utils.json_to_sheet(revenueData);
-      XLSX.utils.book_append_sheet(workbook, revenueSheet, "الإيرادات الشهرية");
-
-      // Top routes sheet
-      const routesData = topRoutes.map(r => ({
-        "المسار": r.route,
-        "عدد الرحلات": r.trips,
-        "الإيرادات (ر.س)": r.revenue,
-        "النسبة %": r.percentage
-      }));
-      const routesSheet = XLSX.utils.json_to_sheet(routesData);
-      XLSX.utils.book_append_sheet(workbook, routesSheet, "أفضل المسارات");
-
-      // Branch performance sheet
-      const branchData = branchPerformance.map(b => ({
-        "الفرع": b.branch,
-        "الإيرادات (ر.س)": b.revenue,
-        "الحجوزات": b.bookings,
-        "النمو %": b.growth
-      }));
-      const branchSheet = XLSX.utils.json_to_sheet(branchData);
-      XLSX.utils.book_append_sheet(workbook, branchSheet, "أداء الفروع");
-
-      // Download file
-      const date = new Date().toLocaleDateString('ar-SA');
-      XLSX.writeFile(workbook, `تقرير_الأداء_${date}.xlsx`);
-      toast.success("تم تصدير التقرير بنجاح بصيغة Excel");
-    } catch (error) {
-      console.error("Error exporting to Excel:", error);
-      toast.error("حدث خطأ أثناء تصدير التقرير");
-    }
+  const handleExportExcel = () => {
+    const dataToExport = branchPerformance.map(b => ({
+      "الفرع": b.branch,
+      "الإيرادات (ر.س)": b.revenue,
+      "الحجوزات": b.bookings,
+      "النمو %": b.growth
+    }));
+    exportToExcel(dataToExport, "performance_report");
   };
 
   // Export to PDF
-  const exportToPDF = () => {
-    try {
-      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-      
-      // Add Arabic font support - using built-in helvetica for now
-      doc.setFont("helvetica");
-      
-      // Title
-      doc.setFontSize(20);
-      doc.text("Company Performance Report", 105, 20, { align: 'center' });
-      
-      const date = new Date().toLocaleDateString('en-US');
-      doc.setFontSize(10);
-      doc.text(`Report Date: ${date}`, 105, 28, { align: 'center' });
-
-      let yPos = 40;
-
-      // Summary Stats
-      doc.setFontSize(14);
-      doc.text("Summary Statistics", 14, yPos);
-      yPos += 8;
-
-      autoTable(doc, {
-        startY: yPos,
-        head: [['Indicator', 'Value', 'Change']],
-        body: stats.map(stat => [stat.label, stat.value, stat.change]),
-        theme: 'striped',
-        headStyles: { fillColor: [59, 130, 246] },
-        styles: { halign: 'center' }
-      });
-
-      yPos = (doc as any).lastAutoTable.finalY + 15;
-
-      // Monthly Revenue
-      doc.setFontSize(14);
-      doc.text("Monthly Revenue", 14, yPos);
-      yPos += 8;
-
-      autoTable(doc, {
-        startY: yPos,
-        head: [['Month', 'Revenue (SAR)', 'Trips', 'Bookings']],
-        body: monthlyRevenue.map(m => [m.month, m.revenue.toLocaleString(), m.trips, m.bookings]),
-        theme: 'striped',
-        headStyles: { fillColor: [16, 185, 129] },
-        styles: { halign: 'center' }
-      });
-
-      yPos = (doc as any).lastAutoTable.finalY + 15;
-
-      // Check if we need a new page
-      if (yPos > 240) {
-        doc.addPage();
-        yPos = 20;
-      }
-
-      // Top Routes
-      doc.setFontSize(14);
-      doc.text("Top Routes", 14, yPos);
-      yPos += 8;
-
-      autoTable(doc, {
-        startY: yPos,
-        head: [['Route', 'Trips', 'Revenue (SAR)', 'Percentage']],
-        body: topRoutes.map(r => [r.route, r.trips, r.revenue.toLocaleString(), `${r.percentage}%`]),
-        theme: 'striped',
-        headStyles: { fillColor: [139, 92, 246] },
-        styles: { halign: 'center' }
-      });
-
-      yPos = (doc as any).lastAutoTable.finalY + 15;
-
-      // Check if we need a new page
-      if (yPos > 200) {
-        doc.addPage();
-        yPos = 20;
-      }
-
-      // Branch Performance
-      doc.setFontSize(14);
-      doc.text("Branch Performance", 14, yPos);
-      yPos += 8;
-
-      autoTable(doc, {
-        startY: yPos,
-        head: [['Branch', 'Revenue (SAR)', 'Bookings', 'Growth']],
-        body: branchPerformance.map(b => [b.branch, b.revenue.toLocaleString(), b.bookings, `${b.growth}%`]),
-        theme: 'striped',
-        headStyles: { fillColor: [245, 158, 11] },
-        styles: { halign: 'center' }
-      });
-
-      // Footer
-      const pageCount = doc.getNumberOfPages();
-      for (let i = 1; i <= pageCount; i++) {
-        doc.setPage(i);
-        doc.setFontSize(8);
-        doc.text(`Page ${i} of ${pageCount}`, 105, 290, { align: 'center' });
-      }
-
-      // Download file
-      doc.save(`Performance_Report_${date}.pdf`);
-      toast.success("تم تصدير التقرير بنجاح بصيغة PDF");
-    } catch (error) {
-      console.error("Error exporting to PDF:", error);
-      toast.error("حدث خطأ أثناء تصدير التقرير");
-    }
+  const handleExportPDF = () => {
+    const dataToExport = branchPerformance.map(b => ({
+      "الفرع": b.branch,
+      "الإيرادات": b.revenue.toLocaleString(),
+      "الحجوزات": b.bookings,
+      "النمو": `${b.growth}%`
+    }));
+    exportToPDF(dataToExport, [
+      { header: "الفرع", key: "الفرع" },
+      { header: "الإيرادات", key: "الإيرادات" },
+      { header: "الحجوزات", key: "الحجوزات" },
+      { header: "النمو", key: "النمو" }
+    ], { title: "أداء الفروع" });
   };
 
   return (
@@ -386,11 +278,10 @@ const ReportsManagement = () => {
             <Link
               key={link.href}
               to={link.href}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${
-                location.pathname === link.href
-                  ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                  : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
-              }`}
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${location.pathname === link.href
+                ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+                }`}
             >
               <link.icon className="w-5 h-5" />
               <span>{link.label}</span>
@@ -437,11 +328,11 @@ const ReportsManagement = () => {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={exportToExcel} className="cursor-pointer">
+                  <DropdownMenuItem onClick={handleExportExcel} className="cursor-pointer">
                     <FileSpreadsheet className="w-4 h-4 ml-2 text-green-600" />
                     تصدير Excel
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={exportToPDF} className="cursor-pointer">
+                  <DropdownMenuItem onClick={handleExportPDF} className="cursor-pointer">
                     <FileText className="w-4 h-4 ml-2 text-red-600" />
                     تصدير PDF
                   </DropdownMenuItem>
@@ -489,7 +380,7 @@ const ReportsManagement = () => {
                       <div key={index} className="flex items-center gap-4">
                         <span className="w-16 text-sm text-muted-foreground">{month.month}</span>
                         <div className="flex-1 h-8 bg-muted rounded-lg overflow-hidden">
-                          <div 
+                          <div
                             className="h-full gradient-primary rounded-lg transition-all duration-500"
                             style={{ width: `${(month.revenue / maxRevenue) * 100}%` }}
                           />
@@ -523,7 +414,7 @@ const ReportsManagement = () => {
                               <span className="text-sm text-muted-foreground">{route.percentage}%</span>
                             </div>
                             <div className="h-2 bg-muted rounded-full overflow-hidden">
-                              <div 
+                              <div
                                 className="h-full gradient-secondary rounded-full"
                                 style={{ width: `${route.percentage}%` }}
                               />
@@ -581,7 +472,7 @@ const ReportsManagement = () => {
                             </td>
                             <td className="py-4 px-4">
                               <div className="w-24 h-2 bg-muted rounded-full overflow-hidden">
-                                <div 
+                                <div
                                   className={`h-full rounded-full ${branch.growth >= 0 ? "bg-secondary" : "bg-destructive"}`}
                                   style={{ width: `${Math.min(Math.abs(branch.growth) * 4, 100)}%` }}
                                 />

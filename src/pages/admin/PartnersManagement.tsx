@@ -12,8 +12,11 @@ import {
     Mail,
     Phone,
     MapPin,
-    FileText
+    FileText,
+    Download,
+    FileSpreadsheet
 } from "lucide-react";
+import { useExport } from "@/hooks/useExport";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -48,6 +51,7 @@ const PartnersManagement = () => {
     const [partners, setPartners] = useState<Partner[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState("");
+    const { exportToExcel, exportToPDF } = useExport();
 
     useEffect(() => {
         fetchPartners();
@@ -99,6 +103,32 @@ const PartnersManagement = () => {
         p.contact_person?.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
+    const handleExport = (type: 'excel' | 'pdf') => {
+        const dataToExport = filteredPartners.map(p => ({
+            'اسم الشركة': p.company_name,
+            'المسؤول': p.contact_person || '-',
+            'العمولة (%)': p.commission_percentage,
+            'الحالة': p.status === 'approved' ? 'نشط' : 'موقوف',
+            'تاريخ الانضمام': new Date(p.created_at || '').toLocaleDateString('ar-SA')
+        }));
+
+        if (type === 'excel') {
+            exportToExcel(dataToExport, 'partners_list');
+        } else {
+            exportToPDF(
+                dataToExport,
+                [
+                    { header: 'اسم الشركة', key: 'اسم الشركة' },
+                    { header: 'المسؤول', key: 'المسؤول' },
+                    { header: 'العمولة (%)', key: 'العمولة (%)' },
+                    { header: 'الحالة', key: 'الحالة' },
+                    { header: 'تاريخ الانضمام', key: 'تاريخ الانضمام' }
+                ],
+                { title: 'قائمة الشركاء' }
+            );
+        }
+    };
+
     return (
         <div className="min-h-screen bg-muted/30">
             <AdminSidebar />
@@ -118,6 +148,26 @@ const PartnersManagement = () => {
                                 className="pr-9 w-64"
                             />
                         </div>
+
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="outline" className="gap-2">
+                                    <Download className="w-4 h-4" />
+                                    تصدير
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => handleExport('excel')}>
+                                    <FileSpreadsheet className="w-4 h-4 ml-2 text-green-600" />
+                                    Excel
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleExport('pdf')}>
+                                    <FileText className="w-4 h-4 ml-2 text-red-600" />
+                                    PDF
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+
                         <Button>
                             <Building2 className="w-4 h-4 ml-2" />
                             إضافة شريك جديد

@@ -31,7 +31,6 @@ const FinancialReports = () => {
   const [stats, setStats] = useState<any>(null);
   const [dailyRevenue, setDailyRevenue] = useState<any[]>([]);
   const [topPartners, setTopPartners] = useState<any[]>([]);
-  const [topPartners, setTopPartners] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { exportToExcel, exportToPDF } = useExport();
 

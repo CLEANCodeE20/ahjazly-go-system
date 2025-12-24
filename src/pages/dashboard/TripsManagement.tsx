@@ -3,8 +3,8 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { 
-  Bus, 
+import {
+  Bus,
   Home,
   Route,
   Users,
@@ -25,8 +25,12 @@ import {
   MoreVertical,
   CheckCircle2,
   XCircle,
-  PlayCircle
+  PlayCircle,
+  Download,
+  FileSpreadsheet,
+  FileText
 } from "lucide-react";
+import { useExport } from "@/hooks/useExport";
 import {
   Dialog,
   DialogContent,
@@ -116,7 +120,7 @@ const TripsManagement = () => {
   const navigate = useNavigate();
   const { signOut } = useAuth();
   const { partnerId, partner } = usePartner();
-  
+
   const [trips, setTrips] = useState<TripRecord[]>([]);
   const [routes, setRoutes] = useState<RouteRecord[]>([]);
   const [buses, setBuses] = useState<BusRecord[]>([]);
@@ -128,6 +132,7 @@ const TripsManagement = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingTrip, setEditingTrip] = useState<TripRecord | null>(null);
   const [deleteId, setDeleteId] = useState<number | null>(null);
+  const { exportToExcel, exportToPDF } = useExport();
   const [formData, setFormData] = useState({
     route_id: "",
     bus_id: "",
@@ -143,7 +148,7 @@ const TripsManagement = () => {
 
   const fetchData = async () => {
     setLoading(true);
-    
+
     // Fetch all data in parallel
     const [tripsRes, routesRes, busesRes, driversRes] = await Promise.all([
       supabase.from('trips').select('*').order('departure_time', { ascending: false }),
@@ -156,7 +161,7 @@ const TripsManagement = () => {
     if (!routesRes.error) setRoutes(routesRes.data || []);
     if (!busesRes.error) setBuses(busesRes.data || []);
     if (!driversRes.error) setDrivers(driversRes.data || []);
-    
+
     setLoading(false);
   };
 
@@ -236,7 +241,7 @@ const TripsManagement = () => {
       .from('trips')
       .update({ status: newStatus })
       .eq('trip_id', tripId);
-    
+
     if (error) {
       toast({ title: "خطأ", description: error.message, variant: "destructive" });
     } else {
@@ -309,6 +314,32 @@ const TripsManagement = () => {
     navigate('/login');
   };
 
+  const handleExport = (type: 'excel' | 'pdf') => {
+    const dataToExport = filteredTrips.map(t => ({
+      "المسار": getRouteInfo(t.route_id),
+      "التاريخ": formatDate(t.departure_time),
+      "وقت المغادرة": formatTime(t.departure_time),
+      "الحافلة": getBusInfo(t.bus_id),
+      "السائق": getDriverInfo(t.driver_id),
+      "السعر": t.base_price,
+      "الحالة": t.status === 'scheduled' ? 'مجدولة' : t.status === 'in_progress' ? 'جارية' : 'مكتملة'
+    }));
+
+    if (type === 'excel') {
+      exportToExcel(dataToExport, "trips_list");
+    } else {
+      exportToPDF(dataToExport, [
+        { header: "المسار", key: "المسار" },
+        { header: "التاريخ", key: "التاريخ" },
+        { header: "وقت المغادرة", key: "وقت المغادرة" },
+        { header: "الحافلة", key: "الحافلة" },
+        { header: "السائق", key: "السائق" },
+        { header: "السعر", key: "السعر" },
+        { header: "الحالة", key: "الحالة" }
+      ], { title: "قائمة الرحلات" });
+    }
+  };
+
   // Stats
   const scheduledCount = trips.filter(t => t.status === 'scheduled').length;
   const inProgressCount = trips.filter(t => t.status === 'in_progress').length;
@@ -333,11 +364,10 @@ const TripsManagement = () => {
             <Link
               key={link.href}
               to={link.href}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${
-                location.pathname === link.href
-                  ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                  : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
-              }`}
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${location.pathname === link.href
+                ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+                }`}
             >
               <link.icon className="w-5 h-5" />
               <span>{link.label}</span>
@@ -346,8 +376,8 @@ const TripsManagement = () => {
         </nav>
 
         <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-sidebar-border">
-          <Button 
-            variant="ghost" 
+          <Button
+            variant="ghost"
             className="w-full justify-start text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
             onClick={handleSignOut}
           >
@@ -394,7 +424,7 @@ const TripsManagement = () => {
                       </SelectContent>
                     </Select>
                   </div>
-                  
+
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label>وقت المغادرة *</Label>
@@ -466,6 +496,25 @@ const TripsManagement = () => {
                 </DialogFooter>
               </DialogContent>
             </Dialog>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="gap-2">
+                  <Download className="w-4 h-4 ml-2" />
+                  تصدير
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => handleExport('excel')}>
+                  <FileSpreadsheet className="w-4 h-4 ml-2 text-green-600" />
+                  Excel
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExport('pdf')}>
+                  <FileText className="w-4 h-4 ml-2 text-red-600" />
+                  PDF
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </header>
 
