@@ -24,11 +24,11 @@ const Login = () => {
   useEffect(() => {
     console.log("Login useEffect:", { authLoading, user: !!user, role: userRole?.role, status: userStatus });
 
+    // Case 1: Everything is ready -> Redirect
     if (!authLoading && user && userRole) {
       console.log("Redirecting user...", userRole.role);
 
       if (userStatus && userStatus !== 'active' && userRole.role !== 'admin') {
-        // If not active and not admin, stay on login and show message
         toast({
           title: "الحساب غير نشط",
           description: userStatus === 'pending'
@@ -40,12 +40,16 @@ const Login = () => {
       }
 
       if (userRole.role === 'admin') {
-        console.log("Going to /admin");
         navigate("/admin");
       } else {
-        console.log("Going to /dashboard");
         navigate("/dashboard");
       }
+    }
+    // Case 2: User logged in but no role (Race condition or Error)
+    else if (!authLoading && user && !userRole) {
+      console.log("User logged in but NO ROLE found. Waiting or stuck.");
+      // Optional: Force a refresh after a delay if stuck too long? 
+      // For now, relying on useAuth retry logic.
     }
   }, [user, userRole, authLoading, navigate, userStatus]);
 

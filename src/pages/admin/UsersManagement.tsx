@@ -9,7 +9,8 @@ import {
     CheckCircle2,
     Loader2,
     Mail,
-    User
+    User,
+    History
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,6 +28,14 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import AdminSidebar from "@/components/layout/AdminSidebar";
@@ -44,6 +53,15 @@ const UsersManagement = () => {
     const [users, setUsers] = useState<UserRecord[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState("");
+    const [confirmDialog, setConfirmDialog] = useState<{
+        open: boolean;
+        userId: string | null;
+        userName: string;
+        newRole: "admin" | "partner" | "employee" | "driver" | "user";
+    }>({ open: false, userId: null, userName: "", newRole: "user" });
+    const [roleHistory, setRoleHistory] = useState<any[]>([]);
+    const [showHistory, setShowHistory] = useState(false);
+    const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
 
     useEffect(() => {
         fetchUsers();
@@ -106,10 +124,32 @@ const UsersManagement = () => {
                 description: "تم تغيير صلاحيات المستخدم بنجاح",
             });
             fetchUsers();
+            setConfirmDialog({ open: false, userId: null, userName: "", newRole: "user" });
         } catch (error: any) {
             toast({
                 title: "خطأ",
                 description: "فشل في تحديث الصلاحيات",
+                variant: "destructive"
+            });
+        }
+    };
+
+    const fetchRoleHistory = async (userId: string) => {
+        try {
+            const { data, error } = await supabase
+                .from('role_changes_log')
+                .select('*')
+                .eq('user_id', userId)
+                .order('changed_at', { ascending: false });
+
+            if (error) throw error;
+            setRoleHistory(data || []);
+            setSelectedUserId(userId);
+            setShowHistory(true);
+        } catch (error: any) {
+            toast({
+                title: "خطأ",
+                description: "فشل في تحميل سجل التغييرات",
                 variant: "destructive"
             });
         }
@@ -204,11 +244,32 @@ const UsersManagement = () => {
                                                         </Button>
                                                     </DropdownMenuTrigger>
                                                     <DropdownMenuContent align="end">
-                                                        <DropdownMenuItem onClick={() => updateUserRole(user.auth_id, 'admin')}>
+                                                        <DropdownMenuItem onClick={() => setConfirmDialog({
+                                                            open: true,
+                                                            userId: user.auth_id,
+                                                            userName: user.full_name || "مستخدم غير معروف",
+                                                            newRole: 'admin'
+                                                        })}>
                                                             <Shield className="w-4 h-4 ml-2" /> ترقية لمدير
                                                         </DropdownMenuItem>
-                                                        <DropdownMenuItem onClick={() => updateUserRole(user.auth_id, 'user')}>
-                                                            <UserCog className="w-4 h-4 ml-2" /> سحب الصلاحيات
+                                                        <DropdownMenuItem onClick={() => setConfirmDialog({
+                                                            open: true,
+                                                            userId: user.auth_id,
+                                                            userName: user.full_name || "مستخدم غير معروف",
+                                                            newRole: 'partner'
+                                                        })}>
+                                                            <UserCog className="w-4 h-4 ml-2" /> تعيين كشريك
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuItem onClick={() => setConfirmDialog({
+                                                            open: true,
+                                                            userId: user.auth_id,
+                                                            userName: user.full_name || "مستخدم غير معروف",
+                                                            newRole: 'employee'
+                                                        })}>
+                                                            <UserCog className="w-4 h-4 ml-2" /> تعيين كموظف
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuItem onClick={() => user.auth_id && fetchRoleHistory(user.auth_id)}>
+                                                            <History className="w-4 h-4 ml-2" /> عرض السجل
                                                         </DropdownMenuItem>
                                                         <DropdownMenuItem className="text-destructive">
                                                             <Ban className="w-4 h-4 ml-2" /> حظر المستخدم
@@ -223,9 +284,74 @@ const UsersManagement = () => {
                         </Table>
                     )}
                 </div>
+
+                {/* Confirmation Dialog */}
+                <Dialog open={confirmDialog.open} onOpenChange={(open) => !open && setConfirmDialog({ open: false, userId: null, userName: "", newRole: "user" })}>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>تأكيد تغيير الصلاحيات</DialogTitle>
+                            <DialogDescription>
+                                هل أنت متأكد من تغيير صلاحيات <span className="font-semibold">{confirmDialog.userName}</span> إلى <span className="font-semibold">{getRoleName(confirmDialog.newRole)}</span>؟
+                            </DialogDescription>
+                        </DialogHeader>
+                        <DialogFooter className="gap-2">
+                            <Button variant="outline" onClick={() => setConfirmDialog({ open: false, userId: null, userName: "", newRole: "user" })}>
+                                إلغاء
+                            </Button>
+                            <Button onClick={() => confirmDialog.userId && updateUserRole(confirmDialog.userId, confirmDialog.newRole)}>
+                                تأكيد التغيير
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+
+                {/* Role History Dialog */}
+                <Dialog open={showHistory} onOpenChange={setShowHistory}>
+                    <DialogContent className="max-w-2xl">
+                        <DialogHeader>
+                            <DialogTitle>سجل تغييرات الصلاحيات</DialogTitle>
+                            <DialogDescription>
+                                تاريخ جميع التغييرات التي حدثت على صلاحيات هذا المستخدم
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="max-h-96 overflow-y-auto">
+                            {roleHistory.length === 0 ? (
+                                <p className="text-center text-muted-foreground py-8">لا توجد تغييرات مسجلة</p>
+                            ) : (
+                                <div className="space-y-3">
+                                    {roleHistory.map((log) => (
+                                        <div key={log.id} className="border rounded-lg p-3">
+                                            <div className="flex items-center justify-between mb-2">
+                                                <span className="text-sm font-medium">
+                                                    {log.old_role ? `${log.old_role} ← ${log.new_role}` : `تم التعيين: ${log.new_role}`}
+                                                </span>
+                                                <span className="text-xs text-muted-foreground">
+                                                    {new Date(log.changed_at).toLocaleString('ar-SA')}
+                                                </span>
+                                            </div>
+                                            {log.change_reason && (
+                                                <p className="text-sm text-muted-foreground">{log.change_reason}</p>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </DialogContent>
+                </Dialog>
             </main>
         </div>
     );
+
+    function getRoleName(role: string) {
+        switch (role) {
+            case 'admin': return 'مدير نظام';
+            case 'partner': return 'شريك';
+            case 'employee': return 'موظف';
+            case 'driver': return 'سائق';
+            default: return 'مستخدم';
+        }
+    }
 };
 
 export default UsersManagement;

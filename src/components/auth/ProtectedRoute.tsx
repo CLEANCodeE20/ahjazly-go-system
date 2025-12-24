@@ -20,19 +20,24 @@ const ProtectedRoute = ({
   useEffect(() => {
     if (!isLoading) {
       if (!user) {
+        console.log("ProtectedRoute: No user, redirecting to", redirectTo);
         navigate(redirectTo);
         return;
       }
 
       // Check account status
       if (userStatus && userStatus !== 'active' && userRole?.role !== 'admin') {
+        console.log("ProtectedRoute: Inactive user", userStatus);
         navigate('/login');
         return;
       }
 
       // If specific roles are required, check them
       if (allowedRoles && allowedRoles.length > 0) {
+        console.log("ProtectedRoute: Checking roles", { required: allowedRoles, current: userRole?.role });
+
         if (!userRole || !allowedRoles.includes(userRole.role)) {
+          console.log("ProtectedRoute: Role mismatch or missing");
           // Redirect based on user's actual role
           if (userRole?.role === 'admin') {
             navigate('/admin');
@@ -44,7 +49,7 @@ const ProtectedRoute = ({
         }
       }
     }
-  }, [user, userRole, isLoading, navigate, allowedRoles, redirectTo]);
+  }, [user, userRole, isLoading, navigate, allowedRoles, redirectTo, userStatus]);
 
   if (isLoading) {
     return (
