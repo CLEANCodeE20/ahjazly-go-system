@@ -22,7 +22,11 @@ const Login = () => {
 
   // Redirect if already logged in
   useEffect(() => {
+    console.log("Login useEffect:", { authLoading, user: !!user, role: userRole?.role, status: userStatus });
+
     if (!authLoading && user && userRole) {
+      console.log("Redirecting user...", userRole.role);
+
       if (userStatus && userStatus !== 'active' && userRole.role !== 'admin') {
         // If not active and not admin, stay on login and show message
         toast({
@@ -36,12 +40,14 @@ const Login = () => {
       }
 
       if (userRole.role === 'admin') {
+        console.log("Going to /admin");
         navigate("/admin");
       } else {
+        console.log("Going to /dashboard");
         navigate("/dashboard");
       }
     }
-  }, [user, userRole, authLoading, navigate]);
+  }, [user, userRole, authLoading, navigate, userStatus]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
