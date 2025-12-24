@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import Apply from "./pages/Apply";
 import Login from "./pages/Login";
+import Features from "./pages/features";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import SetupAdmin from "./pages/admin/SetupAdmin";
 import CommissionsManagement from "./pages/admin/CommissionsManagement";
@@ -36,6 +37,7 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/apply" element={<Apply />} />
           <Route path="/login" element={<Login />} />
+<<<<<<< Updated upstream
           <Route path="/setup-admin" element={<SetupAdmin />} />
           <Route path="/admin" element={
             <ProtectedRoute allowedRoles={['admin']}>
@@ -107,6 +109,20 @@ const App = () => (
               <DriverDashboard />
             </ProtectedRoute>
           } />
+=======
+          <Route path="/features" element={<Features />} />
+          <Route path="/admin" element={<AdminDashboard />} />
+          <Route path="/dashboard" element={<CompanyDashboard />} />
+          <Route path="/dashboard/fleet" element={<FleetManagement />} />
+          <Route path="/dashboard/trips" element={<TripsManagement />} />
+          <Route path="/dashboard/bookings" element={<BookingsManagement />} />
+          <Route path="/dashboard/branches" element={<BranchesManagement />} />
+          <Route path="/dashboard/employees" element={<EmployeesManagement />} />
+          <Route path="/dashboard/routes" element={<RoutesManagement />} />
+          <Route path="/dashboard/payments" element={<PaymentsManagement />} />
+          <Route path="/dashboard/reports" element={<ReportsManagement />} />
+          <Route path="/dashboard/settings" element={<SettingsPage />} />
+>>>>>>> Stashed changes
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
