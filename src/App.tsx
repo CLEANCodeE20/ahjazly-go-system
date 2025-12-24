@@ -23,6 +23,7 @@ import EmployeesManagement from "./pages/dashboard/EmployeesManagement";
 import RoutesManagement from "./pages/dashboard/RoutesManagement";
 import PaymentsManagement from "./pages/dashboard/PaymentsManagement";
 import ReportsManagement from "./pages/dashboard/ReportsManagement";
+import PermissionsManagement from "./pages/dashboard/PermissionsManagement";
 import SettingsPage from "./pages/dashboard/SettingsPage";
 import DriverDashboard from "./pages/dashboard/DriverDashboard";
 import NotFound from "./pages/NotFound";
@@ -120,6 +121,11 @@ const App = () => (
           <Route path="/dashboard/settings" element={
             <ProtectedRoute allowedRoles={['partner', 'employee']}>
               <SettingsPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/dashboard/permissions" element={
+            <ProtectedRoute allowedRoles={['partner', 'employee']}>
+              <PermissionsManagement />
             </ProtectedRoute>
           } />
           <Route path="/driver" element={

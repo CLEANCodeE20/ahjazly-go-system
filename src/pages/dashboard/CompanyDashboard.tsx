@@ -18,10 +18,13 @@ import {
   TrendingDown,
   Ticket,
   Loader2,
-  Calendar
+  Calendar,
+  Shield
 } from "lucide-react";
 import { useSupabaseCRUD } from "@/hooks/useSupabaseCRUD";
+import { useSupabaseCRUD } from "@/hooks/useSupabaseCRUD";
 import { usePartner } from "@/hooks/usePartner";
+import { usePermissions } from "@/hooks/usePermissions";
 import {
   ChartContainer,
   ChartTooltip,
@@ -40,6 +43,7 @@ const sidebarLinks = [
   { href: "/dashboard/bookings", label: "الحجوزات", icon: Ticket },
   { href: "/dashboard/payments", label: "المدفوعات", icon: CreditCard },
   { href: "/dashboard/reports", label: "التقارير", icon: BarChart3 },
+  { href: "/dashboard/permissions", label: "الصلاحيات", icon: Shield },
   { href: "/dashboard/settings", label: "الإعدادات", icon: Settings }
 ];
 
@@ -84,6 +88,7 @@ const CompanyDashboard = () => {
   const location = useLocation();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const { partner } = usePartner();
+  const { can, loading: permsLoading } = usePermissions();
 
   const { data: trips, loading: tripsLoading } = useSupabaseCRUD<TripRecord>({
     tableName: 'trips',
@@ -259,19 +264,31 @@ const CompanyDashboard = () => {
         </div>
 
         <nav className="p-3 space-y-1 flex-1 overflow-y-auto custom-scrollbar">
-          {sidebarLinks.map((link) => (
-            <Link
-              key={link.href}
-              to={link.href}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${location.pathname === link.href
-                ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
-                }`}
-            >
-              <link.icon className="w-5 h-5 shrink-0" />
-              <span>{link.label}</span>
-            </Link>
-          ))}
+          {sidebarLinks.map((link) => {
+            // Permission check for sidebar items
+            if (link.href === "/dashboard/permissions" && !can('employees.manage')) return null;
+            if (link.href === "/dashboard/fleet" && !can('fleet.view')) return null;
+            if (link.href === "/dashboard/routes" && !can('routes.view')) return null;
+            if (link.href === "/dashboard/trips" && !can('trips.view')) return null;
+            if (link.href === "/dashboard/employees" && !can('employees.view')) return null;
+            if (link.href === "/dashboard/bookings" && !can('bookings.view')) return null;
+            if (link.href === "/dashboard/reports" && !can('reports.view')) return null;
+            // Add more specific checks if needed
+
+            return (
+              <Link
+                key={link.href}
+                to={link.href}
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${location.pathname === link.href
+                  ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                  : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+                  }`}
+              >
+                <link.icon className="w-5 h-5 shrink-0" />
+                <span>{link.label}</span>
+              </Link>
+            )
+          })}
         </nav>
 
         <div className="p-4 border-t border-sidebar-border shrink-0">
