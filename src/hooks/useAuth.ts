@@ -69,7 +69,7 @@ export const useAuth = () => {
     return () => subscription.unsubscribe();
   }, []);
 
-  const fetchUserRole = async (userId: string, retries = 3, delay = 1000) => {
+  const fetchUserRole = async (userId: string, retries = 10, delay = 150) => {
     try {
       // 1. Fetch role
       const { data: roleData, error: roleError } = await supabase
@@ -88,7 +88,7 @@ export const useAuth = () => {
       if (!roleData && retries > 0) {
         console.log(`Role not found, retrying in ${delay}ms... (${retries} attempts left)`);
         setTimeout(() => {
-          fetchUserRole(userId, retries - 1, delay * 2); // Exponential backoff
+          fetchUserRole(userId, retries - 1, delay * 1.5); // Faster backoff
         }, delay);
         return;
       }
