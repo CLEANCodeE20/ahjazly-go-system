@@ -9,18 +9,24 @@ interface ProtectedRouteProps {
   redirectTo?: string;
 }
 
-const ProtectedRoute = ({ 
-  children, 
+const ProtectedRoute = ({
+  children,
   allowedRoles,
-  redirectTo = '/login' 
+  redirectTo = '/login'
 }: ProtectedRouteProps) => {
-  const { user, userRole, isLoading } = useAuth();
+  const { user, userRole, userStatus, isLoading } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
     if (!isLoading) {
       if (!user) {
         navigate(redirectTo);
+        return;
+      }
+
+      // Check account status
+      if (userStatus && userStatus !== 'active' && userRole?.role !== 'admin') {
+        navigate('/login');
         return;
       }
 
@@ -59,6 +65,10 @@ const ProtectedRoute = ({
     if (!userRole || !allowedRoles.includes(userRole.role)) {
       return null;
     }
+  }
+
+  if (userStatus && userStatus !== 'active' && userRole?.role !== 'admin') {
+    return null;
   }
 
   return <>{children}</>;
