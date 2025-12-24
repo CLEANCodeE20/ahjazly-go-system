@@ -9,7 +9,8 @@ import {
     BarChart3,
     Settings,
     LogOut,
-    FileText
+    FileText,
+    Palette
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -19,6 +20,7 @@ const adminSidebarLinks = [
     { href: "/admin/users", label: "المستخدمين", icon: Users },
     { href: "/admin/commissions", label: "العمولات", icon: DollarSign },
     { href: "/admin/reports", label: "التقارير المالية", icon: BarChart3 },
+    { href: "/admin/sdui", label: "إدارة الواجهة", icon: Palette },
     { href: "/admin/settings", label: "إعدادات المنصة", icon: Settings }
 ];
 

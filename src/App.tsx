@@ -14,6 +14,7 @@ import FinancialReports from "./pages/admin/FinancialReports";
 import PartnersManagement from "./pages/admin/PartnersManagement";
 import UsersManagement from "./pages/admin/UsersManagement";
 import PlatformSettings from "./pages/admin/PlatformSettings";
+import SDUIManagement from "./pages/admin/SDUIManagement";
 import CompanyDashboard from "./pages/dashboard/CompanyDashboard";
 import FleetManagement from "./pages/dashboard/FleetManagement";
 import TripsManagement from "./pages/dashboard/TripsManagement";
@@ -70,6 +71,11 @@ const App = () => (
           <Route path="/admin/settings" element={
             <ProtectedRoute allowedRoles={['admin']}>
               <PlatformSettings />
+            </ProtectedRoute>
+          } />
+          <Route path="/admin/sdui" element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <SDUIManagement />
             </ProtectedRoute>
           } />
           <Route path="/dashboard" element={

@@ -1,17 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { Json } from "@/integrations/supabase/types";
 
-// Component type enum
-type ComponentType = "banner" | "hero_section" | "text_block" | "image_gallery" | "promo_carousel" | "cta_button" | "feature_grid" | "testimonials" | "faq_section" | "search_widget" | "partner_logos" | "popular_routes" | "custom_html";
-type ComponentStatus = "draft" | "published" | "scheduled" | "archived";
-type TargetPage = "home" | "search" | "booking" | "about" | "contact" | "all";
-
-// Types for SDUI
+// Types for SDUI - using simple string types for flexibility
 export interface UIComponent {
   component_id: number;
-  component_type: ComponentType;
+  component_type: string;
   component_name: string;
   title: string | null;
   subtitle: string | null;
@@ -23,8 +17,8 @@ export interface UIComponent {
   button_text: string | null;
   button_url: string | null;
   button_style: string | null;
-  custom_styles: Record<string, unknown>;
-  custom_data: Record<string, unknown>;
+  custom_styles: Record<string, unknown> | null;
+  custom_data: Record<string, unknown> | null;
   status: string;
   start_date: string | null;
   end_date: string | null;
@@ -54,7 +48,7 @@ export interface UIComponentPlacement {
   position: string;
   display_order: number;
   is_visible: boolean;
-  custom_config: Record<string, unknown>;
+  custom_config: Record<string, unknown> | null;
   created_at: string;
   component?: UIComponent;
 }
@@ -80,7 +74,7 @@ export interface UIAdvertisement {
   total_budget: number | null;
   cost_per_click: number | null;
   cost_per_impression: number | null;
-  target_audience: Record<string, unknown>;
+  target_audience: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
 }
@@ -130,7 +124,7 @@ export const useUIComponents = () => {
         .order("priority", { ascending: false });
 
       if (error) throw error;
-      return data as UIComponent[];
+      return data as unknown as UIComponent[];
     },
   });
 };
@@ -146,7 +140,7 @@ export const useUIPageLayouts = () => {
         .order("layout_id");
 
       if (error) throw error;
-      return data as UIPageLayout[];
+      return data as unknown as UIPageLayout[];
     },
   });
 };
@@ -162,7 +156,7 @@ export const useUIAdvertisements = () => {
         .order("priority", { ascending: false });
 
       if (error) throw error;
-      return data as UIAdvertisement[];
+      return data as unknown as UIAdvertisement[];
     },
   });
 };
@@ -178,7 +172,7 @@ export const useUIPromotions = () => {
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      return data as UIPromotion[];
+      return data as unknown as UIPromotion[];
     },
   });
 };
@@ -194,7 +188,7 @@ export const useUISiteSettings = () => {
         .order("setting_group", { ascending: true });
 
       if (error) throw error;
-      return data as UISiteSetting[];
+      return data as unknown as UISiteSetting[];
     },
   });
 };
@@ -207,7 +201,7 @@ export const usePageComponents = (pageKey: string) => {
       const { data: layout, error: layoutError } = await supabase
         .from("ui_page_layouts")
         .select("layout_id")
-        .eq("page_key", pageKey)
+        .eq("page_key", pageKey as "home" | "search" | "booking" | "about" | "contact" | "all")
         .eq("is_active", true)
         .single();
 
@@ -224,7 +218,7 @@ export const usePageComponents = (pageKey: string) => {
         .order("display_order");
 
       if (placementsError) throw placementsError;
-      return placements as UIComponentPlacement[];
+      return placements as unknown as UIComponentPlacement[];
     },
     enabled: !!pageKey,
   });
@@ -244,7 +238,7 @@ export const usePageAds = (pageKey: string) => {
       if (error) throw error;
       
       // Filter ads that target this page or 'all'
-      return (data as UIAdvertisement[]).filter(
+      return (data as unknown as UIAdvertisement[]).filter(
         ad => ad.target_pages?.includes(pageKey) || ad.target_pages?.includes("all")
       );
     },
@@ -252,15 +246,68 @@ export const usePageAds = (pageKey: string) => {
   });
 };
 
+// Input types for mutations (without readonly fields)
+type ComponentInput = {
+  component_type: string;
+  component_name: string;
+  title?: string;
+  subtitle?: string;
+  content?: string;
+  image_url?: string;
+  background_image?: string;
+  link_url?: string;
+  link_text?: string;
+  button_text?: string;
+  button_url?: string;
+  button_style?: string;
+  status?: string;
+  start_date?: string | null;
+  end_date?: string | null;
+  priority?: number;
+};
+
+type AdvertisementInput = {
+  ad_name: string;
+  ad_type: string;
+  ad_position: string;
+  target_pages?: string[];
+  image_url?: string;
+  mobile_image_url?: string;
+  link_url?: string;
+  alt_text?: string;
+  advertiser_name?: string;
+  start_date?: string | null;
+  end_date?: string | null;
+  is_active?: boolean;
+  priority?: number;
+};
+
+type PromotionInput = {
+  promo_code?: string;
+  promo_name: string;
+  promo_type: string;
+  discount_value?: number | null;
+  min_booking_amount?: number | null;
+  max_discount?: number | null;
+  usage_limit?: number | null;
+  per_user_limit?: number;
+  start_date: string;
+  end_date: string;
+  is_active?: boolean;
+  display_on_home?: boolean;
+  terms_conditions?: string;
+  banner_image?: string;
+};
+
 // Mutations
 export const useCreateComponent = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async (component: Partial<UIComponent>) => {
+    mutationFn: async (component: ComponentInput) => {
       const { data, error } = await supabase
         .from("ui_components")
-        .insert(component)
+        .insert(component as any)
         .select()
         .single();
 
@@ -281,10 +328,10 @@ export const useUpdateComponent = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async ({ id, updates }: { id: number; updates: Partial<UIComponent> }) => {
+    mutationFn: async ({ id, updates }: { id: number; updates: Partial<ComponentInput> }) => {
       const { data, error } = await supabase
         .from("ui_components")
-        .update(updates)
+        .update(updates as any)
         .eq("component_id", id)
         .select()
         .single();
@@ -328,10 +375,10 @@ export const useCreateAdvertisement = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async (ad: Partial<UIAdvertisement>) => {
+    mutationFn: async (ad: AdvertisementInput) => {
       const { data, error } = await supabase
         .from("ui_advertisements")
-        .insert(ad)
+        .insert(ad as any)
         .select()
         .single();
 
@@ -352,10 +399,10 @@ export const useUpdateAdvertisement = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async ({ id, updates }: { id: number; updates: Partial<UIAdvertisement> }) => {
+    mutationFn: async ({ id, updates }: { id: number; updates: Partial<AdvertisementInput> }) => {
       const { data, error } = await supabase
         .from("ui_advertisements")
-        .update(updates)
+        .update(updates as any)
         .eq("ad_id", id)
         .select()
         .single();
@@ -399,10 +446,10 @@ export const useCreatePromotion = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async (promo: Partial<UIPromotion>) => {
+    mutationFn: async (promo: PromotionInput) => {
       const { data, error } = await supabase
         .from("ui_promotions")
-        .insert(promo)
+        .insert(promo as any)
         .select()
         .single();
 
@@ -423,10 +470,10 @@ export const useUpdatePromotion = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async ({ id, updates }: { id: number; updates: Partial<UIPromotion> }) => {
+    mutationFn: async ({ id, updates }: { id: number; updates: Partial<PromotionInput> }) => {
       const { data, error } = await supabase
         .from("ui_promotions")
-        .update(updates)
+        .update(updates as any)
         .eq("promo_id", id)
         .select()
         .single();

@@ -66,6 +66,20 @@ const statusLabels: Record<string, string> = {
   archived: "مؤرشف",
 };
 
+interface FormData {
+  component_type: string;
+  component_name: string;
+  title: string;
+  subtitle: string;
+  content: string;
+  image_url: string;
+  link_url: string;
+  button_text: string;
+  button_url: string;
+  status: string;
+  priority: number;
+}
+
 export const ComponentsTab = () => {
   const { data: components, isLoading } = useUIComponents();
   const createComponent = useCreateComponent();
@@ -74,7 +88,7 @@ export const ComponentsTab = () => {
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingComponent, setEditingComponent] = useState<UIComponent | null>(null);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<FormData>({
     component_type: "banner",
     component_name: "",
     title: "",
