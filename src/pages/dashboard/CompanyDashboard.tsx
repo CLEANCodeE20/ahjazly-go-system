@@ -264,8 +264,8 @@ const CompanyDashboard = () => {
               key={link.href}
               to={link.href}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${location.pathname === link.href
-                  ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                  : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+                ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
                 }`}
             >
               <link.icon className="w-5 h-5 shrink-0" />
@@ -290,7 +290,7 @@ const CompanyDashboard = () => {
         <header className="sticky top-0 z-40 bg-card/80 backdrop-blur-lg border-b border-border px-6 py-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-xl font-bold text-foreground">مرحباً، شركة السفر الذهبي 👋</h1>
+              <h1 className="text-xl font-bold text-foreground">مرحباً، {partner?.company_name || 'الشريك'} 👋</h1>
               <p className="text-sm text-muted-foreground">إليك نظرة عامة على نشاطك اليوم</p>
             </div>
             <div className="flex items-center gap-3">
@@ -520,10 +520,10 @@ const CompanyDashboard = () => {
                             <td className="py-4 px-4 text-muted-foreground">{trip.bookings}</td>
                             <td className="py-4 px-4">
                               <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${trip.status === "in_progress"
-                                  ? "bg-secondary/10 text-secondary"
-                                  : trip.status === "completed"
-                                    ? "bg-muted text-muted-foreground"
-                                    : "bg-primary/10 text-primary"
+                                ? "bg-secondary/10 text-secondary"
+                                : trip.status === "completed"
+                                  ? "bg-muted text-muted-foreground"
+                                  : "bg-primary/10 text-primary"
                                 }`}>
                                 {trip.status === "in_progress" ? "نشطة" : trip.status === "completed" ? "مكتملة" : "مجدولة"}
                               </span>
