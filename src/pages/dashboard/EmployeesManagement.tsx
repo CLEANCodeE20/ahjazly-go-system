@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { createClient } from "@supabase/supabase-js"; // Import createClient
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -140,6 +141,7 @@ const EmployeesManagement = () => {
     full_name: "",
     email: "",
     phone_number: "",
+    password: "", // Add password field
     branch_id: "",
     role_in_company: "",
     status: "active"
@@ -191,6 +193,17 @@ const EmployeesManagement = () => {
       return;
     }
 
+    // Password validation for new employees
+    if (!editingEmployee && (!formData.password || formData.password.length < 6)) {
+      toast({ title: "خطأ", description: "يرجى إدخال كلمة مرور (6 أحرف على الأقل)", variant: "destructive" });
+      return;
+    }
+
+    if (!formData.email) {
+      toast({ title: "خطأ", description: "البريد الإلكتروني مطلوب لإنشاء حساب الدخول", variant: "destructive" });
+      return;
+    }
+
     setIsSubmitting(true);
 
     const employeeData = {
@@ -204,26 +217,127 @@ const EmployeesManagement = () => {
     };
 
     try {
+      let userId = editingEmployee?.user_id;
+
       if (editingEmployee) {
+        // Update existing employee record
+        const employeeData = {
+          full_name: formData.full_name,
+          email: formData.email,
+          phone_number: formData.phone_number,
+          branch_id: parseInt(formData.branch_id),
+          role_in_company: formData.role_in_company,
+          status: formData.status,
+          partner_id: partnerId
+        };
+
         const { error } = await supabase
           .from('employees')
           .update(employeeData)
           .eq('employee_id', editingEmployee.employee_id);
         if (error) throw error;
-        toast({ title: "تم التحديث", description: "تم تحديث الموظف بنجاح" });
+        toast({ title: "تم التحديث", description: "تم تحديث بيانات الموظف بنجاح" });
+
       } else {
-        const { error } = await supabase
+        // Create new employee with auth account
+
+        // 1. Create temporary client to sign up user without logging out admin
+        const tempClient = createClient(
+          import.meta.env.VITE_SUPABASE_URL,
+          import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          {
+            auth: {
+              persistSession: false, // IMPORANT: Don't persist this session
+              autoRefreshToken: false,
+              detectSessionInUrl: false
+            }
+          }
+        );
+
+        // 2. Sign up the user
+        const { data: authData, error: authError } = await tempClient.auth.signUp({
+          email: formData.email,
+          password: formData.password,
+          options: {
+            data: {
+              full_name: formData.full_name,
+              role: 'employee',
+              phone_number: formData.phone_number
+            }
+          }
+        });
+
+        if (authError) throw authError;
+        if (!authData.user) throw new Error("فشل إنشاء الحساب");
+
+        userId = authData.user.id as any; // Cast to match expected type if needed (DB expects int? check schema. usually UUID for auth_id, int for user_id PK)
+        // Actually public.users probably uses int ID and UUID auth_id. 
+        // We need to wait for public.users trigger? Or insert manually if we have policy?
+        // Our policy "Partners can insert employee users" allows manual insert.
+
+        // 3. Insert into public.users (manually to ensure linkage)
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .insert({
+            auth_id: authData.user.id,
+            email: formData.email,
+            full_name: formData.full_name,
+            phone_number: formData.phone_number,
+            user_type: 'employee',
+            account_status: 'active' // Auto-activate employees
+          })
+          .select()
+          .single();
+
+        if (userError) {
+          // If trigger already created it (unlikely with just signup unless specific trigger exists), handle duplications? 
+          // Assuming no automatic trigger for creating public.users from auth yet in this flow or we want explicit control.
+          console.error("User insert error", userError);
+          // throw userError; // Don't throw immediately, check if it exists?
+          // For now throw to be safe.
+          throw new Error(`خطأ في إنشاء ملف المستخدم: ${userError.message}`);
+        }
+
+        const publicUserId = userData.user_id;
+
+        // 4. Assign Role in user_roles
+        const { error: roleError } = await supabase
+          .from('user_roles')
+          .insert({
+            user_id: authData.user.id,
+            role: 'employee', // Use generic role as per enum constraint
+            partner_id: partnerId
+          });
+
+        if (roleError) throw new Error(`خطأ في تعيين الصلاحيات: ${roleError.message}`);
+
+        // 5. Create Employee Record
+        const employeeData = {
+          user_id: publicUserId, // Link to public.users id
+          full_name: formData.full_name,
+          email: formData.email,
+          phone_number: formData.phone_number,
+          branch_id: parseInt(formData.branch_id),
+          role_in_company: formData.role_in_company, // Specific job title
+          status: formData.status,
+          partner_id: partnerId
+        };
+
+        const { error: empError } = await supabase
           .from('employees')
           .insert(employeeData);
-        if (error) throw error;
-        toast({ title: "تمت الإضافة", description: "تم إضافة الموظف بنجاح" });
+
+        if (empError) throw empError;
+
+        toast({ title: "تمت الإضافة", description: "تم إنشاء حساب الموظف بنجاح" });
       }
 
-      setFormData({ branch_id: "", role_in_company: "", status: "active" });
+      setFormData({ full_name: "", email: "", phone_number: "", password: "", branch_id: "", role_in_company: "", status: "active" });
       setEditingEmployee(null);
       setIsAddDialogOpen(false);
       fetchData();
     } catch (error: any) {
+      console.error(error);
       toast({ title: "خطأ", description: error.message, variant: "destructive" });
     } finally {
       setIsSubmitting(false);
@@ -329,8 +443,8 @@ const EmployeesManagement = () => {
               key={link.href}
               to={link.href}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${location.pathname === link.href
-                  ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                  : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+                ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
                 }`}
             >
               <link.icon className="w-5 h-5" />
@@ -421,7 +535,7 @@ const EmployeesManagement = () => {
                 <DialogTrigger asChild>
                   <Button onClick={() => {
                     setEditingEmployee(null);
-                    setFormData({ full_name: "", email: "", phone_number: "", branch_id: "", role_in_company: "", status: "active" });
+                    setFormData({ full_name: "", email: "", phone_number: "", password: "", branch_id: "", role_in_company: "", status: "active" });
                   }}>
                     <Plus className="w-4 h-4 ml-2" />
                     إضافة موظف
@@ -450,15 +564,30 @@ const EmployeesManagement = () => {
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label>البريد الإلكتروني</Label>
+                        <Label>البريد الإلكتروني *</Label>
                         <Input
                           type="email"
                           placeholder="example@company.com"
                           value={formData.email}
                           onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                          disabled={!!editingEmployee} // Disable email edit for now as it's linked to auth
                         />
                       </div>
                     </div>
+
+                    {!editingEmployee && (
+                      <div className="space-y-2">
+                        <Label>كلمة المرور *</Label>
+                        <Input
+                          type="password"
+                          placeholder="******"
+                          value={formData.password}
+                          onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                        />
+                        <p className="text-xs text-muted-foreground">ستستخدم للدخول إلى النظام</p>
+                      </div>
+                    )}
+
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label>الوظيفة *</Label>
@@ -641,8 +770,8 @@ const EmployeesManagement = () => {
                             {driver.license_number ? `رخصة: ${driver.license_number}` : "بدون رخصة"}
                           </span>
                           <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${driver.status === 'active'
-                              ? "bg-secondary/10 text-secondary"
-                              : "bg-muted text-muted-foreground"
+                            ? "bg-secondary/10 text-secondary"
+                            : "bg-muted text-muted-foreground"
                             }`}>
                             {driver.status === 'active' ? 'نشط' : 'غير نشط'}
                           </span>
@@ -693,8 +822,8 @@ const EmployeesManagement = () => {
                             <td className="py-3 px-4 text-muted-foreground">{getBranchName(employee.branch_id)}</td>
                             <td className="py-3 px-4">
                               <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${employee.status === 'active'
-                                  ? "bg-secondary/10 text-secondary"
-                                  : "bg-muted text-muted-foreground"
+                                ? "bg-secondary/10 text-secondary"
+                                : "bg-muted text-muted-foreground"
                                 }`}>
                                 {employee.status === 'active' ? 'نشط' : 'غير نشط'}
                               </span>
