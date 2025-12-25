@@ -37,19 +37,13 @@ import {
 } from "@/hooks/useSDUI";
 
 const componentTypes = [
-  { value: "banner", label: "بانر" },
-  { value: "hero_section", label: "قسم رئيسي" },
-  { value: "text_block", label: "كتلة نص" },
-  { value: "image_gallery", label: "معرض صور" },
-  { value: "promo_carousel", label: "سلايدر عروض" },
-  { value: "cta_button", label: "زر دعوة للعمل" },
-  { value: "feature_grid", label: "شبكة مميزات" },
-  { value: "testimonials", label: "آراء العملاء" },
-  { value: "faq_section", label: "الأسئلة الشائعة" },
-  { value: "search_widget", label: "أداة البحث" },
-  { value: "partner_logos", label: "شعارات الشركاء" },
-  { value: "popular_routes", label: "الوجهات الشائعة" },
-  { value: "custom_html", label: "HTML مخصص" },
+  { value: "hero", label: "قسم رئيسي (Hero)" },
+  { value: "features", label: "شبكة المميزات (Features)" },
+  { value: "benefits", label: "المميزات والفوائد (Benefits)" },
+  { value: "cta", label: "دعوة للعمل (CTA)" },
+  { value: "banner", label: "بانر (Banner)" },
+  { value: "ads", label: "إعلان (Ads)" },
+  { value: "promotions", label: "عرض ترويجي (Promotions)" },
 ];
 
 const statusColors: Record<string, string> = {
@@ -73,11 +67,13 @@ interface FormData {
   subtitle: string;
   content: string;
   image_url: string;
+  background_image: string;
   link_url: string;
   button_text: string;
   button_url: string;
   status: string;
   priority: number;
+  custom_data: string;
 }
 
 export const ComponentsTab = () => {
@@ -95,11 +91,13 @@ export const ComponentsTab = () => {
     subtitle: "",
     content: "",
     image_url: "",
+    background_image: "",
     link_url: "",
     button_text: "",
     button_url: "",
     status: "draft",
     priority: 0,
+    custom_data: "{}",
   });
 
   const resetForm = () => {
@@ -110,11 +108,13 @@ export const ComponentsTab = () => {
       subtitle: "",
       content: "",
       image_url: "",
+      background_image: "",
       link_url: "",
       button_text: "",
       button_url: "",
       status: "draft",
       priority: 0,
+      custom_data: "{}",
     });
     setEditingComponent(null);
   };
@@ -128,27 +128,34 @@ export const ComponentsTab = () => {
       subtitle: component.subtitle || "",
       content: component.content || "",
       image_url: component.image_url || "",
+      background_image: component.background_image || "",
       link_url: component.link_url || "",
       button_text: component.button_text || "",
       button_url: component.button_url || "",
       status: component.status,
       priority: component.priority,
+      custom_data: JSON.stringify(component.custom_data || {}, null, 2),
     });
     setIsDialogOpen(true);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
+    const dataToSubmit = {
+      ...formData,
+      custom_data: JSON.parse(formData.custom_data || "{}"),
+    };
+
     if (editingComponent) {
       await updateComponent.mutateAsync({
         id: editingComponent.component_id,
-        updates: formData,
+        updates: dataToSubmit,
       });
     } else {
-      await createComponent.mutateAsync(formData);
+      await createComponent.mutateAsync(dataToSubmit);
     }
-    
+
     setIsDialogOpen(false);
     resetForm();
   };
@@ -278,15 +285,27 @@ export const ComponentsTab = () => {
                 />
               </div>
 
-              <div>
-                <Label>رابط الصورة</Label>
-                <Input
-                  value={formData.image_url}
-                  onChange={(e) =>
-                    setFormData({ ...formData, image_url: e.target.value })
-                  }
-                  placeholder="https://..."
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>رابط الصورة</Label>
+                  <Input
+                    value={formData.image_url}
+                    onChange={(e) =>
+                      setFormData({ ...formData, image_url: e.target.value })
+                    }
+                    placeholder="https://..."
+                  />
+                </div>
+                <div>
+                  <Label>رابط صورة الخلفية</Label>
+                  <Input
+                    value={formData.background_image}
+                    onChange={(e) =>
+                      setFormData({ ...formData, background_image: e.target.value })
+                    }
+                    placeholder="https://..."
+                  />
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -319,6 +338,22 @@ export const ComponentsTab = () => {
                     setFormData({ ...formData, priority: parseInt(e.target.value) || 0 })
                   }
                 />
+              </div>
+
+              <div>
+                <Label>بيانات مخصصة (JSON)</Label>
+                <Textarea
+                  value={formData.custom_data}
+                  onChange={(e) =>
+                    setFormData({ ...formData, custom_data: e.target.value })
+                  }
+                  rows={6}
+                  className="font-mono text-sm"
+                  placeholder='{"key": "value"}'
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  استخدم هذا الحقل لإضافة بيانات إضافية مثل قائمة المميزات أو الإحصائيات.
+                </p>
               </div>
 
               <div className="flex justify-end gap-2">

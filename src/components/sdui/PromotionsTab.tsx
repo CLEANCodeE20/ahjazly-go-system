@@ -121,8 +121,8 @@ export const PromotionsTab = () => {
 
     const submitData = {
       ...formData,
-      start_date: new Date(formData.start_date).toISOString(),
-      end_date: new Date(formData.end_date).toISOString(),
+      start_date: formData.start_date ? new Date(formData.start_date).toISOString() : null,
+      end_date: formData.end_date ? new Date(formData.end_date).toISOString() : null,
       discount_value: formData.discount_value || null,
       min_booking_amount: formData.min_booking_amount || null,
       max_discount: formData.max_discount || null,

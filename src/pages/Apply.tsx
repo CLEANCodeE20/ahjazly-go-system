@@ -130,7 +130,8 @@ const Apply = () => {
           emailRedirectTo: `${window.location.origin}/login`,
           data: {
             full_name: formData.ownerName,
-            phone: formData.ownerPhone
+            phone: formData.ownerPhone,
+            user_type: 'partner'
           }
         }
       });

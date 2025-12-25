@@ -31,7 +31,7 @@ export interface UIComponent {
 
 export interface UIPageLayout {
   layout_id: number;
-  page_key: string;
+  page_key: "home" | "search" | "booking" | "about" | "contact" | "all";
   page_title: string;
   page_description: string | null;
   meta_title: string | null;
@@ -211,7 +211,7 @@ export const usePageComponents = (pageKey: string) => {
         .from("ui_component_placements")
         .select(`
           *,
-          ui_components (*)
+          component:ui_components (*)
         `)
         .eq("layout_id", layout.layout_id)
         .eq("is_visible", true)
@@ -223,6 +223,7 @@ export const usePageComponents = (pageKey: string) => {
     enabled: !!pageKey,
   });
 };
+
 
 // Hook for fetching active ads for a page
 export const usePageAds = (pageKey: string) => {
@@ -236,7 +237,7 @@ export const usePageAds = (pageKey: string) => {
         .order("priority", { ascending: false });
 
       if (error) throw error;
-      
+
       // Filter ads that target this page or 'all'
       return (data as unknown as UIAdvertisement[]).filter(
         ad => ad.target_pages?.includes(pageKey) || ad.target_pages?.includes("all")
@@ -302,7 +303,7 @@ type PromotionInput = {
 // Mutations
 export const useCreateComponent = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: async (component: ComponentInput) => {
       const { data, error } = await supabase
@@ -318,15 +319,15 @@ export const useCreateComponent = () => {
       queryClient.invalidateQueries({ queryKey: ["ui-components"] });
       toast({ title: "تم الإنشاء", description: "تم إنشاء المكون بنجاح" });
     },
-    onError: () => {
-      toast({ title: "خطأ", description: "فشل في إنشاء المكون", variant: "destructive" });
+    onError: (error: any) => {
+      toast({ title: "خطأ", description: error.message || "فشل في إنشاء المكون", variant: "destructive" });
     },
   });
 };
 
 export const useUpdateComponent = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: async ({ id, updates }: { id: number; updates: Partial<ComponentInput> }) => {
       const { data, error } = await supabase
@@ -343,15 +344,15 @@ export const useUpdateComponent = () => {
       queryClient.invalidateQueries({ queryKey: ["ui-components"] });
       toast({ title: "تم التحديث", description: "تم تحديث المكون بنجاح" });
     },
-    onError: () => {
-      toast({ title: "خطأ", description: "فشل في تحديث المكون", variant: "destructive" });
+    onError: (error: any) => {
+      toast({ title: "خطأ", description: error.message || "فشل في تحديث المكون", variant: "destructive" });
     },
   });
 };
 
 export const useDeleteComponent = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: async (id: number) => {
       const { error } = await supabase
@@ -365,15 +366,15 @@ export const useDeleteComponent = () => {
       queryClient.invalidateQueries({ queryKey: ["ui-components"] });
       toast({ title: "تم الحذف", description: "تم حذف المكون بنجاح" });
     },
-    onError: () => {
-      toast({ title: "خطأ", description: "فشل في حذف المكون", variant: "destructive" });
+    onError: (error: any) => {
+      toast({ title: "خطأ", description: error.message || "فشل في حذف المكون", variant: "destructive" });
     },
   });
 };
 
 export const useCreateAdvertisement = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: async (ad: AdvertisementInput) => {
       const { data, error } = await supabase
@@ -389,15 +390,15 @@ export const useCreateAdvertisement = () => {
       queryClient.invalidateQueries({ queryKey: ["ui-advertisements"] });
       toast({ title: "تم الإنشاء", description: "تم إنشاء الإعلان بنجاح" });
     },
-    onError: () => {
-      toast({ title: "خطأ", description: "فشل في إنشاء الإعلان", variant: "destructive" });
+    onError: (error: any) => {
+      toast({ title: "خطأ", description: error.message || "فشل في إنشاء الإعلان", variant: "destructive" });
     },
   });
 };
 
 export const useUpdateAdvertisement = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: async ({ id, updates }: { id: number; updates: Partial<AdvertisementInput> }) => {
       const { data, error } = await supabase
@@ -414,15 +415,15 @@ export const useUpdateAdvertisement = () => {
       queryClient.invalidateQueries({ queryKey: ["ui-advertisements"] });
       toast({ title: "تم التحديث", description: "تم تحديث الإعلان بنجاح" });
     },
-    onError: () => {
-      toast({ title: "خطأ", description: "فشل في تحديث الإعلان", variant: "destructive" });
+    onError: (error: any) => {
+      toast({ title: "خطأ", description: error.message || "فشل في تحديث الإعلان", variant: "destructive" });
     },
   });
 };
 
 export const useDeleteAdvertisement = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: async (id: number) => {
       const { error } = await supabase
@@ -436,15 +437,15 @@ export const useDeleteAdvertisement = () => {
       queryClient.invalidateQueries({ queryKey: ["ui-advertisements"] });
       toast({ title: "تم الحذف", description: "تم حذف الإعلان بنجاح" });
     },
-    onError: () => {
-      toast({ title: "خطأ", description: "فشل في حذف الإعلان", variant: "destructive" });
+    onError: (error: any) => {
+      toast({ title: "خطأ", description: error.message || "فشل في حذف الإعلان", variant: "destructive" });
     },
   });
 };
 
 export const useCreatePromotion = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: async (promo: PromotionInput) => {
       const { data, error } = await supabase
@@ -460,15 +461,15 @@ export const useCreatePromotion = () => {
       queryClient.invalidateQueries({ queryKey: ["ui-promotions"] });
       toast({ title: "تم الإنشاء", description: "تم إنشاء العرض بنجاح" });
     },
-    onError: () => {
-      toast({ title: "خطأ", description: "فشل في إنشاء العرض", variant: "destructive" });
+    onError: (error: any) => {
+      toast({ title: "خطأ", description: error.message || "فشل في إنشاء العرض", variant: "destructive" });
     },
   });
 };
 
 export const useUpdatePromotion = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: async ({ id, updates }: { id: number; updates: Partial<PromotionInput> }) => {
       const { data, error } = await supabase
@@ -485,15 +486,15 @@ export const useUpdatePromotion = () => {
       queryClient.invalidateQueries({ queryKey: ["ui-promotions"] });
       toast({ title: "تم التحديث", description: "تم تحديث العرض بنجاح" });
     },
-    onError: () => {
-      toast({ title: "خطأ", description: "فشل في تحديث العرض", variant: "destructive" });
+    onError: (error: any) => {
+      toast({ title: "خطأ", description: error.message || "فشل في تحديث العرض", variant: "destructive" });
     },
   });
 };
 
 export const useDeletePromotion = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: async (id: number) => {
       const { error } = await supabase
@@ -507,15 +508,15 @@ export const useDeletePromotion = () => {
       queryClient.invalidateQueries({ queryKey: ["ui-promotions"] });
       toast({ title: "تم الحذف", description: "تم حذف العرض بنجاح" });
     },
-    onError: () => {
-      toast({ title: "خطأ", description: "فشل في حذف العرض", variant: "destructive" });
+    onError: (error: any) => {
+      toast({ title: "خطأ", description: error.message || "فشل في حذف العرض", variant: "destructive" });
     },
   });
 };
 
 export const useUpdateSiteSetting = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: async ({ key, value }: { key: string; value: string }) => {
       const { data, error } = await supabase
@@ -532,8 +533,33 @@ export const useUpdateSiteSetting = () => {
       queryClient.invalidateQueries({ queryKey: ["ui-site-settings"] });
       toast({ title: "تم التحديث", description: "تم تحديث الإعداد بنجاح" });
     },
-    onError: () => {
-      toast({ title: "خطأ", description: "فشل في تحديث الإعداد", variant: "destructive" });
+    onError: (error: any) => {
+      toast({ title: "خطأ", description: error.message || "فشل في تحديث الإعداد", variant: "destructive" });
+    },
+  });
+};
+
+export const useUpdatePageLayout = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, updates }: { id: number; updates: Partial<UIPageLayout> }) => {
+      const { data, error } = await supabase
+        .from("ui_page_layouts")
+        .update(updates)
+        .eq("layout_id", id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["ui-page-layouts"] });
+      toast({ title: "تم التحديث", description: "تم تحديث الصفحة بنجاح" });
+    },
+    onError: (error: any) => {
+      toast({ title: "خطأ", description: error.message || "فشل في تحديث الصفحة", variant: "destructive" });
     },
   });
 };

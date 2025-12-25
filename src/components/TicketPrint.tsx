@@ -20,20 +20,28 @@ interface TicketPrintProps {
     time: string;
   };
   companyName?: string;
+  logoUrl?: string;
 }
 
 const TicketPrint = forwardRef<HTMLDivElement, TicketPrintProps>(
-  ({ booking, passenger, trip, companyName = "شركة السفر الذهبي" }, ref) => {
+  ({ booking, passenger, trip, companyName = "احجزلي", logoUrl }, ref) => {
     return (
-      <div ref={ref} className="bg-white p-6 max-w-md mx-auto" dir="rtl">
+      <div ref={ref} className="bg-white p-6 max-w-md mx-auto shadow-lg rounded-2xl border-2 border-gray-100 font-sans" dir="rtl">
         {/* Header */}
-        <div className="text-center border-b-2 border-dashed border-gray-300 pb-4 mb-4">
-          <div className="flex items-center justify-center gap-2 mb-2">
-            <Bus className="w-8 h-8 text-blue-600" />
-            <h1 className="text-2xl font-bold text-gray-800">احجزلي</h1>
+        <div className="flex justify-between items-start mb-6 border-b-2 border-dashed border-gray-200 pb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center text-white overflow-hidden shadow-md">
+              {logoUrl ? (
+                <img src={logoUrl} alt="Logo" className="w-full h-full object-cover" />
+              ) : (
+                <Bus className="w-7 h-7" />
+              )}
+            </div>
+            <div>
+              <h2 className="text-xl font-black text-gray-900 leading-tight">{companyName}</h2>
+              <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wider">Official E-Ticket</p>
+            </div>
           </div>
-          <p className="text-gray-600">{companyName}</p>
-          <p className="text-sm text-gray-500 mt-1">تذكرة سفر إلكترونية</p>
         </div>
 
         {/* Ticket Number */}
@@ -118,9 +126,9 @@ const TicketPrint = forwardRef<HTMLDivElement, TicketPrintProps>(
               <span className="text-gray-500">طريقة الدفع:</span>
               <span className="font-medium text-gray-800">
                 {booking.payment_method === 'cash' ? 'نقداً' :
-                 booking.payment_method === 'card' ? 'بطاقة ائتمان' :
-                 booking.payment_method === 'stc_pay' ? 'STC Pay' :
-                 booking.payment_method === 'bank_transfer' ? 'تحويل بنكي' : 'محفظة'}
+                  booking.payment_method === 'card' ? 'بطاقة ائتمان' :
+                    booking.payment_method === 'stc_pay' ? 'STC Pay' :
+                      booking.payment_method === 'bank_transfer' ? 'تحويل بنكي' : 'محفظة'}
               </span>
             </div>
             <div className="flex justify-between">
@@ -132,14 +140,16 @@ const TicketPrint = forwardRef<HTMLDivElement, TicketPrintProps>(
           </div>
         </div>
 
-        {/* QR Code Placeholder */}
-        <div className="text-center border-t-2 border-dashed border-gray-300 pt-4 mt-4">
-          <div className="w-24 h-24 bg-gray-100 mx-auto mb-2 rounded-lg flex items-center justify-center border-2 border-gray-300">
-            <div className="text-xs text-gray-400 text-center">
-              QR<br/>Code
-            </div>
+        {/* QR Code and Verification */}
+        <div className="text-center border-t-2 border-dashed border-gray-300 pt-6 mt-6">
+          <div className="inline-block p-2 bg-white border-2 border-gray-100 rounded-xl mb-2 shadow-sm">
+            <img
+              src={`https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=BK-${booking.booking_id}`}
+              alt="QR Code"
+              className="w-24 h-24"
+            />
           </div>
-          <p className="text-xs text-gray-500">امسح الكود للتحقق من صحة التذكرة</p>
+          <p className="text-[10px] text-gray-500 font-medium">امسح الكود للتحقق من صحة التذكرة عبر تطبيق احجزلي</p>
         </div>
 
         {/* Footer */}

@@ -19,16 +19,18 @@ const Login = () => {
     email: "",
     password: ""
   });
+  const [hasNotified, setHasNotified] = useState(false);
 
   // Redirect if already logged in
   useEffect(() => {
     console.log("Login useEffect:", { authLoading, user: !!user, role: userRole?.role, status: userStatus });
 
     // Case 1: Everything is ready -> Redirect
-    if (!authLoading && user && userRole) {
-      console.log("Redirecting user...", userRole.role);
+    if (!authLoading && user && userRole && !hasNotified) {
+      console.log("Processing user state...", { role: userRole.role, status: userStatus });
 
       if (userStatus && userStatus !== 'active' && userRole.role !== 'admin') {
+        setHasNotified(true);
         toast({
           title: "الحساب غير نشط",
           description: userStatus === 'pending'
@@ -39,17 +41,31 @@ const Login = () => {
         return;
       }
 
+      setHasNotified(true);
+      toast({
+        title: "تم تسجيل الدخول بنجاح",
+        description: "مرحباً بك في منصة احجزلي",
+      });
+
       if (userRole.role === 'admin') {
         navigate("/admin");
       } else {
         navigate("/dashboard");
       }
     }
-    // Case 2: User logged in but no role (Race condition or Error)
+    // Case 2: User logged in but no role (Waiting for DB/Trigger)
     else if (!authLoading && user && !userRole) {
-      console.log("User logged in but NO ROLE found. Waiting or stuck.");
-      // Optional: Force a refresh after a delay if stuck too long? 
-      // For now, relying on useAuth retry logic.
+      console.log("User logged in but NO ROLE found yet. Database might be syncing...");
+      // We show a loading toast if it takes too long
+      const timer = setTimeout(() => {
+        if (user && !userRole) {
+          toast({
+            title: "جاري استرجاع بيانات الحساب",
+            description: "قد يستغرق تهيئة حسابك بضع ثوانٍ في المرة الأولى.",
+          });
+        }
+      }, 3000);
+      return () => clearTimeout(timer);
     }
   }, [user, userRole, authLoading, navigate, userStatus]);
 
@@ -106,11 +122,8 @@ const Login = () => {
           return;
         }
 
-        toast({
-          title: "تم تسجيل الدخول بنجاح",
-          description: "مرحباً بك في منصة احجزلي",
-        });
-        // Navigation will be handled by useEffect when userRole is fetched
+        // Note: Success toast and navigation are handled by the useEffect 
+        // once the profile and role are fetched from the database.
       }
     } catch (err) {
       toast({

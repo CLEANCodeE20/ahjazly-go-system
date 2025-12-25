@@ -7,6 +7,9 @@ interface PartnerInfo {
   company_name: string;
   contact_person: string | null;
   commission_percentage: number | null;
+  address: string | null;
+  logo_url: string | null;
+  settings: any | null;
   status: string | null;
 }
 
@@ -18,11 +21,11 @@ export const usePartner = () => {
   useEffect(() => {
     const fetchPartner = async () => {
       if (authLoading) return;
-      
+
       if (userRole?.partner_id) {
         const { data, error } = await supabase
           .from('partners')
-          .select('partner_id, company_name, contact_person, commission_percentage, status')
+          .select('partner_id, company_name, contact_person, address, logo_url, settings, commission_percentage, status')
           .eq('partner_id', userRole.partner_id)
           .single();
 

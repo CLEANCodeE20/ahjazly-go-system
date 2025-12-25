@@ -1,17 +1,8 @@
 import { useState, useEffect } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { 
-  Bus, 
-  Home,
-  Route,
-  Users,
+import {
   Building2,
-  CreditCard,
-  BarChart3,
-  Settings,
-  LogOut,
   Plus,
   Search,
   MapPin,
@@ -19,7 +10,6 @@ import {
   MoreVertical,
   Edit,
   Trash2,
-  Ticket,
   Loader2,
   CheckCircle2
 } from "lucide-react";
@@ -50,23 +40,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
 import { usePartner } from "@/hooks/usePartner";
 import { toast } from "@/hooks/use-toast";
-
-// Sidebar navigation
-const sidebarLinks = [
-  { href: "/dashboard", label: "الرئيسية", icon: Home },
-  { href: "/dashboard/fleet", label: "إدارة الأسطول", icon: Bus },
-  { href: "/dashboard/routes", label: "المسارات", icon: MapPin },
-  { href: "/dashboard/trips", label: "الرحلات", icon: Route },
-  { href: "/dashboard/employees", label: "الموظفين", icon: Users },
-  { href: "/dashboard/branches", label: "الفروع", icon: Building2 },
-  { href: "/dashboard/bookings", label: "الحجوزات", icon: Ticket },
-  { href: "/dashboard/payments", label: "المدفوعات", icon: CreditCard },
-  { href: "/dashboard/reports", label: "التقارير", icon: BarChart3 },
-  { href: "/dashboard/settings", label: "الإعدادات", icon: Settings }
-];
+import { DashboardLayout } from "@/components/layout/DashboardLayout";
 
 interface BranchRecord {
   branch_id: number;
@@ -80,10 +56,7 @@ interface BranchRecord {
 }
 
 const BranchesManagement = () => {
-  const location = useLocation();
-  const navigate = useNavigate();
-  const { signOut } = useAuth();
-  const { partnerId, partner } = usePartner();
+  const { partnerId } = usePartner();
 
   const [branches, setBranches] = useState<BranchRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -118,8 +91,8 @@ const BranchesManagement = () => {
     setLoading(false);
   };
 
-  const filteredBranches = branches.filter(branch => 
-    branch.branch_name?.includes(searchTerm) || 
+  const filteredBranches = branches.filter(branch =>
+    branch.branch_name?.includes(searchTerm) ||
     branch.city?.includes(searchTerm)
   );
 
@@ -197,7 +170,7 @@ const BranchesManagement = () => {
       .from('branches')
       .update({ status: newStatus })
       .eq('branch_id', branch.branch_id);
-    
+
     if (error) {
       toast({ title: "خطأ", description: error.message, variant: "destructive" });
     } else {
@@ -206,262 +179,204 @@ const BranchesManagement = () => {
     }
   };
 
-  const handleSignOut = async () => {
-    await signOut();
-    navigate('/login');
-  };
-
   return (
-    <div className="min-h-screen bg-muted/30">
-      {/* Sidebar */}
-      <aside className="fixed top-0 right-0 bottom-0 w-64 bg-sidebar text-sidebar-foreground transition-transform duration-300 z-50 translate-x-0 hidden lg:block">
-        <div className="flex items-center gap-3 p-4 border-b border-sidebar-border">
-          <div className="w-10 h-10 rounded-xl bg-sidebar-primary flex items-center justify-center">
-            <Bus className="w-6 h-6 text-sidebar-primary-foreground" />
-          </div>
-          <div>
-            <span className="text-lg font-bold">احجزلي</span>
-            <p className="text-xs text-sidebar-foreground/60">{partner?.company_name || "شركتي"}</p>
-          </div>
-        </div>
-
-        <nav className="p-3 space-y-1">
-          {sidebarLinks.map((link) => (
-            <Link
-              key={link.href}
-              to={link.href}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${
-                location.pathname === link.href
-                  ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                  : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
-              }`}
-            >
-              <link.icon className="w-5 h-5" />
-              <span>{link.label}</span>
-            </Link>
-          ))}
-        </nav>
-
-        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-sidebar-border">
-          <Button 
-            variant="ghost" 
-            className="w-full justify-start text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
-            onClick={handleSignOut}
-          >
-            <LogOut className="w-5 h-5 ml-2" />
-            تسجيل الخروج
-          </Button>
-        </div>
-      </aside>
-
-      {/* Main Content */}
-      <main className="lg:mr-64 min-h-screen">
-        {/* Top Bar */}
-        <header className="sticky top-0 z-40 bg-card/80 backdrop-blur-lg border-b border-border px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-xl font-bold text-foreground">إدارة الفروع</h1>
-              <p className="text-sm text-muted-foreground">إضافة وإدارة فروع الشركة</p>
-            </div>
-            <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-              <DialogTrigger asChild>
-                <Button onClick={() => {
-                  setEditingBranch(null);
-                  setFormData({ branch_name: "", city: "", address: "", phone: "" });
-                }}>
-                  <Plus className="w-4 h-4 ml-2" />
-                  إضافة فرع
+    <DashboardLayout
+      title="إدارة الفروع"
+      subtitle="إضافة وإدارة فروع الشركة"
+      actions={
+        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+          <DialogTrigger asChild>
+            <Button onClick={() => {
+              setEditingBranch(null);
+              setFormData({ branch_name: "", city: "", address: "", phone: "" });
+            }}>
+              <Plus className="w-4 h-4 ml-2" />
+              إضافة فرع
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>{editingBranch ? "تعديل الفرع" : "إضافة فرع جديد"}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 mt-4">
+              <div className="space-y-2">
+                <Label>اسم الفرع *</Label>
+                <Input
+                  placeholder="مثال: الفرع الرئيسي - الرياض"
+                  value={formData.branch_name}
+                  onChange={(e) => setFormData({ ...formData, branch_name: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>المدينة *</Label>
+                <Input
+                  placeholder="مثال: الرياض"
+                  value={formData.city}
+                  onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>العنوان التفصيلي</Label>
+                <Textarea
+                  placeholder="الشارع، الحي، رقم المبنى..."
+                  value={formData.address}
+                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>رقم الهاتف</Label>
+                <Input
+                  placeholder="05xxxxxxxx"
+                  value={formData.phone}
+                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                />
+              </div>
+              <div className="flex gap-3 pt-4">
+                <Button onClick={handleSubmit} className="flex-1" disabled={isSubmitting}>
+                  {isSubmitting && <Loader2 className="w-4 h-4 ml-2 animate-spin" />}
+                  {editingBranch ? "حفظ التغييرات" : "إضافة الفرع"}
                 </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-md">
-                <DialogHeader>
-                  <DialogTitle>{editingBranch ? "تعديل الفرع" : "إضافة فرع جديد"}</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4 mt-4">
-                  <div className="space-y-2">
-                    <Label>اسم الفرع *</Label>
-                    <Input 
-                      placeholder="مثال: الفرع الرئيسي - الرياض"
-                      value={formData.branch_name}
-                      onChange={(e) => setFormData({...formData, branch_name: e.target.value})}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>المدينة *</Label>
-                    <Input 
-                      placeholder="مثال: الرياض"
-                      value={formData.city}
-                      onChange={(e) => setFormData({...formData, city: e.target.value})}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>العنوان التفصيلي</Label>
-                    <Textarea 
-                      placeholder="الشارع، الحي، رقم المبنى..."
-                      value={formData.address}
-                      onChange={(e) => setFormData({...formData, address: e.target.value})}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>رقم الهاتف</Label>
-                    <Input 
-                      placeholder="05xxxxxxxx"
-                      value={formData.phone}
-                      onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                    />
-                  </div>
-                  <div className="flex gap-3 pt-4">
-                    <Button onClick={handleSubmit} className="flex-1" disabled={isSubmitting}>
-                      {isSubmitting && <Loader2 className="w-4 h-4 ml-2 animate-spin" />}
-                      {editingBranch ? "حفظ التغييرات" : "إضافة الفرع"}
-                    </Button>
-                    <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
-                      إلغاء
-                    </Button>
-                  </div>
-                </div>
-              </DialogContent>
-            </Dialog>
-          </div>
-        </header>
-
-        <div className="p-6">
-          {/* Stats */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
-            <div className="bg-card rounded-xl border border-border p-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <Building2 className="w-5 h-5 text-primary" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-foreground">{branches.length}</p>
-                  <p className="text-sm text-muted-foreground">إجمالي الفروع</p>
-                </div>
+                <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
+                  إلغاء
+                </Button>
               </div>
             </div>
-            <div className="bg-card rounded-xl border border-border p-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-secondary/10 flex items-center justify-center">
-                  <CheckCircle2 className="w-5 h-5 text-secondary" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-foreground">
-                    {branches.filter(b => b.status === 'active').length}
-                  </p>
-                  <p className="text-sm text-muted-foreground">فروع نشطة</p>
-                </div>
+          </DialogContent>
+        </Dialog>
+      }
+    >
+      <div className="space-y-8">
+        {/* Stats */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="bg-card rounded-xl border border-border p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                <Building2 className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-foreground">{branches.length}</p>
+                <p className="text-sm text-muted-foreground">إجمالي الفروع</p>
               </div>
             </div>
           </div>
-
-          {/* Search */}
-          <div className="mb-6">
-            <div className="relative max-w-md">
-              <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-              <Input 
-                placeholder="بحث عن فرع..."
-                className="pr-10"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
+          <div className="bg-card rounded-xl border border-border p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-secondary/10 flex items-center justify-center">
+                <CheckCircle2 className="w-5 h-5 text-secondary" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-foreground">
+                  {branches.filter(b => b.status === 'active').length}
+                </p>
+                <p className="text-sm text-muted-foreground">فروع نشطة</p>
+              </div>
             </div>
           </div>
+        </div>
 
-          {/* Loading State */}
-          {loading && (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="bg-card rounded-xl border border-border p-5">
-                  <div className="flex items-center gap-4">
-                    <Skeleton className="w-12 h-12 rounded-xl" />
-                    <div className="flex-1 space-y-2">
-                      <Skeleton className="h-5 w-32" />
-                      <Skeleton className="h-4 w-24" />
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+        {/* Search */}
+        <div className="relative max-w-md">
+          <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+          <Input
+            placeholder="بحث عن فرع..."
+            className="pr-10"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
 
-          {/* Empty State */}
-          {!loading && branches.length === 0 && (
-            <div className="text-center py-12">
-              <Building2 className="w-16 h-16 mx-auto text-muted-foreground/50 mb-4" />
-              <h3 className="text-lg font-medium text-foreground mb-2">لا توجد فروع</h3>
-              <p className="text-muted-foreground mb-4">ابدأ بإضافة فرع جديد</p>
-              <Button onClick={() => setIsAddDialogOpen(true)}>
-                <Plus className="w-4 h-4 ml-2" />
-                إضافة فرع
-              </Button>
-            </div>
-          )}
-
-          {/* Branches Grid */}
+        {/* Loading State */}
+        {loading && (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {filteredBranches.map((branch) => (
-              <div key={branch.branch_id} className="bg-card rounded-xl border border-border p-5 hover:shadow-elegant transition-shadow">
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-xl gradient-primary flex items-center justify-center">
-                      <Building2 className="w-6 h-6 text-primary-foreground" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-foreground">{branch.branch_name}</h3>
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                        branch.status === "active" 
-                          ? "bg-secondary/10 text-secondary" 
-                          : "bg-muted text-muted-foreground"
-                      }`}>
-                        {branch.status === "active" ? "نشط" : "غير نشط"}
-                      </span>
-                    </div>
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="bg-card rounded-xl border border-border p-5">
+                <div className="flex items-center gap-4">
+                  <Skeleton className="w-12 h-12 rounded-xl" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-5 w-32" />
+                    <Skeleton className="h-4 w-24" />
                   </div>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <button className="p-1 text-muted-foreground hover:text-foreground">
-                        <MoreVertical className="w-5 h-5" />
-                      </button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start">
-                      <DropdownMenuItem onClick={() => handleEdit(branch)}>
-                        <Edit className="w-4 h-4 ml-2" />
-                        تعديل
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleToggleStatus(branch)}>
-                        <CheckCircle2 className="w-4 h-4 ml-2" />
-                        {branch.status === 'active' ? 'تعطيل' : 'تفعيل'}
-                      </DropdownMenuItem>
-                      <DropdownMenuItem 
-                        className="text-destructive focus:text-destructive"
-                        onClick={() => setDeleteId(branch.branch_id)}
-                      >
-                        <Trash2 className="w-4 h-4 ml-2" />
-                        حذف
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-
-                <div className="space-y-3 text-sm">
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <MapPin className="w-4 h-4" />
-                    <span>{branch.city}{branch.address && ` - ${branch.address}`}</span>
-                  </div>
-                  {branch.phone && (
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <Phone className="w-4 h-4" />
-                      <span dir="ltr">{branch.phone}</span>
-                    </div>
-                  )}
                 </div>
               </div>
             ))}
           </div>
-        </div>
-      </main>
+        )}
 
-      {/* Delete Confirmation Dialog */}
+        {/* Empty State */}
+        {!loading && branches.length === 0 && (
+          <div className="text-center py-12">
+            <Building2 className="w-16 h-16 mx-auto text-muted-foreground/50 mb-4" />
+            <h3 className="text-lg font-medium text-foreground mb-2">لا توجد فروع</h3>
+            <p className="text-muted-foreground mb-4">ابدأ بإضافة فرع جديد</p>
+            <Button onClick={() => setIsAddDialogOpen(true)}>
+              <Plus className="w-4 h-4 ml-2" />
+              إضافة فرع
+            </Button>
+          </div>
+        )}
+
+        {/* Branches Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          {filteredBranches.map((branch) => (
+            <div key={branch.branch_id} className="bg-card rounded-xl border border-border p-5 hover:shadow-elegant transition-shadow">
+              <div className="flex items-start justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                    <Building2 className="w-6 h-6 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-foreground">{branch.branch_name}</h3>
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${branch.status === "active"
+                        ? "bg-secondary/10 text-secondary"
+                        : "bg-muted text-muted-foreground"
+                      }`}>
+                      {branch.status === "active" ? "نشط" : "غير نشط"}
+                    </span>
+                  </div>
+                </div>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button className="p-1 text-muted-foreground hover:text-foreground">
+                      <MoreVertical className="w-5 h-5" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start">
+                    <DropdownMenuItem onClick={() => handleEdit(branch)}>
+                      <Edit className="w-4 h-4 ml-2" />
+                      تعديل
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleToggleStatus(branch)}>
+                      <CheckCircle2 className="w-4 h-4 ml-2" />
+                      {branch.status === 'active' ? 'تعطيل' : 'تفعيل'}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      className="text-destructive focus:text-destructive"
+                      onClick={() => setDeleteId(branch.branch_id)}
+                    >
+                      <Trash2 className="w-4 h-4 ml-2" />
+                      حذف
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+
+              <div className="space-y-3 text-sm">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <MapPin className="w-4 h-4" />
+                  <span>{branch.city}{branch.address && ` - ${branch.address}`}</span>
+                </div>
+                {branch.phone && (
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Phone className="w-4 h-4" />
+                    <span dir="ltr">{branch.phone}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
       <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -478,7 +393,7 @@ const BranchesManagement = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </DashboardLayout>
   );
 };
 

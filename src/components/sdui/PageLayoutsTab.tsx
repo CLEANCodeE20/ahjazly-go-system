@@ -12,10 +12,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Loader2, Settings, Eye } from "lucide-react";
-import { useUIPageLayouts, type UIPageLayout } from "@/hooks/useSDUI";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "@/hooks/use-toast";
-import { useQueryClient } from "@tanstack/react-query";
+import { useUIPageLayouts, useUpdatePageLayout, type UIPageLayout } from "@/hooks/useSDUI";
 
 const pageLabels: Record<string, string> = {
   home: "الصفحة الرئيسية",
@@ -28,33 +25,13 @@ const pageLabels: Record<string, string> = {
 
 export const PageLayoutsTab = () => {
   const { data: layouts, isLoading } = useUIPageLayouts();
-  const queryClient = useQueryClient();
-  const [updating, setUpdating] = useState<number | null>(null);
+  const updateLayout = useUpdatePageLayout();
 
   const toggleActive = async (layout: UIPageLayout) => {
-    setUpdating(layout.layout_id);
-    try {
-      const { error } = await supabase
-        .from("ui_page_layouts")
-        .update({ is_active: !layout.is_active })
-        .eq("layout_id", layout.layout_id);
-
-      if (error) throw error;
-
-      queryClient.invalidateQueries({ queryKey: ["ui-page-layouts"] });
-      toast({
-        title: "تم التحديث",
-        description: `تم ${layout.is_active ? "تعطيل" : "تفعيل"} الصفحة`,
-      });
-    } catch (error) {
-      toast({
-        title: "خطأ",
-        description: "فشل في تحديث الصفحة",
-        variant: "destructive",
-      });
-    } finally {
-      setUpdating(null);
-    }
+    await updateLayout.mutateAsync({
+      id: layout.layout_id,
+      updates: { is_active: !layout.is_active },
+    });
   };
 
   if (isLoading) {
@@ -101,9 +78,9 @@ export const PageLayoutsTab = () => {
                         <Switch
                           checked={layout.is_active}
                           onCheckedChange={() => toggleActive(layout)}
-                          disabled={updating === layout.layout_id}
+                          disabled={updateLayout.isPending}
                         />
-                        {updating === layout.layout_id && (
+                        {updateLayout.isPending && (
                           <Loader2 className="w-4 h-4 animate-spin" />
                         )}
                       </div>

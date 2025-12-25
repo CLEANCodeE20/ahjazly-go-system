@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
     Settings,
     Save,
@@ -14,11 +14,15 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "@/hooks/use-toast";
 import AdminSidebar from "@/components/layout/AdminSidebar";
+import { useUISiteSettings, useUpdateSiteSetting } from "@/hooks/useSDUI";
 
 const PlatformSettings = () => {
+    const { data: siteSettings = [], isLoading: fetchingSettings } = useUISiteSettings();
+    const updateSetting = useUpdateSiteSetting();
     const [loading, setLoading] = useState(false);
+
     const [settings, setSettings] = useState({
-        default_commission: 10,
+        default_commission: "10",
         maintenance_mode: false,
         allow_new_registrations: true,
         notify_on_new_application: true,
@@ -26,17 +30,66 @@ const PlatformSettings = () => {
         support_email: "support@ahjazly.com"
     });
 
-    const handleSave = () => {
+    useEffect(() => {
+        if (siteSettings.length > 0) {
+            const newSettings = { ...settings };
+            siteSettings.forEach(s => {
+                switch (s.setting_key) {
+                    case 'maintenance_mode':
+                        newSettings.maintenance_mode = s.setting_value === 'true';
+                        break;
+                    case 'site_name':
+                        newSettings.platform_name = s.setting_value || "";
+                        break;
+                    case 'contact_email':
+                        newSettings.support_email = s.setting_value || "";
+                        break;
+                    case 'allow_new_registrations':
+                        newSettings.allow_new_registrations = s.setting_value === 'true';
+                        break;
+                    case 'notify_on_new_application':
+                        newSettings.notify_on_new_application = s.setting_value === 'true';
+                        break;
+                    case 'default_commission':
+                        newSettings.default_commission = s.setting_value || "10";
+                        break;
+                }
+            });
+            setSettings(newSettings);
+        }
+    }, [siteSettings]);
+
+    const handleSave = async () => {
         setLoading(true);
-        // Simulate API call
-        setTimeout(() => {
-            setLoading(false);
+        try {
+            // Update settings one by one
+            await Promise.all([
+                updateSetting.mutateAsync({ key: 'maintenance_mode', value: settings.maintenance_mode.toString() }),
+                updateSetting.mutateAsync({ key: 'site_name', value: settings.platform_name }),
+                updateSetting.mutateAsync({ key: 'contact_email', value: settings.support_email }),
+                updateSetting.mutateAsync({ key: 'allow_new_registrations', value: settings.allow_new_registrations.toString() }),
+                updateSetting.mutateAsync({ key: 'notify_on_new_application', value: settings.notify_on_new_application.toString() }),
+                updateSetting.mutateAsync({ key: 'default_commission', value: settings.default_commission }),
+            ]);
+
             toast({
                 title: "تم الحفظ",
                 description: "تم تحديث إعدادات المنصة بنجاح",
             });
-        }, 1000);
+        } catch (error) {
+            console.error("Error saving settings:", error);
+        } finally {
+            setLoading(false);
+        }
     };
+
+    if (fetchingSettings) {
+        return (
+            <div className="min-h-screen bg-muted/30 flex items-center justify-center">
+                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-muted/30">
@@ -87,7 +140,7 @@ const PlatformSettings = () => {
                                     id="default_commission"
                                     type="number"
                                     value={settings.default_commission}
-                                    onChange={(e) => setSettings({ ...settings, default_commission: parseInt(e.target.value) })}
+                                    onChange={(e) => setSettings({ ...settings, default_commission: e.target.value })}
                                 />
                             </div>
                         </div>

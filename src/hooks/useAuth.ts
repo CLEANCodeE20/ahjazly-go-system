@@ -69,51 +69,58 @@ export const useAuth = () => {
     return () => subscription.unsubscribe();
   }, []);
 
-  const fetchUserRole = async (userId: string, retries = 10, delay = 150) => {
+  const fetchUserRole = async (userId: string, retries = 5, delay = 200) => {
     try {
-      // 1. Fetch role
+      console.log(`[Auth] Fetching role for ${userId}...`);
+
+      // 1. Fetch role from user_roles
       const { data: roleData, error: roleError } = await supabase
         .from('user_roles')
         .select('role, partner_id')
         .eq('user_id', userId)
-        .limit(1)
         .maybeSingle();
 
-      if (roleError && roleError.code !== 'PGRST116') {
-        console.error('Error fetching user role:', roleError);
+      if (roleError) console.error('[Auth] user_roles fetch error:', roleError);
+
+      // 2. Fetch profile from users (for status and fallback role)
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('user_type, account_status, partner_id')
+        .eq('auth_id', userId)
+        .maybeSingle();
+
+      if (userError) console.error('[Auth] users fetch error:', userError);
+
+      // 3. Fallback logic: If user_roles is missing but users table has user_type
+      let finalRole: AppRole | null = (roleData?.role as AppRole) || null;
+      let finalPartnerId = roleData?.partner_id || userData?.partner_id || null;
+
+      if (!finalRole && userData?.user_type) {
+        console.warn(`[Auth] Role missing in user_roles, falling back to user_type: ${userData.user_type}`);
+        // Map user_type to app_role
+        if (userData.user_type === 'admin') finalRole = 'admin';
+        else if (userData.user_type === 'partner') finalRole = 'partner';
+        else finalRole = 'employee';
       }
 
-      // RETRY LOGIC: If no role found and we have retries left, wait and try again
-      // Using exponential backoff: 1s, 2s, 4s
-      if (!roleData && retries > 0) {
-        console.log(`Role not found, retrying in ${delay}ms... (${retries} attempts left)`);
-        setTimeout(() => {
-          fetchUserRole(userId, retries - 1, delay * 1.5); // Faster backoff
-        }, delay);
+      // 4. Retry logic if nothing found yet
+      if (!finalRole && retries > 0) {
+        console.log(`[Auth] No role found, retrying in ${delay}ms... (${retries} left)`);
+        setTimeout(() => fetchUserRole(userId, retries - 1, delay * 1.5), delay);
         return;
       }
 
-      // 2. Fetch account status
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('account_status')
-        .eq('auth_id', userId)
-        .limit(1)
-        .maybeSingle();
-
-      if (userError && userError.code !== 'PGRST116') {
-        console.error('Error fetching user status:', userError);
-      }
-
+      // 5. Finalize state
       setAuthState(prev => ({
         ...prev,
-        userRole: roleData ? { role: roleData.role as AppRole, partner_id: roleData.partner_id } : null,
+        userRole: finalRole ? { role: finalRole, partner_id: finalPartnerId } : null,
         userStatus: userData?.account_status || 'active',
         isLoading: false,
       }));
+
+      console.log('[Auth] Role resolution complete:', { role: finalRole, status: userData?.account_status });
     } catch (err) {
-      console.error('Error in fetchUserRole:', err);
-      // If error (network etc), stop loading so UI shows something
+      console.error('[Auth] Critical error in fetchUserRole:', err);
       setAuthState(prev => ({ ...prev, isLoading: false }));
     }
   };

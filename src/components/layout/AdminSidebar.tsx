@@ -10,9 +10,11 @@ import {
     Settings,
     LogOut,
     FileText,
-    Palette
+    Palette,
+    Bell
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { NotificationBell } from "../notifications/NotificationBell";
 
 const adminSidebarLinks = [
     { href: "/admin", label: "طلبات الانضمام", icon: FileText },
@@ -20,6 +22,7 @@ const adminSidebarLinks = [
     { href: "/admin/users", label: "المستخدمين", icon: Users },
     { href: "/admin/commissions", label: "العمولات", icon: DollarSign },
     { href: "/admin/reports", label: "التقارير المالية", icon: BarChart3 },
+    { href: "/admin/notifications", label: "الإشعارات", icon: Bell },
     { href: "/admin/sdui", label: "إدارة الواجهة", icon: Palette },
     { href: "/admin/settings", label: "إعدادات المنصة", icon: Settings }
 ];
@@ -37,6 +40,9 @@ const AdminSidebar = () => {
                 <div>
                     <span className="text-lg font-bold">احجزلي</span>
                     <p className="text-xs text-sidebar-foreground/60">لوحة الإدارة</p>
+                </div>
+                <div className="mr-auto">
+                    <NotificationBell />
                 </div>
             </div>
 
