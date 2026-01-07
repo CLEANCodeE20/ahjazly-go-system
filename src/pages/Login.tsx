@@ -10,10 +10,9 @@ import { useAuth } from "@/hooks/useAuth";
 
 const Login = () => {
   const navigate = useNavigate();
-  const { user, userRole, userStatus, isLoading: authLoading, signIn, signUp } = useAuth();
+  const { user, userRole, userStatus, isLoading: authLoading, signIn } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  // Removed isSignUp state as we are converting to Login-only page
   const [loginType, setLoginType] = useState<"company" | "admin">("company");
   const [formData, setFormData] = useState({
     email: "",
@@ -23,12 +22,7 @@ const Login = () => {
 
   // Redirect if already logged in
   useEffect(() => {
-    console.log("Login useEffect:", { authLoading, user: !!user, role: userRole?.role, status: userStatus });
-
-    // Case 1: Everything is ready -> Redirect
     if (!authLoading && user && userRole && !hasNotified) {
-      console.log("Processing user state...", { role: userRole.role, status: userStatus });
-
       if (userStatus && userStatus !== 'active' && userRole.role !== 'admin') {
         setHasNotified(true);
         toast({
@@ -52,11 +46,7 @@ const Login = () => {
       } else {
         navigate("/dashboard");
       }
-    }
-    // Case 2: User logged in but no role (Waiting for DB/Trigger)
-    else if (!authLoading && user && !userRole) {
-      console.log("User logged in but NO ROLE found yet. Database might be syncing...");
-      // We show a loading toast if it takes too long
+    } else if (!authLoading && user && !userRole) {
       const timer = setTimeout(() => {
         if (user && !userRole) {
           toast({
@@ -67,7 +57,7 @@ const Login = () => {
       }, 3000);
       return () => clearTimeout(timer);
     }
-  }, [user, userRole, authLoading, navigate, userStatus]);
+  }, [user, userRole, authLoading, navigate, userStatus, hasNotified]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -78,52 +68,23 @@ const Login = () => {
     setIsLoading(true);
 
     try {
-      if (isSignUp) {
-        const { error } = await signUp(formData.email, formData.password);
+      const { error } = await signIn(formData.email, formData.password);
 
-        if (error) {
-          if (error.message.includes("already registered")) {
-            toast({
-              title: "البريد مسجل مسبقاً",
-              description: "هذا البريد الإلكتروني مسجل بالفعل، يرجى تسجيل الدخول",
-              variant: "destructive",
-            });
-          } else {
-            toast({
-              title: "خطأ في التسجيل",
-              description: error.message,
-              variant: "destructive",
-            });
-          }
-          return;
+      if (error) {
+        if (error.message.includes("Invalid login credentials")) {
+          toast({
+            title: "بيانات غير صحيحة",
+            description: "البريد الإلكتروني أو كلمة المرور غير صحيحة",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "خطأ في تسجيل الدخول",
+            description: error.message,
+            variant: "destructive",
+          });
         }
-
-        toast({
-          title: "تم إنشاء الحساب بنجاح",
-          description: "مرحباً بك في منصة احجزلي. يرجى انتظار تعيين الصلاحيات من المسؤول.",
-        });
-      } else {
-        const { error } = await signIn(formData.email, formData.password);
-
-        if (error) {
-          if (error.message.includes("Invalid login credentials")) {
-            toast({
-              title: "بيانات غير صحيحة",
-              description: "البريد الإلكتروني أو كلمة المرور غير صحيحة",
-              variant: "destructive",
-            });
-          } else {
-            toast({
-              title: "خطأ في تسجيل الدخول",
-              description: error.message,
-              variant: "destructive",
-            });
-          }
-          return;
-        }
-
-        // Note: Success toast and navigation are handled by the useEffect 
-        // once the profile and role are fetched from the database.
+        return;
       }
     } catch (err) {
       toast({
@@ -137,7 +98,7 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-muted/30">
+    <div className="min-h-screen flex flex-col bg-muted/30" dir="rtl">
       <Header />
 
       <main className="flex-1 flex items-center justify-center pt-20 pb-12 px-4">
@@ -148,38 +109,36 @@ const Login = () => {
               <Bus className="w-8 h-8 text-primary-foreground" />
             </div>
             <h1 className="text-2xl font-bold text-foreground mb-2">
-              {isSignUp ? "إنشاء حساب جديد" : "تسجيل الدخول"}
+              تسجيل الدخول
             </h1>
             <p className="text-muted-foreground">
-              {isSignUp ? "أنشئ حساباً للانضمام إلى منصة احجزلي" : "ادخل إلى حسابك للمتابعة"}
+              ادخل إلى حسابك للمتابعة
             </p>
           </div>
 
-          {/* Login Type Tabs - Only show for login */}
-          {!isSignUp && (
-            <div className="flex bg-muted rounded-xl p-1 mb-6">
-              <button
-                type="button"
-                className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-medium transition-all ${loginType === "company"
-                  ? "bg-card text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
-                  }`}
-                onClick={() => setLoginType("company")}
-              >
-                دخول الشركات
-              </button>
-              <button
-                type="button"
-                className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-medium transition-all ${loginType === "admin"
-                  ? "bg-card text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
-                  }`}
-                onClick={() => setLoginType("admin")}
-              >
-                دخول الإدارة
-              </button>
-            </div>
-          )}
+          {/* Login Type Tabs */}
+          <div className="flex bg-muted rounded-xl p-1 mb-6">
+            <button
+              type="button"
+              className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-medium transition-all ${loginType === "company"
+                ? "bg-card text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+                }`}
+              onClick={() => setLoginType("company")}
+            >
+              دخول الشركات
+            </button>
+            <button
+              type="button"
+              className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-medium transition-all ${loginType === "admin"
+                ? "bg-card text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+                }`}
+              onClick={() => setLoginType("admin")}
+            >
+              دخول الإدارة
+            </button>
+          </div>
 
           {/* Login Form */}
           <form onSubmit={handleSubmit} className="bg-card rounded-2xl border border-border p-6 shadow-elegant">
@@ -204,11 +163,9 @@ const Login = () => {
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="password">كلمة المرور</Label>
-                  {!isSignUp && (
-                    <Link to="/forgot-password" className="text-sm text-primary hover:underline">
-                      نسيت كلمة المرور؟
-                    </Link>
-                  )}
+                  <Link to="/forgot-password" className="text-sm text-primary hover:underline">
+                    نسيت كلمة المرور؟
+                  </Link>
                 </div>
                 <div className="relative">
                   <Lock className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
