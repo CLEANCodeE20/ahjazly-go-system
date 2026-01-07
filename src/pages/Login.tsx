@@ -232,15 +232,6 @@ const Login = () => {
             </p>
           </div>
 
-          <div className="mt-8 text-center opacity-10 hover:opacity-100 transition-opacity">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => { throw new Error("Sentry Test Error from Login Page 🚨"); }}
-            >
-              Test Sentry Error 🧪
-            </Button>
-          </div>
         </div>
       </main>
     </div>
