@@ -1,7 +1,5 @@
-services:
-  - type: web
-    name: ahjazly-admin-panel
-    env: static
+staticSites:
+  - name: ahjazly-admin-panel
     buildCommand: npm install && npm run build
     publishDir: dist
     routes:
@@ -10,20 +8,11 @@ services:
         destination: /index.html
     envVars:
       - key: VITE_SUPABASE_URL
-        sync: false
       - key: VITE_SUPABASE_PUBLISHABLE_KEY
-        sync: false
       - key: VITE_FIREBASE_API_KEY
-        sync: false
       - key: VITE_FIREBASE_AUTH_DOMAIN
-        sync: false
       - key: VITE_FIREBASE_PROJECT_ID
-        sync: false
       - key: VITE_FIREBASE_STORAGE_BUCKET
-        sync: false
       - key: VITE_FIREBASE_MESSAGING_SENDER_ID
-        sync: false
       - key: VITE_FIREBASE_APP_ID
-        sync: false
       - key: VITE_FIREBASE_VAPID_KEY
-        sync: false
