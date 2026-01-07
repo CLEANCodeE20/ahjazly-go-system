@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { WhatsAppButton } from "@/components/ui/WhatsAppButton";
 
 const Apply = () => {
   const navigate = useNavigate();
@@ -217,6 +218,7 @@ const Apply = () => {
     return (
       <div className="min-h-screen flex flex-col">
         <Header />
+        <WhatsAppButton />
         <main className="flex-1 flex items-center justify-center pt-24 pb-16">
           <div className="max-w-md w-full px-4 text-center animate-fade-in">
             <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-6">

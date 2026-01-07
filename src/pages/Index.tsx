@@ -4,6 +4,7 @@ import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import { SDUIPage } from "@/components/sdui/SDUIPage";
 import SDUIBanner from "@/components/sdui/SDUIBanner";
+import { WhatsAppButton } from "@/components/ui/WhatsAppButton";
 import {
   Bus,
   Users,
@@ -61,6 +62,7 @@ const Index = () => {
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
+      <WhatsAppButton />
 
       <main className="flex-1">
         {/* SDUI Dynamic Content */}

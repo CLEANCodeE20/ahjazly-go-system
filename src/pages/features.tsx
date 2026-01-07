@@ -61,10 +61,13 @@ const benefits = [
     "تكامل مع بوابات الدفع"
 ];
 
+import { WhatsAppButton } from "@/components/ui/WhatsAppButton";
+
 const Features = () => {
     return (
         <div className="min-h-screen flex flex-col">
             <Header />
+            <WhatsAppButton />
 
 
 
