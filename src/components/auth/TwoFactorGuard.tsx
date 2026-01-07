@@ -18,7 +18,21 @@ export const TwoFactorGuard = ({ children }: TwoFactorGuardProps) => {
     useEffect(() => {
         const check2FARequirement = async () => {
             try {
-                if (location.pathname.includes('2fa-')) {
+                // List of public routes that shouldn't trigger 2FA
+                const publicRoutes = [
+                    '/',
+                    '/login',
+                    '/about',
+                    '/contact',
+                    '/apply',
+                    '/features',
+                    '/maintenance',
+                    '/forgot-password',
+                    '/reset-password',
+                    '/verify-email'
+                ];
+
+                if (location.pathname.includes('2fa-') || publicRoutes.includes(location.pathname)) {
                     setChecking(false);
                     return;
                 }
