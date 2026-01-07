@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { useFCM } from './useFCM';
 
 export type AppRole = 'admin' | 'partner' | 'employee';
 
@@ -26,6 +27,9 @@ export const useAuth = () => {
     isLoading: true,
   });
 
+  // FCM hook for push notifications
+  const { requestPermission, saveFCMToken, isSupported } = useFCM();
+
   useEffect(() => {
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -35,6 +39,10 @@ export const useAuth = () => {
           session,
           user: session?.user ?? null,
         }));
+
+        if (!session) {
+          sessionStorage.removeItem('2fa_verified');
+        }
 
         // Fetch user role after auth change
         if (session?.user) {
@@ -70,6 +78,12 @@ export const useAuth = () => {
   }, []);
 
   const fetchUserRole = async (userId: string, retries = 5, delay = 200) => {
+    // Optimization: Skip redundant calls if we already have the role for this user
+    if (authState.userRole && authState.user?.id === userId && !authState.isLoading) {
+      console.log('[Auth] Already resolved role for this user, skipping.');
+      return;
+    }
+
     try {
       console.log(`[Auth] Fetching role for ${userId}...`);
 
@@ -85,7 +99,7 @@ export const useAuth = () => {
       // 2. Fetch profile from users (for status and fallback role)
       const { data: userData, error: userError } = await supabase
         .from('users')
-        .select('user_type, account_status, partner_id')
+        .select('user_id, user_type, account_status, partner_id')
         .eq('auth_id', userId)
         .maybeSingle();
 
@@ -110,7 +124,6 @@ export const useAuth = () => {
         return;
       }
 
-      // 5. Finalize state
       setAuthState(prev => ({
         ...prev,
         userRole: finalRole ? { role: finalRole, partner_id: finalPartnerId } : null,
@@ -118,7 +131,14 @@ export const useAuth = () => {
         isLoading: false,
       }));
 
-      console.log('[Auth] Role resolution complete:', { role: finalRole, status: userData?.account_status });
+      // Request FCM token and save it (only if supported)
+      if (isSupported && userData?.user_id) {
+        requestPermission().then((granted) => {
+          if (granted) {
+            saveFCMToken(userData.user_id);
+          }
+        });
+      }
     } catch (err) {
       console.error('[Auth] Critical error in fetchUserRole:', err);
       setAuthState(prev => ({ ...prev, isLoading: false }));
@@ -145,6 +165,7 @@ export const useAuth = () => {
   };
 
   const signOut = async () => {
+    sessionStorage.removeItem('2fa_verified');
     const { error } = await supabase.auth.signOut();
     return { error };
   };

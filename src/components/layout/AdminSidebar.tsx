@@ -11,18 +11,26 @@ import {
     LogOut,
     FileText,
     Palette,
-    Bell
+    Bell,
+    MapPin,
+    LifeBuoy,
+    HelpCircle,
+    Image as ImageIcon
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { NotificationBell } from "../notifications/NotificationBell";
-
-const adminSidebarLinks = [
+import { NotificationBell } from "../notifications/NotificationBell"; const adminSidebarLinks = [
     { href: "/admin", label: "طلبات الانضمام", icon: FileText },
+    { href: "/admin/cities", label: "المدن", icon: MapPin },
     { href: "/admin/partners", label: "الشركاء", icon: Building2 },
     { href: "/admin/users", label: "المستخدمين", icon: Users },
     { href: "/admin/commissions", label: "العمولات", icon: DollarSign },
     { href: "/admin/reports", label: "التقارير المالية", icon: BarChart3 },
     { href: "/admin/notifications", label: "الإشعارات", icon: Bell },
+    { href: "/admin/support", label: "مركز الدعم", icon: LifeBuoy },
+    { href: "/admin/faqs", label: "الأسئلة الشائعة", icon: HelpCircle },
+    { href: "/admin/banners", label: "إدارة السلايدر", icon: ImageIcon },
+    { href: "/admin/audit-logs", label: "سجل العمليات", icon: FileText },
+    { href: "/admin/policies", label: "إدارة السياسات", icon: FileText },
     { href: "/admin/sdui", label: "إدارة الواجهة", icon: Palette },
     { href: "/admin/settings", label: "إعدادات المنصة", icon: Settings }
 ];

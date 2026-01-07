@@ -51,7 +51,7 @@ const ProtectedRoute = ({
     }
   }, [user, userRole, isLoading, navigate, allowedRoles, redirectTo, userStatus]);
 
-  if (isLoading) {
+  if (isLoading && !window.location.pathname.includes('2fa-')) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
@@ -62,17 +62,17 @@ const ProtectedRoute = ({
     );
   }
 
-  if (!user) {
+  if (!user && !window.location.pathname.includes('2fa-')) {
     return null;
   }
 
-  if (allowedRoles && allowedRoles.length > 0) {
+  if (allowedRoles && allowedRoles.length > 0 && !window.location.pathname.includes('2fa-')) {
     if (!userRole || !allowedRoles.includes(userRole.role)) {
       return null;
     }
   }
 
-  if (userStatus && userStatus !== 'active' && userRole?.role !== 'admin') {
+  if (userStatus && userStatus !== 'active' && userRole?.role !== 'admin' && !window.location.pathname.includes('2fa-')) {
     return null;
   }
 

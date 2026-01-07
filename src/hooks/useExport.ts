@@ -2,6 +2,38 @@ import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { toast } from "sonner";
+import ArabicReshaper from 'arabic-reshaper';
+import { NotoSansArabicBase64 } from "@/assets/fonts/noto-sans-arabic";
+
+// Helper to handle Arabic text shaping and RTL reversal for jsPDF
+const prepareArabicText = (text: string): string => {
+    if (!text) return "";
+
+    // 1. Reshape Arabic characters
+    // @ts-ignore
+    const reshaped = ArabicReshaper.convertArabic(text);
+
+    // 2. Simple but Effective Reversal
+    // For jsPDF to show RTL correctly in an LTR context, 
+    // we must reverse the character sequence of the ENTIRE reshaped string.
+    // However, we want to keep English words/Numbers LTR.
+
+    // We'll split by LTR segments (Latin + Numbers + Punctuation)
+    const ltrRegex = /([a-zA-Z0-9@._\-\+:]+)/g;
+    const pieces = reshaped.split(ltrRegex);
+
+    // Reverse the sequence of pieces AND reverse characters of NOT-LTR pieces
+    return pieces
+        .map(piece => {
+            if (piece.match(ltrRegex)) {
+                return piece; // Keep English/Numbers as is
+            }
+            // Reverse Arabic characters
+            return piece.split('').reverse().join('');
+        })
+        .reverse()
+        .join('');
+};
 
 interface ExportOptions {
     filename?: string;
@@ -17,16 +49,9 @@ export const useExport = () => {
                 return;
             }
 
-            // Create a new workbook
             const wb = XLSX.utils.book_new();
-
-            // Convert data to worksheet
             const ws = XLSX.utils.json_to_sheet(data);
-
-            // Append worksheet to workbook
             XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
-
-            // Write file
             XLSX.writeFile(wb, `${fileName}_${new Date().toISOString().split('T')[0]}.xlsx`);
 
             toast.success("تم تصدير ملف Excel بنجاح");
@@ -36,7 +61,7 @@ export const useExport = () => {
         }
     };
 
-    const exportToPDF = (
+    const exportToPDF = async (
         data: any[],
         columns: { header: string; key: string }[],
         options: ExportOptions = {}
@@ -55,36 +80,54 @@ export const useExport = () => {
 
             const doc = new jsPDF({
                 orientation: landscape ? "landscape" : "portrait",
+                unit: "mm",
                 format: "a4",
+                putOnlyUsedFonts: true
             });
 
-            // Add Font Support for Arabic (using standard font for now as custom requires loading ttf)
-            // Note: Standard PDF fonts don't support Arabic well. 
-            // Ideally, we should load a font like Cairo-Regular.ttf here.
-            // For this implementation, we will try to use a basic font and warn about Arabic.
-            // In a real-world scenario, you MUST load an Arabic font base64 string.
+            // Load Custom Font (Noto Sans Arabic) for Robust Arabic Support
+            try {
+                if (NotoSansArabicBase64) {
+                    doc.addFileToVFS("NotoSansArabic.ttf", NotoSansArabicBase64);
+                    doc.addFont("NotoSansArabic.ttf", "NotoSans", "normal");
+                    doc.setFont("NotoSans");
+                } else {
+                    throw new Error("Local font data is missing");
+                }
+            } catch (fontError) {
+                console.warn("Could not load local Arabic font:", fontError);
+                toast.warning("تعذر تحميل الخط العربي المحلي، قد تظهر الحروف بشكل غير صحيح");
+            }
 
-            doc.setFont("helvetica", "bold");
-            doc.setFontSize(18);
-            doc.text(title, doc.internal.pageSize.width / 2, 20, { align: "center" });
+            doc.setFont("NotoSans", "normal");
+            doc.setFontSize(22);
 
-            doc.setFontSize(10);
+            // Render title (reshaped and reversed)
+            const preparedTitle = prepareArabicText(title);
+            doc.text(preparedTitle, doc.internal.pageSize.width / 2, 20, { align: "center" });
+
+            doc.setFontSize(12);
+            const exportDateText = `تاريخ التصدير: ${new Date().toLocaleDateString('ar-SA')}`;
             doc.text(
-                `تاريخ التصدير: ${new Date().toLocaleDateString('ar-SA')}`,
+                prepareArabicText(exportDateText),
                 doc.internal.pageSize.width / 2,
                 30,
                 { align: "center" }
             );
 
-            // Prepare table data
+            // IMPORTANT for RTL: Reverse the columns array
+            const rtlColumns = [...columns].reverse();
+
+            // Prepare table data with reshaped and reversed text
             const tableBody = data.map((row) =>
-                columns.map((col) => {
+                rtlColumns.map((col) => {
                     const val = row[col.key];
-                    return val !== null && val !== undefined ? String(val) : "-";
+                    const text = val !== null && val !== undefined ? String(val) : "-";
+                    return prepareArabicText(text);
                 })
             );
 
-            const tableHeaders = [columns.map((c) => c.header)];
+            const tableHeaders = [rtlColumns.map((c) => prepareArabicText(c.header))];
 
             // Generate Table
             autoTable(doc, {
@@ -92,9 +135,25 @@ export const useExport = () => {
                 body: tableBody,
                 startY: 40,
                 theme: "striped",
-                headStyles: { fillColor: [66, 66, 66], textColor: 255, halign: 'center' },
-                bodyStyles: { halign: 'center' },
-                styles: { font: "helvetica" }, // This might still print garbage for Arabic if not patched
+                styles: {
+                    font: "NotoSans",
+                    fontSize: 10,
+                    halign: 'right',
+                    cellPadding: 3
+                },
+                headStyles: {
+                    fillColor: [66, 66, 66],
+                    textColor: 255,
+                    fontStyle: 'normal'
+                },
+                columnStyles: {
+                    // Force RTL alignment for all columns
+                    0: { halign: 'right' },
+                    1: { halign: 'right' },
+                    2: { halign: 'right' },
+                    3: { halign: 'right' },
+                    4: { halign: 'right' },
+                },
             });
 
             doc.save(`${filename}_${new Date().toISOString().split('T')[0]}.pdf`);
@@ -107,3 +166,4 @@ export const useExport = () => {
 
     return { exportToExcel, exportToPDF };
 };
+

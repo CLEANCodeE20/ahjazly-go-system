@@ -27,6 +27,11 @@ export const MaintenanceGuard = ({ children }: MaintenanceGuardProps) => {
         }
     }, [isMaintenanceMode, isAdmin, isPublicPage, location.pathname, loadingSettings, loadingAuth, navigate]);
 
+    // CRITICAL: Allow 2FA pages to render immediately to prevent loading hangs
+    if (location.pathname.includes('2fa-')) {
+        return <>{children}</>;
+    }
+
     if (loadingSettings || loadingAuth) {
         return (
             <div className="min-h-screen flex items-center justify-center">

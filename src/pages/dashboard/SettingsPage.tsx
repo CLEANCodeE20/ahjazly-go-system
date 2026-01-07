@@ -17,7 +17,9 @@ import {
   Lock,
   Eye,
   EyeOff,
-  Loader2
+  Loader2,
+  Database,
+  Download
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -30,6 +32,7 @@ import {
 import { usePartner } from "@/hooks/usePartner";
 import { supabase } from "@/integrations/supabase/client";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
+import { BackupService } from "@/lib/services/BackupService";
 
 const SettingsPage = () => {
   const { toast } = useToast();
@@ -254,7 +257,8 @@ const SettingsPage = () => {
     { id: "company", label: "بيانات الشركة", icon: Building2 },
     { id: "notifications", label: "الإشعارات", icon: Bell },
     { id: "security", label: "الأمان", icon: Shield },
-    { id: "appearance", label: "المظهر", icon: Palette }
+    { id: "appearance", label: "المظهر", icon: Palette },
+    { id: "data", label: "إدارة البيانات", icon: Database }
   ];
 
   return (
@@ -573,6 +577,56 @@ const SettingsPage = () => {
                 {isSaving ? <Loader2 className="w-4 h-4 ml-2 animate-spin" /> : <Save className="w-4 h-4 ml-2" />}
                 حفظ التغييرات
               </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Data Management Settings */}
+        {activeTab === "data" && (
+          <div className="bg-card rounded-xl border border-border p-6">
+            <h2 className="text-lg font-semibold text-foreground mb-6">إدارة البيانات والنسخ الاحتياطي</h2>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="p-4 border rounded-lg bg-muted/20 space-y-4">
+                <div>
+                  <h3 className="font-medium flex items-center gap-2">
+                    <Download className="w-4 h-4 text-primary" />
+                    تصدير بياناتي
+                  </h3>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    يمكنك تنزيل نسخة من جميع بياناتك (الرحلات، السائقين، الأسطول، الحجوزات) بصيغة Excel.
+                  </p>
+                </div>
+                <Button
+                  className="w-full"
+                  onClick={() => partnerId && BackupService.exportPartnerData(partnerId)}
+                  disabled={!partnerId}
+                >
+                  تصدير البيانات الآن
+                </Button>
+              </div>
+
+              <div className="p-4 border rounded-lg bg-muted/20 space-y-4 opacity-70">
+                <div>
+                  <h3 className="font-medium flex items-center gap-2">
+                    <Shield className="w-4 h-4 text-primary" />
+                    الأرشفة الآلية
+                  </h3>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    خدمة إرسال نسخة من التقارير الأسبوعية لبريدك الإلكتروني تلقائياً.
+                  </p>
+                </div>
+                <Button variant="outline" className="w-full" disabled>
+                  قريباً
+                </Button>
+              </div>
+            </div>
+
+            <div className="mt-8 p-4 bg-primary/5 rounded-lg border border-primary/10">
+              <p className="text-sm text-foreground font-medium">ملاحظة حول أمن البيانات</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                جميع بياناتك مخزنة بشكل آمن ومشفر. ننصح بتصدير بياناتك بشكل دوري والاحتفاظ بها في مكان آمن.
+              </p>
             </div>
           </div>
         )}

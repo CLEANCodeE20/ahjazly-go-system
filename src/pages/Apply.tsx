@@ -45,9 +45,17 @@ const Apply = () => {
     companyAddress: "",
     companyCity: "",
     fleetSize: "",
+    website: "",
+    taxNumber: "",
+    // Financial Info
+    bankName: "",
+    iban: "",
+    accountNumber: "",
+    swiftCode: "",
     // Documents
     commercialRegister: null as File | null,
     taxCertificate: null as File | null,
+    ownerIdFile: null as File | null,
     // Additional
     description: ""
   });
@@ -59,7 +67,6 @@ const Apply = () => {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, field: string) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      // Validate file size (max 5MB)
       if (file.size > 5 * 1024 * 1024) {
         toast({
           title: "خطأ",
@@ -99,23 +106,13 @@ const Apply = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validate password match
     if (formData.password !== formData.confirmPassword) {
-      toast({
-        title: "خطأ",
-        description: "كلمات المرور غير متطابقة",
-        variant: "destructive"
-      });
+      toast({ title: "خطأ", description: "كلمات المرور غير متطابقة", variant: "destructive" });
       return;
     }
 
-    // Validate password length
     if (formData.password.length < 6) {
-      toast({
-        title: "خطأ",
-        description: "كلمة المرور يجب أن تكون 6 أحرف على الأقل",
-        variant: "destructive"
-      });
+      toast({ title: "خطأ", description: "كلمة المرور يجب أن تكون 6 أحرف على الأقل", variant: "destructive" });
       return;
     }
 
@@ -137,40 +134,25 @@ const Apply = () => {
       });
 
       if (authError) {
-        if (authError.message.includes("already registered")) {
-          toast({
-            title: "البريد مسجل مسبقاً",
-            description: "هذا البريد الإلكتروني مسجل بالفعل، يرجى تسجيل الدخول",
-            variant: "destructive",
-          });
-        } else {
-          toast({
-            title: "خطأ في إنشاء الحساب",
-            description: authError.message,
-            variant: "destructive",
-          });
-        }
+        toast({
+          title: "خطأ في إنشاء الحساب",
+          description: authError.message,
+          variant: "destructive",
+        });
         return;
       }
 
       const userId = authData.user?.id;
 
-      // 2. Upload documents if provided
+      // 2. Upload documents
       let commercialRegisterUrl = null;
       let taxCertificateUrl = null;
 
       if (formData.commercialRegister) {
-        commercialRegisterUrl = await uploadFile(
-          formData.commercialRegister,
-          `applications/${userId || 'anonymous'}/commercial`
-        );
+        commercialRegisterUrl = await uploadFile(formData.commercialRegister, `applications/${userId || 'anonymous'}/commercial`);
       }
-
       if (formData.taxCertificate) {
-        taxCertificateUrl = await uploadFile(
-          formData.taxCertificate,
-          `applications/${userId || 'anonymous'}/tax`
-        );
+        taxCertificateUrl = await uploadFile(formData.taxCertificate, `applications/${userId || 'anonymous'}/tax`);
       }
 
       // 3. Create application record
@@ -187,6 +169,12 @@ const Apply = () => {
           company_address: formData.companyAddress || null,
           company_city: formData.companyCity,
           fleet_size: formData.fleetSize ? parseInt(formData.fleetSize) : null,
+          website: formData.website || null,
+          tax_number: formData.taxNumber || null,
+          bank_name: formData.bankName || null,
+          iban: formData.iban || null,
+          account_number: formData.accountNumber || null,
+          swift_code: formData.swiftCode || null,
           commercial_register_url: commercialRegisterUrl,
           tax_certificate_url: taxCertificateUrl,
           description: formData.description || null,
@@ -196,27 +184,19 @@ const Apply = () => {
 
       if (applicationError) throw applicationError;
 
-      // 4. Create user record in public.users table (tracking status)
+      // 4. Create user record
       if (userId) {
-        const { error: userTableError } = await supabase
-          .from('users')
-          .insert({
-            auth_id: userId,
-            full_name: formData.ownerName,
-            email: formData.ownerEmail,
-            phone_number: formData.ownerPhone,
-            user_type: 'partner',
-            account_status: 'pending'
-          });
-
-        if (userTableError) {
-          console.error('Error creating user record:', userTableError);
-        }
+        await supabase.from('users').insert({
+          auth_id: userId,
+          full_name: formData.ownerName,
+          email: formData.ownerEmail,
+          phone_number: formData.ownerPhone,
+          user_type: 'partner',
+          account_status: 'pending'
+        });
       }
 
-      // Sign out the user since they need to wait for approval
       await supabase.auth.signOut();
-
       setSubmitted(true);
 
     } catch (error: any) {

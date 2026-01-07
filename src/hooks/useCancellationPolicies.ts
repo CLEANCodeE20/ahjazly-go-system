@@ -71,7 +71,7 @@ export const useCreateCancellationPolicy = () => {
         mutationFn: async (policy: Partial<CancelPolicy>) => {
             const { data, error } = await supabase
                 .from("cancel_policies")
-                .insert(policy)
+                .insert(policy as any)
                 .select()
                 .single();
 
@@ -152,8 +152,19 @@ export const useUpsertCancellationRule = () => {
             }
         },
         onSuccess: (data) => {
-            queryClient.invalidateQueries({ queryKey: ["cancellation-policy-rules", data.cancel_policy_id] });
+            if (data?.cancel_policy_id) {
+                queryClient.invalidateQueries({ queryKey: ["cancellation-policy-rules", data.cancel_policy_id] });
+            }
+            toast({ title: "تم النجاح", description: "تم حفظ القاعدة بنجاح" });
         },
+        onError: (error: any) => {
+            console.error("Mutation error:", error);
+            toast({
+                title: "خطأ في الحفظ",
+                description: error.message || "تأكد من إدخال جميع الحقول بشكل صحيح",
+                variant: "destructive"
+            });
+        }
     });
 };
 
@@ -172,6 +183,10 @@ export const useDeleteCancellationRule = () => {
         },
         onSuccess: (data) => {
             queryClient.invalidateQueries({ queryKey: ["cancellation-policy-rules", data.policyId] });
+            toast({ title: "تم الحذف", description: "تم حذف القاعدة بنجاح" });
         },
+        onError: () => {
+            toast({ title: "خطأ", description: "فشل في حذف القاعدة", variant: "destructive" });
+        }
     });
 };

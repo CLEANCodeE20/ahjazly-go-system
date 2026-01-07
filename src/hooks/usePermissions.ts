@@ -35,14 +35,25 @@ export const usePermissions = () => {
                     roleName = 'manager';
                 } else if (userRole.role === 'employee') {
                     // For employees, we need their specific job title from the employees table
-                    const { data: empData, error: empError } = await supabase
-                        .from('employees')
-                        .select('role_in_company')
-                        .eq('user_id', user.id as any)
-                        .single();
+                    // Fix: employees uses integer user_id, not UUID. We might need to look it up or join.
+                    // Assuming we don't have integer ID in userRole, we fetch from public.users first.
 
-                    if (!empError && empData) {
-                        roleName = empData.role_in_company;
+                    const { data: userData } = await supabase
+                        .from('users')
+                        .select('user_id')
+                        .eq('auth_id', user.id)
+                        .maybeSingle();
+
+                    if (userData?.user_id) {
+                        const { data: empData, error: empError } = await supabase
+                            .from('employees')
+                            .select('role_in_company')
+                            .eq('user_id', userData.user_id)
+                            .maybeSingle();
+
+                        if (!empError && empData) {
+                            roleName = empData.role_in_company;
+                        }
                     }
                 }
 
@@ -57,11 +68,18 @@ export const usePermissions = () => {
                 // If a partner has overridden a role, we might want to ONLY show partner permissions, or merge.
                 // For now, let's assume we fetch all matches.
 
-                const { data, error } = await (supabase
+                const query = supabase
                     .from('role_permissions' as any)
                     .select('permission_code')
-                    .eq('role', roleName)
-                    .or(`partner_id.eq.${partnerId},partner_id.is.null`)) as any;
+                    .eq('role', roleName);
+
+                if (partnerId) {
+                    query.or(`partner_id.eq.${partnerId},partner_id.is.null`);
+                } else {
+                    query.is('partner_id', null);
+                }
+
+                const { data, error } = await query as any;
 
                 if (error) {
                     console.error('Error fetching permissions:', error);

@@ -10,7 +10,10 @@ import {
     History,
     Download,
     FileSpreadsheet,
-    FileText
+    FileText,
+    CheckCircle2,
+    Trash2,
+    Edit
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -41,6 +44,13 @@ import { toast } from "@/hooks/use-toast";
 import AdminSidebar from "@/components/layout/AdminSidebar";
 import { PaginationControls } from "@/components/ui/pagination-controls";
 import { useExport } from "@/hooks/useExport";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 
 interface UserRecord {
     user_id: number;
@@ -48,6 +58,7 @@ interface UserRecord {
     full_name: string | null;
     email: string | null;
     created_at: string;
+    account_status: 'active' | 'suspended' | 'inactive' | 'pending' | null;
     role: "admin" | "partner" | "employee" | "driver" | "user";
 }
 
@@ -85,7 +96,7 @@ const UsersManagement = () => {
         try {
             let query = supabase
                 .from('users')
-                .select('user_id, auth_id, full_name, email, created_at, user_roles(role)', { count: 'exact' });
+                .select('user_id, auth_id, full_name, email, created_at, account_status, user_roles(role)', { count: 'exact' });
 
             // Server-side Filtering
             if (searchQuery) {
@@ -103,10 +114,18 @@ const UsersManagement = () => {
             if (error) throw error;
 
             // Map joined data
-            const mappedUsers = data.map((u: any) => ({
-                ...u,
-                role: u.user_roles?.[0]?.role || 'user'
-            }));
+            const mappedUsers = data.map((u: any) => {
+                let role = 'user';
+                if (Array.isArray(u.user_roles)) {
+                    role = u.user_roles[0]?.role || 'user';
+                } else if (u.user_roles && typeof u.user_roles === 'object') {
+                    role = u.user_roles.role || 'user';
+                }
+                return {
+                    ...u,
+                    role
+                };
+            });
 
             setUsers(mappedUsers as UserRecord[]);
             setTotalUsers(count || 0);
@@ -225,6 +244,120 @@ const UsersManagement = () => {
         }
     }
 
+    // Create User State
+    const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+    const [newUser, setNewUser] = useState({
+        email: "",
+        password: "",
+        fullName: "",
+        role: "user"
+    });
+    const [editingUserId, setEditingUserId] = useState<string | null>(null);
+    const [isCreating, setIsCreating] = useState(false);
+
+    const handleCreateUser = async () => {
+        if (!newUser.email || (!newUser.password && !editingUserId) || !newUser.fullName) {
+            toast({
+                title: "خطأ",
+                description: "يرجى ملء جميع الحقول المطلوبة",
+                variant: "destructive"
+            });
+            return;
+        }
+
+        setIsCreating(true);
+        try {
+            const payload = {
+                ...newUser,
+                userId: editingUserId // Include ID if editing
+            };
+
+            const { data, error } = await supabase.functions.invoke('admin-users', {
+                body: payload,
+                method: editingUserId ? 'PUT' : 'POST'
+            });
+
+            if (error) throw error;
+            if (data?.error) throw new Error(data.error);
+
+            toast({
+                title: "تم بنجاح",
+                description: editingUserId ? "تم تحديث البيانات بنجاح" : "تم إنشاء المستخدم بنجاح",
+            });
+            setIsCreateDialogOpen(false);
+            setNewUser({ email: "", password: "", fullName: "", role: "user" });
+            setEditingUserId(null);
+            fetchUsers();
+        } catch (error: any) {
+            console.error('Error saving user:', error);
+            toast({
+                title: "خطأ",
+                description: error.message || "فشل في حفظ البيانات",
+                variant: "destructive"
+            });
+        } finally {
+            setIsCreating(false);
+        }
+    };
+
+    const toggleUserStatus = async (user: UserRecord, currentStatus: string | null) => {
+        const newStatus = currentStatus === 'suspended' ? 'active' : 'suspended';
+        const action = currentStatus === 'suspended' ? 'تفعيل' : 'إيقاف';
+
+        if (!confirm(`هل أنت متأكد من ${action} هذا المستخدم؟`)) return;
+
+        try {
+            // 1. Primary: Direct Database Update (requires RLS policy for admins)
+            const { error: dbError } = await supabase
+                .from('users')
+                .update({ account_status: newStatus })
+                .eq('auth_id', user.auth_id);
+
+            if (dbError) {
+                console.error('DB Status Update Error:', dbError);
+                throw new Error(`فشل تحديث قاعدة البيانات: ${dbError.message}`);
+            }
+
+            // 2. Secondary: Edge Function for Global Auth Ban (Attempt)
+            try {
+                const { data, error: edgeInvokeError } = await supabase.functions.invoke('admin-users', {
+                    body: { userId: user.auth_id, account_status: newStatus },
+                    method: 'POST'
+                });
+
+                if (edgeInvokeError || (data && data.success === false)) {
+                    console.warn('Authentication Ban (Edge Function) failed/unreachable:', edgeInvokeError || data?.error);
+                    // Silently succeed for the UI since DB is updated
+                    toast({
+                        title: "تم التحسين",
+                        description: `تم ${action} المستخدم في النظام بنجاح. (ملاحظة: التغيير لم يشمل نظام الهوية الأساسي بعد)`,
+                    });
+                } else {
+                    toast({
+                        title: "نجاح كامل",
+                        description: `تم ${action} المستخدم بنجاح في قاعدة البيانات ونظام الهوية.`,
+                    });
+                }
+            } catch (err) {
+                console.warn('Edge Function unreachable:', err);
+                toast({
+                    title: "تم التحديث",
+                    description: `تم ${action} المستخدم في النظام بنجاح.`,
+                });
+            }
+
+            fetchUsers();
+        } catch (error: any) {
+            console.error('Error updating status:', error);
+            const errorMessage = error?.message || (error?.error) || "فشل في تحديث حالة المستخدم";
+            toast({
+                title: "خطأ",
+                description: errorMessage,
+                variant: "destructive"
+            });
+        }
+    };
+
     return (
         <div className="min-h-screen bg-muted/30">
             <AdminSidebar />
@@ -234,6 +367,10 @@ const UsersManagement = () => {
                         <h1 className="text-2xl font-bold text-foreground">إدارة المستخدمين</h1>
                         <p className="text-muted-foreground">التحكم في حسابات المستخدمين وصلاحياتهم</p>
                     </div>
+                    <Button onClick={() => setIsCreateDialogOpen(true)}>
+                        <UserCog className="w-4 h-4 ml-2" />
+                        مستخدم جديد
+                    </Button>
                 </header>
 
                 <div className="flex flex-col gap-4">
@@ -284,6 +421,7 @@ const UsersManagement = () => {
                                             <TableHead className="text-right">المستخدم</TableHead>
                                             <TableHead className="text-right">البريد الإلكتروني</TableHead>
                                             <TableHead className="text-right">الصلاحية</TableHead>
+                                            <TableHead className="text-right">الحالة</TableHead>
                                             <TableHead className="text-right">تاريخ التسجيل</TableHead>
                                             <TableHead className="text-right">الإجراءات</TableHead>
                                         </TableRow>
@@ -291,12 +429,12 @@ const UsersManagement = () => {
                                     <TableBody>
                                         {users.length === 0 ? (
                                             <TableRow>
-                                                <TableCell colSpan={5} className="text-center py-12 text-muted-foreground">
+                                                <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
                                                     لا يوجد مستخدمين مطابقين للبحث
                                                 </TableCell>
                                             </TableRow>
                                         ) : (
-                                            users.map((user) => (
+                                            users.map((user: any) => (
                                                 <TableRow key={user.user_id}>
                                                     <TableCell>
                                                         <div className="flex items-center gap-3">
@@ -308,6 +446,13 @@ const UsersManagement = () => {
                                                     </TableCell>
                                                     <TableCell>{user.email}</TableCell>
                                                     <TableCell>{getRoleBadge(user.role)}</TableCell>
+                                                    <TableCell>
+                                                        {user.account_status === 'suspended' ? (
+                                                            <span className="text-xs bg-red-100 text-red-600 px-2 py-1 rounded-full">موقوف</span>
+                                                        ) : (
+                                                            <span className="text-xs bg-green-100 text-green-600 px-2 py-1 rounded-full">نشط</span>
+                                                        )}
+                                                    </TableCell>
                                                     <TableCell className="text-sm text-muted-foreground text-left" dir="ltr">
                                                         {new Date(user.created_at).toLocaleDateString('ar-SA')}
                                                     </TableCell>
@@ -343,11 +488,56 @@ const UsersManagement = () => {
                                                                 })}>
                                                                     <UserCog className="w-4 h-4 ml-2" /> تعيين كموظف
                                                                 </DropdownMenuItem>
+                                                                <DropdownMenuItem onClick={() => {
+                                                                    setNewUser({
+                                                                        email: user.email || "",
+                                                                        password: "", // Keep empty to not change
+                                                                        fullName: user.full_name || "",
+                                                                        role: user.role || "user"
+                                                                    });
+                                                                    // We need to store editing user ID.
+                                                                    // Let's stick it in a ref or state. 
+                                                                    // Since I declared newUser state, I can add an 'id' field to it or a separate state.
+                                                                    // Quickest way: add id to newUser type (it's inferred currently).
+                                                                    // Or use a separate state `editingUserId`.
+                                                                    // Let's use `editingUserId`.
+                                                                    setEditingUserId(user.auth_id);
+                                                                    setIsCreateDialogOpen(true);
+                                                                }}>
+                                                                    <Edit className="w-4 h-4 ml-2" /> تعديل البيانات
+                                                                </DropdownMenuItem>
                                                                 <DropdownMenuItem onClick={() => user.auth_id && fetchRoleHistory(user.auth_id)}>
                                                                     <History className="w-4 h-4 ml-2" /> عرض السجل
                                                                 </DropdownMenuItem>
-                                                                <DropdownMenuItem className="text-destructive">
-                                                                    <Ban className="w-4 h-4 ml-2" /> حظر المستخدم
+                                                                <DropdownMenuItem
+                                                                    className={user.account_status === 'suspended' ? "text-green-600" : "text-orange-600"}
+                                                                    onClick={() => toggleUserStatus(user, user.account_status)}
+                                                                >
+                                                                    {user.account_status === 'suspended' ? (
+                                                                        <><CheckCircle2 className="w-4 h-4 ml-2" /> تفعيل الحساب</>
+                                                                    ) : (
+                                                                        <><Ban className="w-4 h-4 ml-2" /> إيقاف الحساب</>
+                                                                    )}
+                                                                </DropdownMenuItem>
+                                                                <DropdownMenuItem
+                                                                    className="text-destructive"
+                                                                    onClick={() => {
+                                                                        if (confirm('هل أنت متأكد من حذف هذا المستخدم نهائياً؟ لا يمكن التراجع عن هذا الإجراء.')) {
+                                                                            supabase.functions.invoke('admin-users', {
+                                                                                body: { userId: user.auth_id },
+                                                                                method: 'DELETE'
+                                                                            }).then(({ error }) => {
+                                                                                if (error) {
+                                                                                    toast({ title: 'خطأ', description: 'فشل الحذف', variant: 'destructive' });
+                                                                                } else {
+                                                                                    toast({ title: 'تم الحذف', description: 'تم حذف المستخدم بنجاح' });
+                                                                                    fetchUsers();
+                                                                                }
+                                                                            });
+                                                                        }
+                                                                    }}
+                                                                >
+                                                                    <Trash2 className="w-4 h-4 ml-2" /> حذف نهائي
                                                                 </DropdownMenuItem>
                                                             </DropdownMenuContent>
                                                         </DropdownMenu>
@@ -372,6 +562,76 @@ const UsersManagement = () => {
                         )}
                     </div>
                 </div>
+
+                {/* Create/Edit User Dialog */}
+                <Dialog open={isCreateDialogOpen} onOpenChange={(open) => {
+                    setIsCreateDialogOpen(open);
+                    if (!open) {
+                        setNewUser({ email: "", password: "", fullName: "", role: "user" });
+                        setEditingUserId(null);
+                    }
+                }}>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>{editingUserId ? "تعديل بيانات المستخدم" : "إضافة مستخدم جديد"}</DialogTitle>
+                            <DialogDescription>
+                                {editingUserId ? "تعديل بيانات الحساب والصلاحيات" : "قم بإدخال بيانات المستخدم الجديد لإنشاء حساب"}
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-4 py-4">
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium">الاسم الكامل</label>
+                                <Input
+                                    value={newUser.fullName}
+                                    onChange={(e) => setNewUser({ ...newUser, fullName: e.target.value })}
+                                    placeholder="الاسم الكامل"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium">البريد الإلكتروني</label>
+                                <Input
+                                    type="email"
+                                    value={newUser.email}
+                                    onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+                                    placeholder="example@domain.com"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium">كلمة المرور</label>
+                                <Input
+                                    type="password"
+                                    value={newUser.password}
+                                    onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
+                                    placeholder="********"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium">الصلاحية</label>
+                                <Select
+                                    value={newUser.role}
+                                    onValueChange={(val) => setNewUser({ ...newUser, role: val })}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="اختر الصلاحية" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="user">مستخدم (عميل)</SelectItem>
+                                        <SelectItem value="admin">مدير نظام</SelectItem>
+                                        <SelectItem value="partner">شريك</SelectItem>
+                                        <SelectItem value="employee">موظف</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
+                        <DialogFooter>
+                            <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>إلغاء</Button>
+                            <Button onClick={handleCreateUser} disabled={isCreating}>
+                                {isCreating && <Loader2 className="w-4 h-4 ml-2 animate-spin" />}
+                                إنشاء الحساب
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
 
                 {/* Confirmation Dialog */}
                 <Dialog open={confirmDialog.open} onOpenChange={(open) => !open && setConfirmDialog({ open: false, userId: null, userName: "", newRole: "user" })}>

@@ -10,13 +10,15 @@ interface UseSupabaseCRUDOptions {
   primaryKey?: string;
   initialFetch?: boolean;
   orderBy?: { column: string; ascending?: boolean };
+  select?: string;
 }
 
 export function useSupabaseCRUD<T>({
   tableName,
   primaryKey = 'id',
   initialFetch = true,
-  orderBy
+  orderBy,
+  select = '*'
 }: UseSupabaseCRUDOptions) {
   const [data, setData] = useState<T[]>([]);
   const [loading, setLoading] = useState(false);
@@ -25,20 +27,20 @@ export function useSupabaseCRUD<T>({
   const fetchData = useCallback(async () => {
     setLoading(true);
     setError(null);
-    
+
     try {
-      let query = supabase.from(tableName).select('*');
-      
+      let query = supabase.from(tableName).select(select);
+
       if (orderBy) {
         query = query.order(orderBy.column, { ascending: orderBy.ascending ?? true });
       }
-      
+
       const { data: result, error: fetchError } = await query;
-      
+
       if (fetchError) {
         throw fetchError;
       }
-      
+
       setData((result as unknown as T[]) || []);
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'حدث خطأ أثناء جلب البيانات';
@@ -47,7 +49,7 @@ export function useSupabaseCRUD<T>({
     } finally {
       setLoading(false);
     }
-  }, [tableName, orderBy]);
+  }, [tableName, orderBy, select]);
 
   const create = useCallback(async (record: Partial<T>) => {
     setLoading(true);
@@ -57,11 +59,11 @@ export function useSupabaseCRUD<T>({
         .insert(record as never)
         .select()
         .single();
-      
+
       if (insertError) {
         throw insertError;
       }
-      
+
       setData(prev => [...prev, result as unknown as T]);
       toast({
         title: "تمت الإضافة",
@@ -91,12 +93,12 @@ export function useSupabaseCRUD<T>({
         .eq(primaryKey as never, id as never)
         .select()
         .single();
-      
+
       if (updateError) {
         throw updateError;
       }
-      
-      setData(prev => prev.map(item => 
+
+      setData(prev => prev.map(item =>
         (item as Record<string, unknown>)[primaryKey] === id ? (result as unknown as T) : item
       ));
       toast({
@@ -125,11 +127,11 @@ export function useSupabaseCRUD<T>({
         .from(tableName)
         .delete()
         .eq(primaryKey as never, id as never);
-      
+
       if (deleteError) {
         throw deleteError;
       }
-      
+
       setData(prev => prev.filter(item => (item as Record<string, unknown>)[primaryKey] !== id));
       toast({
         title: "تم الحذف",

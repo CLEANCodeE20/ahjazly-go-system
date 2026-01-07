@@ -21,7 +21,8 @@ import {
   FileSpreadsheet,
   FileText,
   Users,
-  Printer
+  Printer,
+  Ban
 } from "lucide-react";
 import { useExport } from "@/hooks/useExport";
 import {
@@ -65,6 +66,7 @@ import { useCancellationPolicies } from "@/hooks/useCancellationPolicies";
 import TripManifest from "@/components/TripManifest";
 import { useReactToPrint } from "react-to-print";
 import { useRef } from "react";
+import TripSeatManager from "@/components/dashboard/TripSeatManager";
 
 interface TripRecord {
   trip_id: number;
@@ -77,6 +79,7 @@ interface TripRecord {
   base_price: number;
   status: string | null;
   cancel_policy_id?: number | null;
+  linked_trip_id?: number | null;
   created_at: string;
 }
 
@@ -119,6 +122,8 @@ const TripsManagement = () => {
   const [selectedTripForManifest, setSelectedTripForManifest] = useState<TripRecord | null>(null);
   const [tripPassengers, setTripPassengers] = useState<any[]>([]);
   const [showManifestDialog, setShowManifestDialog] = useState(false);
+  const [showSeatManager, setShowSeatManager] = useState(false);
+  const [selectedTripForSeats, setSelectedTripForSeats] = useState<TripRecord | null>(null);
   const [isDataLoading, setIsDataLoading] = useState(false);
   const [formData, setFormData] = useState({
     route_id: "",
@@ -127,7 +132,8 @@ const TripsManagement = () => {
     departure_time: "",
     arrival_time: "",
     base_price: "",
-    cancel_policy_id: ""
+    cancel_policy_id: "",
+    linked_trip_id: ""
   });
 
   useEffect(() => {
@@ -170,7 +176,10 @@ const TripsManagement = () => {
           passengers (
             full_name,
             phone_number,
-            seat_number
+            seat_id,
+            seats (
+              seat_number
+            )
           )
         `)
         .eq('trip_id', tripId)
@@ -185,7 +194,8 @@ const TripsManagement = () => {
             manifest.push({
               name: p.full_name,
               phone: p.phone_number,
-              seat_number: p.seat_number,
+              // Try to get seat_number from the joined seats table
+              seat_number: p.seats?.seat_number || p.seat_id || '-',
               status: b.booking_status,
               payment: b.payment_status
             });
@@ -207,6 +217,11 @@ const TripsManagement = () => {
     setShowManifestDialog(true);
   };
 
+  const handleOpenSeatManager = (trip: TripRecord) => {
+    setSelectedTripForSeats(trip);
+    setShowSeatManager(true);
+  };
+
   const handleSubmit = async () => {
     if (!formData.route_id || !formData.departure_time || !formData.base_price) {
       toast({ title: "خطأ", description: "يرجى ملء الحقول المطلوبة", variant: "destructive" });
@@ -223,6 +238,7 @@ const TripsManagement = () => {
       arrival_time: formData.arrival_time || null,
       base_price: parseFloat(formData.base_price),
       cancel_policy_id: formData.cancel_policy_id && formData.cancel_policy_id !== "none" ? parseInt(formData.cancel_policy_id) : null,
+      linked_trip_id: formData.linked_trip_id && formData.linked_trip_id !== "none" ? parseInt(formData.linked_trip_id) : null,
       partner_id: partnerId,
       status: 'scheduled' as const
     };
@@ -262,7 +278,8 @@ const TripsManagement = () => {
       departure_time: trip.departure_time ? new Date(trip.departure_time).toISOString().slice(0, 16) : "",
       arrival_time: trip.arrival_time ? new Date(trip.arrival_time).toISOString().slice(0, 16) : "",
       base_price: trip.base_price?.toString() || "",
-      cancel_policy_id: trip.cancel_policy_id?.toString() || ""
+      cancel_policy_id: trip.cancel_policy_id?.toString() || "",
+      linked_trip_id: trip.linked_trip_id?.toString() || ""
     });
     setIsDialogOpen(true);
   };
@@ -302,7 +319,8 @@ const TripsManagement = () => {
       departure_time: "",
       arrival_time: "",
       base_price: "",
-      cancel_policy_id: ""
+      cancel_policy_id: "",
+      linked_trip_id: ""
     });
     setEditingTrip(null);
   };
@@ -336,6 +354,7 @@ const TripsManagement = () => {
   });
 
   const formatDate = (dateStr: string) => new Date(dateStr).toLocaleDateString('ar-SA');
+  const calculateDate = (dateStr: string) => new Date(dateStr).toLocaleDateString('ar-SA');
   const formatTime = (dateStr: string) => new Date(dateStr).toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
 
   const getStatusBadge = (status: string | null) => {
@@ -506,6 +525,23 @@ const TripsManagement = () => {
                     </SelectContent>
                   </Select>
                 </div>
+
+                <div className="space-y-2">
+                  <Label>ربط مع رحلة أخرى (اختياري)</Label>
+                  <Select value={formData.linked_trip_id} onValueChange={(v) => setFormData({ ...formData, linked_trip_id: v })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="اختر رحلة للربط" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">بدون ربط</SelectItem>
+                      {trips.filter(t => t.trip_id !== editingTrip?.trip_id).map((trip) => (
+                        <SelectItem key={trip.trip_id} value={trip.trip_id.toString()}>
+                          #{trip.trip_id} - {getRouteInfo(trip.route_id)} ({formatDate(trip.departure_time)})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setIsDialogOpen(false)}>إلغاء</Button>
@@ -667,6 +703,11 @@ const TripsManagement = () => {
                           {formatTime(trip.departure_time)}
                           {trip.arrival_time && ` - ${formatTime(trip.arrival_time)}`}
                         </span>
+                        {trip.linked_trip_id && (
+                          <span className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-100 text-blue-700 text-[10px] font-bold">
+                            رحلة مترابطة #{trip.linked_trip_id}
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -712,11 +753,21 @@ const TripsManagement = () => {
                         <Users className="w-4 h-4 ml-2" />
                         كشف الركاب
                       </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleOpenSeatManager(trip)}>
+                        <Ban className="w-4 h-4 ml-2 text-red-600" />
+                        إدارة المقاعد
+                      </DropdownMenuItem>
                       {trip.status === 'scheduled' && (
-                        <DropdownMenuItem onClick={() => handleStatusChange(trip.trip_id, 'in_progress')}>
-                          <PlayCircle className="w-4 h-4 ml-2" />
-                          بدء الرحلة
-                        </DropdownMenuItem>
+                        <>
+                          <DropdownMenuItem onClick={() => handleStatusChange(trip.trip_id, 'in_progress')}>
+                            <PlayCircle className="w-4 h-4 ml-2" />
+                            بدء الرحلة
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleStatusChange(trip.trip_id, 'completed')} className="text-green-600">
+                            <CheckCircle2 className="w-4 h-4 ml-2" />
+                            إكمال الرحلة مباشرة
+                          </DropdownMenuItem>
+                        </>
                       )}
                       {trip.status === 'in_progress' && (
                         <DropdownMenuItem onClick={() => handleStatusChange(trip.trip_id, 'completed')}>
@@ -797,6 +848,17 @@ const TripsManagement = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Seat Manager Dialog */}
+      {selectedTripForSeats && (
+        <TripSeatManager
+          isOpen={showSeatManager}
+          onClose={() => setShowSeatManager(false)}
+          tripId={selectedTripForSeats.trip_id}
+          busId={selectedTripForSeats.bus_id}
+          routeInfo={getRouteInfo(selectedTripForSeats.route_id) + " - " + calculateDate(selectedTripForSeats.departure_time)}
+        />
+      )}
     </DashboardLayout>
   );
 };

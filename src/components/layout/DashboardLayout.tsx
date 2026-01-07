@@ -15,7 +15,8 @@ import {
     Ticket,
     Shield,
     Menu,
-    X
+    X,
+    ArrowLeftRight
 } from "lucide-react";
 import { usePartner } from "@/hooks/usePartner";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -31,8 +32,10 @@ const sidebarLinks = [
     { href: "/dashboard/branches", label: "الفروع", icon: Building2 },
     { href: "/dashboard/bookings", label: "الحجوزات", icon: Ticket },
     { href: "/dashboard/payments", label: "المدفوعات", icon: CreditCard },
+    { href: "/dashboard/refunds", label: "إدارة المستردات", icon: ArrowLeftRight },
     { href: "/dashboard/reports", label: "التقارير", icon: BarChart3 },
     { href: "/dashboard/permissions", label: "الصلاحيات", icon: Shield },
+    { href: "/dashboard/cancellation-policies", label: "سياسات الإلغاء", icon: Shield },
     { href: "/dashboard/settings", label: "الإعدادات", icon: Settings }
 ];
 
@@ -105,6 +108,7 @@ export const DashboardLayout = ({ children, title, subtitle, actions }: Dashboar
                         if (link.href === "/dashboard/bookings" && !isOwner && !can('bookings.view')) return null;
                         if (link.href === "/dashboard/reports" && !isOwner && !can('reports.view')) return null;
                         if (link.href === "/dashboard/settings" && !isOwner && !can('settings.manage')) return null;
+                        if (link.href === "/dashboard/cancellation-policies" && !isOwner && !can('settings.manage')) return null;
                         if (link.href === "/dashboard/branches" && !isOwner && !can('fleet.view')) return null;
                         if (link.href === "/dashboard/payments" && !isOwner && !can('finance.view')) return null;
 

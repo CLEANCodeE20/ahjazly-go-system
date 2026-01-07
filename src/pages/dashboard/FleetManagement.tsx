@@ -11,8 +11,10 @@ import {
   Trash2,
   CheckCircle2,
   AlertCircle,
-  Loader2
+  Loader2,
+  LayoutGrid
 } from "lucide-react";
+import SeatMapDesigner, { SeatLayout } from "@/components/dashboard/SeatMapDesigner";
 import {
   Dialog,
   DialogContent,
@@ -55,6 +57,8 @@ interface BusRecord {
   capacity: number | null;
   status: string | null;
   owner_user_id: number | null;
+  seat_layout: SeatLayout | null;
+  template_id: number | null;
   created_at: string;
 }
 
@@ -83,8 +87,62 @@ const FleetManagement = () => {
     model: "",
     capacity: "",
     bus_type: "standard",
-    status: "active"
+    status: "active",
+    seat_layout: null as SeatLayout | null
   });
+
+  const [isDesignerOpen, setIsDesignerOpen] = useState(false);
+  const [designTarget, setDesignTarget] = useState<'new' | 'edit'>('new');
+
+  // Templates logic
+  const { data: templates, loading: loadingTemplates, create: createTemplate } = useSupabaseCRUD<any>({
+    tableName: 'bus_templates',
+    primaryKey: 'template_id',
+    initialFetch: true
+  });
+
+  const [isSaveTemplateDialogOpen, setIsSaveTemplateDialogOpen] = useState(false);
+  const [templateToSave, setTemplateToSave] = useState<SeatLayout | null>(null);
+  const [newTemplateName, setNewTemplateName] = useState("");
+
+  const handleSaveAsTemplate = (layout: SeatLayout) => {
+    setTemplateToSave(layout);
+    setIsSaveTemplateDialogOpen(true);
+  };
+
+  const confirmSaveTemplate = async () => {
+    if (!newTemplateName || !templateToSave) return;
+    try {
+      await createTemplate({
+        partner_id: partner?.partner_id,
+        template_name: newTemplateName,
+        capacity: templateToSave.cells.filter(c => c.type === 'seat').length,
+        seat_layout: templateToSave,
+      });
+      toast({ title: "تم الحفظ", description: "تم حفظ القالب بنجاح" });
+      setIsSaveTemplateDialogOpen(false);
+      setNewTemplateName("");
+    } catch (error) {
+      toast({ title: "خطأ", description: "فشل في حفظ القالب", variant: "destructive" });
+    }
+  };
+
+  const loadTemplate = (template: any) => {
+    if (designTarget === 'new') {
+      setNewBus({
+        ...newBus,
+        seat_layout: template.seat_layout,
+        capacity: template.capacity.toString()
+      });
+    } else if (editingBus) {
+      setEditingBus({
+        ...editingBus,
+        seat_layout: template.seat_layout,
+        capacity: template.capacity
+      });
+    }
+    toast({ title: "تم التحميل", description: `تم تحميل قالب: ${template.template_name}` });
+  };
 
   const handleAddBus = async () => {
     if (!newBus.license_plate || !newBus.model) return;
@@ -97,9 +155,10 @@ const FleetManagement = () => {
         model: newBus.model,
         capacity: parseInt(newBus.capacity) || 40,
         bus_type: newBus.bus_type as any,
-        status: newBus.status as any
+        status: newBus.status as any,
+        seat_layout: newBus.seat_layout
       });
-      setNewBus({ license_plate: "", model: "", capacity: "", bus_type: "standard", status: "active" });
+      setNewBus({ license_plate: "", model: "", capacity: "", bus_type: "standard", status: "active", seat_layout: null });
       setIsDialogOpen(false);
       toast({ title: "تمت الإضافة", description: "تم إضافة الحافلة بنجاح" });
     } catch (error) {
@@ -120,7 +179,8 @@ const FleetManagement = () => {
         model: editingBus.model,
         capacity: editingBus.capacity,
         bus_type: editingBus.bus_type as any,
-        status: editingBus.status as any
+        status: editingBus.status as any,
+        seat_layout: editingBus.seat_layout
       });
       setIsEditDialogOpen(false);
       setEditingBus(null);
@@ -183,79 +243,163 @@ const FleetManagement = () => {
       title="إدارة الأسطول"
       subtitle="إضافة وتعديل حافلات الشركة"
       actions={
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="w-4 h-4 ml-2" />
-              إضافة حافلة
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[500px]">
-            <DialogHeader>
-              <DialogTitle>إضافة حافلة جديدة</DialogTitle>
-              <DialogDescription>
-                أدخل بيانات الحافلة الجديدة لإضافتها إلى الأسطول
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="license_plate">رقم اللوحة *</Label>
-                  <Input
-                    id="license_plate"
-                    value={newBus.license_plate}
-                    onChange={(e) => setNewBus({ ...newBus, license_plate: e.target.value })}
-                    placeholder="ABC-1234"
-                  />
+        <>
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="w-4 h-4 ml-2" />
+                إضافة حافلة
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[500px]">
+              <DialogHeader>
+                <DialogTitle>إضافة حافلة جديدة</DialogTitle>
+                <DialogDescription>
+                  أدخل بيانات الحافلة الجديدة لإضافتها إلى الأسطول
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="license_plate">رقم اللوحة *</Label>
+                    <Input
+                      id="license_plate"
+                      value={newBus.license_plate}
+                      onChange={(e) => setNewBus({ ...newBus, license_plate: e.target.value })}
+                      placeholder="ABC-1234"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="model">الموديل *</Label>
+                    <Input
+                      id="model"
+                      value={newBus.model}
+                      onChange={(e) => setNewBus({ ...newBus, model: e.target.value })}
+                      placeholder="Mercedes-Benz"
+                    />
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="model">الموديل *</Label>
-                  <Input
-                    id="model"
-                    value={newBus.model}
-                    onChange={(e) => setNewBus({ ...newBus, model: e.target.value })}
-                    placeholder="Mercedes-Benz"
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="capacity">عدد المقاعد</Label>
+                    <Input
+                      id="capacity"
+                      type="number"
+                      value={newBus.capacity}
+                      onChange={(e) => setNewBus({ ...newBus, capacity: e.target.value })}
+                      placeholder="45"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>نوع الحافلة</Label>
+                    <Select value={newBus.bus_type} onValueChange={(v) => setNewBus({ ...newBus, bus_type: v })}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="standard">عادية</SelectItem>
+                        <SelectItem value="vip">VIP</SelectItem>
+                        <SelectItem value="sleeper">نوم</SelectItem>
+                        <SelectItem value="double_decker">طابقين</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {templates.length > 0 && (
+                  <div className="space-y-2">
+                    <Label>تحميل من قالب جاهز</Label>
+                    <Select onValueChange={(id) => {
+                      const t = templates.find(t => t.template_id.toString() === id);
+                      if (t) loadTemplate(t);
+                    }}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="اختر قالباً..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {templates.map(t => (
+                          <SelectItem key={t.template_id} value={t.template_id.toString()}>
+                            {t.template_name} ({t.capacity} مقعد)
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                <div className="pt-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full h-12 border-dashed border-primary/40 hover:border-primary hover:bg-primary/5 group"
+                    onClick={() => {
+                      setDesignTarget('new');
+                      setIsDesignerOpen(true);
+                    }}
+                  >
+                    <LayoutGrid className="w-4 h-4 ml-2 text-primary group-hover:scale-110 transition-transform" />
+                    {newBus.seat_layout ? 'تعديل مخطط المقاعد المخصص' : 'تصميم مخطط مقاعد مخصص'}
+                  </Button>
+                  {newBus.seat_layout && (
+                    <p className="text-[10px] text-center mt-1 text-secondary font-bold">
+                      تم تحديد المخطط المنسق ({newBus.capacity} مقعد)
+                    </p>
+                  )}
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="capacity">عدد المقاعد</Label>
-                  <Input
-                    id="capacity"
-                    type="number"
-                    value={newBus.capacity}
-                    onChange={(e) => setNewBus({ ...newBus, capacity: e.target.value })}
-                    placeholder="45"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>نوع الحافلة</Label>
-                  <Select value={newBus.bus_type} onValueChange={(v) => setNewBus({ ...newBus, bus_type: v })}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="standard">عادية</SelectItem>
-                      <SelectItem value="vip">VIP</SelectItem>
-                      <SelectItem value="sleeper">نوم</SelectItem>
-                      <SelectItem value="double_decker">طابقين</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+                  إلغاء
+                </Button>
+                <Button onClick={handleAddBus} disabled={isSubmitting}>
+                  {isSubmitting && <Loader2 className="w-4 h-4 ml-2 animate-spin" />}
+                  إضافة الحافلة
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* Seat Map Designer Dialog */}
+          <Dialog open={isDesignerOpen} onOpenChange={setIsDesignerOpen}>
+            <DialogContent className="max-w-[95vw] w-[1200px] p-0 overflow-hidden">
+              <SeatMapDesigner
+                initialLayout={designTarget === 'new' ? newBus.seat_layout || undefined : editingBus?.seat_layout || undefined}
+                onSave={(layout) => {
+                  if (designTarget === 'new') {
+                    setNewBus({ ...newBus, seat_layout: layout, capacity: layout.cells.filter(c => c.type === 'seat').length.toString() });
+                  } else if (editingBus) {
+                    setEditingBus({ ...editingBus, seat_layout: layout, capacity: layout.cells.filter(c => c.type === 'seat').length });
+                  }
+                  setIsDesignerOpen(false);
+                  toast({ title: "تم التصميم", description: "تم حفظ مخطط المقاعد بنجاح" });
+                }}
+                onSaveAsTemplate={handleSaveAsTemplate}
+                onCancel={() => setIsDesignerOpen(false)}
+              />
+            </DialogContent>
+          </Dialog>
+
+          {/* Simple Save Template Dialog */}
+          <Dialog open={isSaveTemplateDialogOpen} onOpenChange={setIsSaveTemplateDialogOpen}>
+            <DialogContent className="sm:max-w-[400px]">
+              <DialogHeader>
+                <DialogTitle>حفظ كقالب جديد</DialogTitle>
+                <DialogDescription>أدخل اسماً لهذا المخطط لاستخدامه لاحقاً</DialogDescription>
+              </DialogHeader>
+              <div className="py-4">
+                <Input
+                  placeholder="مثال: باص مرسيدس 45 مقعد"
+                  value={newTemplateName}
+                  onChange={(e) => setNewTemplateName(e.target.value)}
+                />
               </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
-                إلغاء
-              </Button>
-              <Button onClick={handleAddBus} disabled={isSubmitting}>
-                {isSubmitting && <Loader2 className="w-4 h-4 ml-2 animate-spin" />}
-                إضافة الحافلة
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsSaveTemplateDialogOpen(false)}>إلغاء</Button>
+                <Button onClick={confirmSaveTemplate}>حفظ القالب</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </>
       }
     >
       <div className="space-y-6">
@@ -454,6 +598,21 @@ const FleetManagement = () => {
                     <SelectItem value="retired">متقاعدة</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+
+              <div className="pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full h-12 border-dashed border-primary/40 hover:border-primary hover:bg-primary/5"
+                  onClick={() => {
+                    setDesignTarget('edit');
+                    setIsDesignerOpen(true);
+                  }}
+                >
+                  <LayoutGrid className="w-4 h-4 ml-2 text-primary" />
+                  {editingBus.seat_layout ? 'تعديل مخطط المقاعد' : 'تصميم مخطط مقاعد'}
+                </Button>
               </div>
             </div>
           )}

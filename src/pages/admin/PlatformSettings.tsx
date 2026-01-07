@@ -6,7 +6,10 @@ import {
     Shield,
     DollarSign,
     Languages,
-    Loader2
+    Loader2,
+    Database,
+    Download,
+    History
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +18,8 @@ import { Switch } from "@/components/ui/switch";
 import { toast } from "@/hooks/use-toast";
 import AdminSidebar from "@/components/layout/AdminSidebar";
 import { useUISiteSettings, useUpdateSiteSetting } from "@/hooks/useSDUI";
+import { BackupService } from "@/lib/services/BackupService";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 const PlatformSettings = () => {
     const { data: siteSettings = [], isLoading: fetchingSettings } = useUISiteSettings();
@@ -172,6 +177,60 @@ const PlatformSettings = () => {
                                     checked={settings.allow_new_registrations}
                                     onCheckedChange={(checked) => setSettings({ ...settings, allow_new_registrations: checked })}
                                 />
+                            </div>
+                        </div>
+                    </section>
+
+                    {/* Backup & Security Management */}
+                    <section className="bg-card rounded-xl border border-border p-6">
+                        <h2 className="text-lg font-semibold mb-6 flex items-center gap-2">
+                            <Database className="w-5 h-5 text-primary" />
+                            إدارة النسخ الاحتياطي والأمان
+                        </h2>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-4 p-4 border rounded-lg bg-muted/20">
+                                <div>
+                                    <h3 className="font-medium flex items-center gap-2">
+                                        <Download className="w-4 h-4" />
+                                        نسخ احتياطي يدوي
+                                    </h3>
+                                    <p className="text-sm text-muted-foreground mt-1">تنزيل نسخة كاملة من بيانات النظام بصيغة Excel (تعدد الصفحات)</p>
+                                </div>
+                                <Button
+                                    variant="outline"
+                                    className="w-full"
+                                    onClick={() => BackupService.exportFullDatabase()}
+                                >
+                                    تصدير قاعدة البيانات بالكامل
+                                </Button>
+                            </div>
+
+                            <div className="space-y-4 p-4 border rounded-lg bg-muted/20">
+                                <div>
+                                    <h3 className="font-medium flex items-center gap-2">
+                                        <History className="w-4 h-4" />
+                                        سجل العمليات (Audit Logs)
+                                    </h3>
+                                    <p className="text-sm text-muted-foreground mt-1">تصدير سجل التغييرات الأخير بصيغة JSON للتحليل الدقيق</p>
+                                </div>
+                                <Button
+                                    variant="outline"
+                                    className="w-full"
+                                    onClick={() => BackupService.exportTableAsJSON('audit_logs')}
+                                >
+                                    تصدير السجل كـ JSON
+                                </Button>
+                            </div>
+                        </div>
+
+                        <div className="mt-6 p-4 bg-primary/5 rounded-lg border border-primary/10">
+                            <div className="flex items-start gap-3">
+                                <Shield className="w-5 h-5 text-primary mt-0.5" />
+                                <div>
+                                    <p className="font-medium text-sm">النسخ الاحتياطي الآلي</p>
+                                    <p className="text-xs text-muted-foreground">النظام يقوم حالياً بعمل نسخ احتياطي دوري لقاعدة البيانات عبر سوبابيس بشكل تلقائي.</p>
+                                </div>
                             </div>
                         </div>
                     </section>

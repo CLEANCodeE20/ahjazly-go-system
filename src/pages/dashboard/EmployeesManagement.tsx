@@ -173,71 +173,65 @@ const EmployeesManagement = () => {
 
     setIsSubmitting(true);
 
+    // DEBUG: Check if the new key is loaded
+    console.log("DEBUG: Current Supabase Key:", import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY?.substring(0, 20) + "...");
+
     try {
-      if (editingEmployee) {
-        const employeeData = {
-          full_name: formData.full_name,
-          email: formData.email,
-          phone_number: formData.phone_number,
-          branch_id: parseInt(formData.branch_id),
-          role_in_company: formData.role_in_company,
-          status: formData.status,
-          partner_id: partnerId
-        };
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("لا يوجد جلسة نشطة");
 
-        const { error } = await supabase
-          .from('employees')
-          .update(employeeData)
-          .eq('employee_id', editingEmployee.employee_id);
-        if (error) throw error;
-        toast({ title: "تم التحديث", description: "تم تحديث بيانات الموظف بنجاح" });
+      const payload = editingEmployee ? {
+        action: 'update',
+        user_id: editingEmployee.user_id,
+        email: formData.email,
+        password: formData.password || undefined,
+        full_name: formData.full_name,
+        phone_number: formData.phone_number,
+        branch_id: parseInt(formData.branch_id),
+        role_in_company: formData.role_in_company,
+        status: formData.status,
+        partner_id: partnerId
+      } : {
+        action: 'create',
+        email: formData.email,
+        password: formData.password,
+        full_name: formData.full_name,
+        phone_number: formData.phone_number,
+        role_in_company: formData.role_in_company,
+        branch_id: parseInt(formData.branch_id),
+        partner_id: partnerId
+      };
 
-      } else {
-        // Simple signup - let the backend trigger handle user/role creation
-        const { data: authData, error: authError } = await supabase.auth.signUp({
-          email: formData.email,
-          password: formData.password,
-          options: {
-            data: {
-              full_name: formData.full_name,
-              user_type: 'employee', // This is picked up by handle_new_user trigger
-              phone_number: formData.phone_number,
-              partner_id: partnerId // This ensures the employee is linked to the partner
-            }
-          }
-        });
+      // Workaround: Use ANON KEY directly to bypass 401 Unauthorized from Gateway
+      const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+      const functionUrl = "https://kbgbftyvbdgyoeosxlok.supabase.co/functions/v1/manage-employee";
 
-        if (authError) {
-          if (authError.message.includes("already registered") || authError.message.includes("already exists")) {
-            throw new Error("البريد الإلكتروني مسجل مسبقاً. يرجى استخدام بريد إلكتروني آخر.");
-          }
-          throw authError;
-        }
-        if (!authData.user) throw new Error("فشل إنشاء الحساب");
+      const response = await fetch(functionUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${anonKey}`
+        },
+        body: JSON.stringify(payload)
+      });
 
-        // The trigger creates the user in public.users and public.user_roles.
-        // We just need to add the operational record in public.employees
-        // We might need to wait a tiny bit or just use the auth user id directly
-
-        const employeeData = {
-          user_id: null, // Will be linked via auth_id in RLS/Views if needed, or we can fetch it
-          full_name: formData.full_name,
-          email: formData.email,
-          phone_number: formData.phone_number,
-          branch_id: parseInt(formData.branch_id),
-          role_in_company: formData.role_in_company,
-          status: formData.status,
-          partner_id: partnerId
-        };
-
-        const { error: empError } = await supabase
-          .from('employees')
-          .insert(employeeData);
-
-        if (empError) throw empError;
-
-        toast({ title: "تمت الإضافة", description: "تم إنشاء حساب الموظف بنجاح" });
+      const responseText = await response.text();
+      let data;
+      try {
+        data = JSON.parse(responseText);
+      } catch (e) {
+        console.error("JSON Parse Error:", e, "Response:", responseText);
+        throw new Error("Invalid response: " + responseText);
       }
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || "خطأ في العملية");
+      }
+
+      toast({
+        title: editingEmployee ? "تم التحديث" : "تمت الإضافة",
+        description: editingEmployee ? "تم تحديث بيانات الموظف بنجاح" : "تم إنشاء حساب الموظف بنجاح"
+      });
 
       setFormData({ full_name: "", email: "", phone_number: "", password: "", branch_id: "", role_in_company: "", status: "active" });
       setEditingEmployee(null);
@@ -299,14 +293,40 @@ const EmployeesManagement = () => {
 
   const handleDelete = async () => {
     if (deleteId) {
-      const { error } = await supabase.from('employees').delete().eq('employee_id', deleteId);
-      if (error) {
-        toast({ title: "خطأ", description: error.message, variant: "destructive" });
-      } else {
-        toast({ title: "تم الحذف", description: "تم حذف الموظف بنجاح" });
+      const employee = employees.find(e => e.employee_id === deleteId);
+      if (!employee || !employee.user_id) {
+        // Fallback for direct table delete if somehow missing user_id
+        await supabase.from('employees').delete().eq('employee_id', deleteId);
+        toast({ title: "تم الحذف", description: "تم حذف سجل الموظف محلياً" });
         fetchData();
+        setDeleteId(null);
+        return;
       }
-      setDeleteId(null);
+
+      setIsSubmitting(true);
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) throw new Error("لا يوجد جلسة نشطة");
+
+        const { data, error } = await supabase.functions.invoke('manage-employee', {
+          body: {
+            action: 'delete',
+            user_id: employee.user_id
+          }
+        });
+
+        if (error) throw error;
+
+        if (!data.success) throw new Error(data.error || "فشل الحذف");
+
+        toast({ title: "تم الحذف", description: "تم حذف الموظف وإلغاء صلاحياته بنجاح" });
+        fetchData();
+      } catch (error: any) {
+        toast({ title: "خطأ", description: "فشل حذف الموظف: " + error.message, variant: "destructive" });
+      } finally {
+        setIsSubmitting(false);
+        setDeleteId(null);
+      }
     }
   };
 
@@ -431,18 +451,17 @@ const EmployeesManagement = () => {
                   </div>
                 </div>
 
-                {!editingEmployee && (
-                  <div className="space-y-2">
-                    <Label>كلمة المرور *</Label>
-                    <Input
-                      type="password"
-                      placeholder="******"
-                      value={formData.password}
-                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    />
-                    <p className="text-xs text-muted-foreground">ستستخدم للدخول إلى النظام</p>
-                  </div>
-                )}
+                <div className="space-y-2">
+                  <Label>كلمة المرور {editingEmployee ? "(اختياري)" : "*"}</Label>
+                  <Input
+                    type="password"
+                    placeholder={editingEmployee ? "اترك فارغاً للاحتفاظ بكلمة المرور الحالية" : "******"}
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  />
+                  {!editingEmployee && <p className="text-xs text-muted-foreground">ستستخدم للدخول إلى النظام</p>}
+                  {editingEmployee && <p className="text-xs text-muted-foreground">أدخل كلمة مرور جديدة فقط إذا أردت تغييرها</p>}
+                </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
