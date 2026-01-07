@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Suspense, lazy } from "react";
 import { LoadingSpinner } from "./components/ui/loading-spinner";
+import { DashboardSkeleton } from "./components/ui/DashboardSkeleton";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import { MaintenanceGuard } from "./components/auth/MaintenanceGuard";
 import { TwoFactorGuard } from "./components/auth/TwoFactorGuard";
@@ -67,12 +68,19 @@ const OnboardingWizard = lazy(() => import("./pages/OnboardingWizard"));
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 1000 * 60, // 1 minute
-      gcTime: 1000 * 60 * 5, // 5 minutes
+      staleTime: 1000 * 60 * 5, // 5 minutes - data stays fresh longer
+      gcTime: 1000 * 60 * 10, // 10 minutes - keep unused data in cache longer
       refetchOnWindowFocus: false,
+      refetchOnReconnect: true,
+      retry: 2, // Retry failed requests twice
+      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000), // Exponential backoff
+    },
+    mutations: {
+      retry: 1, // Retry mutations once on failure
     },
   },
 });
+
 
 const App = () => (
   <QueryClientProvider client={queryClient}>

@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { useLocation } from "react-router-dom";
+import { PrefetchLink } from "@/components/ui/PrefetchLink";
 import { Button } from "@/components/ui/button";
 import {
     Bus,
@@ -113,7 +114,7 @@ export const DashboardLayout = ({ children, title, subtitle, actions }: Dashboar
                         if (link.href === "/dashboard/payments" && !isOwner && !can('finance.view')) return null;
 
                         return (
-                            <Link
+                            <PrefetchLink
                                 key={link.href}
                                 to={link.href}
                                 onClick={() => setIsSidebarOpen(false)}
@@ -124,7 +125,7 @@ export const DashboardLayout = ({ children, title, subtitle, actions }: Dashboar
                             >
                                 <link.icon className="w-5 h-5 shrink-0" />
                                 <span>{link.label}</span>
-                            </Link>
+                            </PrefetchLink>
                         )
                     })}
                 </nav>
