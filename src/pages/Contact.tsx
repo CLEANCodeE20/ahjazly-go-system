@@ -81,7 +81,7 @@ const Contact = () => {
                                         </div>
                                         <div>
                                             <p className="text-sm text-muted-foreground mb-1">الهاتف الموحد</p>
-                                            <p className="font-semibold" dir="ltr">+966 9200 00000</p>
+                                            <p className="font-semibold" dir="ltr">+967 71215295</p>
                                         </div>
                                     </div>
 
