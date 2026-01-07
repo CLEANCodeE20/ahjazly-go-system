@@ -21,6 +21,9 @@ staticSites:
       - path: /index.html
         name: Cache-Control
         value: no-cache
+      - path: /*
+        name: Content-Security-Policy
+        value: "default-src 'self' https: data: blob: 'unsafe-inline' 'unsafe-eval'; connect-src 'self' https: wss:;"
     routes:
       - type: rewrite
         source: /*
