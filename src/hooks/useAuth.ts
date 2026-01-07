@@ -165,9 +165,16 @@ export const useAuth = () => {
   };
 
   const signOut = async () => {
-    sessionStorage.removeItem('2fa_verified');
-    const { error } = await supabase.auth.signOut();
-    return { error };
+    try {
+      sessionStorage.removeItem('2fa_verified');
+      await supabase.auth.signOut();
+      // Use window.location as a fallback if navigate is not available or to force a fresh state
+      window.location.href = '/login';
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Still redirect to be safe
+      window.location.href = '/login';
+    }
   };
 
   const hasRole = (role: AppRole): boolean => {

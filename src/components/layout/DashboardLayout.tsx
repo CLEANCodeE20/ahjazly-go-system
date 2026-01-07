@@ -51,7 +51,7 @@ export const DashboardLayout = ({ children, title, subtitle, actions }: Dashboar
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const { partner, isLoading: partnerLoading } = usePartner();
     const { can, loading: permissionsLoading } = usePermissions();
-    const { userRole, isLoading: authLoading } = useAuth();
+    const { userRole, signOut, isLoading: authLoading } = useAuth();
 
     const isLoading = authLoading || partnerLoading || permissionsLoading;
 
@@ -130,11 +130,13 @@ export const DashboardLayout = ({ children, title, subtitle, actions }: Dashboar
                 </nav>
 
                 <div className="p-4 border-t border-sidebar-border shrink-0">
-                    <Button variant="ghost" className="w-full justify-start text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50" asChild>
-                        <Link to="/">
-                            <LogOut className="w-5 h-5 ml-2 shrink-0" />
-                            تسجيل الخروج
-                        </Link>
+                    <Button
+                        variant="ghost"
+                        className="w-full justify-start text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
+                        onClick={() => signOut()}
+                    >
+                        <LogOut className="w-5 h-5 ml-2 shrink-0" />
+                        تسجيل الخروج
                     </Button>
                 </div>
             </aside>

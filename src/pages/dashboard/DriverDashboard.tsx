@@ -1,8 +1,8 @@
 import { useState, useMemo } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { 
-  Bus, 
+import {
+  Bus,
   Home,
   LogOut,
   MapPin,
@@ -60,7 +60,7 @@ interface PassengerRecord {
 
 const DriverDashboard = () => {
   const location = useLocation();
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const [selectedTrip, setSelectedTrip] = useState<number | null>(null);
 
   const { data: trips, loading: tripsLoading, update: updateTrip } = useSupabaseCRUD<TripRecord>({
@@ -91,19 +91,19 @@ const DriverDashboard = () => {
   const todayTrips = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
+
     return trips.filter(trip => {
       const tripDate = new Date(trip.departure_time);
       tripDate.setHours(0, 0, 0, 0);
-      return tripDate.getTime() === today.getTime() && 
-             (trip.status === 'scheduled' || trip.status === 'in_progress');
+      return tripDate.getTime() === today.getTime() &&
+        (trip.status === 'scheduled' || trip.status === 'in_progress');
     }).sort((a, b) => new Date(a.departure_time).getTime() - new Date(b.departure_time).getTime());
   }, [trips]);
 
   const upcomingTrips = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
+
     return trips.filter(trip => {
       const tripDate = new Date(trip.departure_time);
       tripDate.setHours(0, 0, 0, 0);
@@ -183,10 +183,8 @@ const DriverDashboard = () => {
               <p className="text-xs text-muted-foreground">مرحباً بك</p>
             </div>
           </div>
-          <Button variant="ghost" size="icon" asChild>
-            <Link to="/">
-              <LogOut className="w-5 h-5" />
-            </Link>
+          <Button variant="ghost" size="icon" onClick={() => signOut()}>
+            <LogOut className="w-5 h-5" />
           </Button>
         </div>
       </header>
@@ -291,8 +289,8 @@ const DriverDashboard = () => {
                         {/* Action Buttons */}
                         <div className="p-4 bg-muted/30 flex gap-2">
                           {trip.status === 'scheduled' && (
-                            <Button 
-                              className="flex-1" 
+                            <Button
+                              className="flex-1"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleStartTrip(trip.trip_id);
@@ -303,7 +301,7 @@ const DriverDashboard = () => {
                             </Button>
                           )}
                           {trip.status === 'in_progress' && (
-                            <Button 
+                            <Button
                               className="flex-1 bg-green-600 hover:bg-green-700"
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -410,9 +408,8 @@ const DriverDashboard = () => {
         <div className="flex items-center justify-around max-w-md mx-auto">
           <Link
             to="/driver"
-            className={`flex flex-col items-center gap-1 p-2 rounded-lg ${
-              location.pathname === '/driver' ? 'text-primary' : 'text-muted-foreground'
-            }`}
+            className={`flex flex-col items-center gap-1 p-2 rounded-lg ${location.pathname === '/driver' ? 'text-primary' : 'text-muted-foreground'
+              }`}
           >
             <Home className="w-5 h-5" />
             <span className="text-xs">الرئيسية</span>
