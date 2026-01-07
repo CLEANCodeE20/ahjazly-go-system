@@ -1,73 +1,52 @@
-# Welcome to your Lovable project
+# Ahjazly Bus Booking System (نظام احجزلي)
 
-## Project info
+نظام حجوزات حافلات متكامل مصمم لتسهيل عمليات الحجز وإدارة الأسطول لشركات النقل.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+## المميزات الرئيسية
 
-## How can I edit this code?
+- **لوحة تحكم شاملة**: إدارة الأسطول، الحجوزات، الموظفين، والتقارير المالية.
+- **نظام حجز متطور**: واجهة سهلة الاستخدام للعملاء لحجز الرحلات.
+- **إدارة مالية**: تتبع المدفوعات، العمولات، والفواتير بشكل آلي.
+- **تطبيق السائق**: واجهة مخصصة للسائقين لإدارة الرحلات والركاب.
+- **دعم فني**: نظام تذاكر دعم ومحادثة مباشرة.
 
-There are several ways of editing your application.
+## التقنيات المستخدمة
 
-**Use Lovable**
+- **Frontend**: React, TypeScript, Vite, Tailwind CSS, Shadcn UI
+- **Backend**: Supabase (PostgreSQL, Auth, Realtime, Storage, Edge Functions)
+- **Deployment**: Render (Static Site)
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+## بدء التشغيل
 
-Changes made via Lovable will be committed automatically to this repo.
+لنسخ المشروع وتشغيله محلياً:
 
-**Use your preferred IDE**
+```bash
+# تثبيت المكتبات
+npm install
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# تشغيل خادم التطوير
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+## المتغيرات البيئية
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+تأكد من إعداد ملف `.env` بالمتغيرات التالية:
 
-**Use GitHub Codespaces**
+```env
+VITE_SUPABASE_URL=your_supabase_url
+VITE_SUPABASE_PUBLISHABLE_KEY=your_supabase_key
+# Firebase config if needed
+```
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## هيكل المشروع
 
-## What technologies are used for this project?
+- `/src`
+  - `/components`: مكونات React القابلة لإعادة الاستخدام
+  - `/pages`: صفحات التطبيق
+  - `/hooks`: Hooks مخصصة
+  - `/integrations`: ربط مع الخدمات الخارجية (Supabase, etc)
+  - `/lib`: دوال مساعدة وأدوات
 
-This project is built with:
+## حقوق الملكية
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+تطوير فريق Ahjazly Team. جميع الحقوق محفوظة.
