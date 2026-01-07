@@ -13,7 +13,7 @@ const Login = () => {
   const { user, userRole, userStatus, isLoading: authLoading, signIn, signUp } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [isSignUp, setIsSignUp] = useState(false);
+  // Removed isSignUp state as we are converting to Login-only page
   const [loginType, setLoginType] = useState<"company" | "admin">("company");
   const [formData, setFormData] = useState({
     email: "",
@@ -238,51 +238,35 @@ const Login = () => {
               {isLoading ? (
                 <span className="flex items-center gap-2">
                   <span className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
-                  {isSignUp ? "جاري إنشاء الحساب..." : "جاري تسجيل الدخول..."}
+                  جاري تسجيل الدخول...
                 </span>
               ) : (
                 <span className="flex items-center gap-2">
-                  {isSignUp ? "إنشاء حساب" : "تسجيل الدخول"}
+                  تسجيل الدخول
                   <ArrowLeft className="w-4 h-4" />
                 </span>
               )}
             </Button>
           </form>
 
-          {/* Toggle Sign Up / Login */}
-          <p className="text-center text-muted-foreground text-sm mt-6">
-            {isSignUp ? (
-              <>
-                لديك حساب بالفعل؟{" "}
-                <button
-                  type="button"
-                  onClick={() => setIsSignUp(false)}
-                  className="text-primary hover:underline font-medium"
-                >
-                  تسجيل الدخول
-                </button>
-              </>
-            ) : (
-              <>
-                ليس لديك حساب؟{" "}
-                <button
-                  type="button"
-                  onClick={() => setIsSignUp(true)}
-                  className="text-primary hover:underline font-medium"
-                >
-                  إنشاء حساب جديد
-                </button>
-                {loginType === "company" && (
-                  <>
-                    {" "}أو{" "}
-                    <Link to="/apply" className="text-primary hover:underline font-medium">
-                      قدّم طلب انضمام
-                    </Link>
-                  </>
-                )}
-              </>
+          {/* Links */}
+          <div className="text-center text-muted-foreground text-sm mt-6 space-y-4">
+            {loginType === "company" && (
+              <p>
+                ليس لديك حساب شركة؟{" "}
+                <Link to="/apply" className="text-primary hover:underline font-medium">
+                  قدّم طلب انضمام
+                </Link>
+              </p>
             )}
-          </p>
+
+            <p>
+              تواجه مشكلة؟{" "}
+              <Link to="/contact" className="text-primary hover:underline font-medium">
+                تواصل مع الدعم
+              </Link>
+            </p>
+          </div>
         </div>
       </main>
     </div>
