@@ -71,13 +71,20 @@ const Login = () => {
       const { error } = await signIn(formData.email, formData.password);
 
       if (error) {
-        if (error.message.includes("Invalid login credentials")) {
+        if (error.message.includes("Rate limit")) {
+          toast({
+            title: "تم تجاوز الحد المسموح",
+            description: "الرجاء الانتظار قليلاً قبل المحاولة مرة أخرى",
+            variant: "destructive"
+          });
+        } else if (error.message.includes("Invalid login credentials")) {
           toast({
             title: "بيانات غير صحيحة",
             description: "البريد الإلكتروني أو كلمة المرور غير صحيحة",
             variant: "destructive",
           });
         } else {
+          console.error("Login Error:", error);
           toast({
             title: "خطأ في تسجيل الدخول",
             description: error.message,

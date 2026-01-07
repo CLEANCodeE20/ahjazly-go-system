@@ -67,6 +67,8 @@ import TripManifest from "@/components/TripManifest";
 import { useReactToPrint } from "react-to-print";
 import { useRef } from "react";
 import TripSeatManager from "@/components/dashboard/TripSeatManager";
+import { TripsSkeleton } from "@/components/ui/TripsSkeleton";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 interface TripRecord {
   trip_id: number;
@@ -651,33 +653,17 @@ const TripsManagement = () => {
         </div>
 
         {/* Loading State */}
-        {loading && (
-          <div className="space-y-4">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="bg-card rounded-xl border border-border p-5">
-                <div className="flex items-center gap-4">
-                  <Skeleton className="w-10 h-10 rounded-lg" />
-                  <div className="flex-1 space-y-2">
-                    <Skeleton className="h-5 w-48" />
-                    <Skeleton className="h-4 w-32" />
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+        {loading && <TripsSkeleton />}
 
         {/* Empty State */}
         {!loading && trips.length === 0 && (
-          <div className="text-center py-12">
-            <Route className="w-16 h-16 mx-auto text-muted-foreground/50 mb-4" />
-            <h3 className="text-lg font-medium text-foreground mb-2">لا توجد رحلات</h3>
-            <p className="text-muted-foreground mb-4">ابدأ بإنشاء رحلة جديدة</p>
-            <Button onClick={() => setIsDialogOpen(true)}>
-              <Plus className="w-4 h-4 ml-2" />
-              رحلة جديدة
-            </Button>
-          </div>
+          <EmptyState
+            icon={Route}
+            title="لا توجد رحلات"
+            description="لم تقم بإضافة أي رحلات بعد. ابدأ بإنشاء جدول رحلاتك الآن."
+            actionLabel="رحلة جديدة"
+            onAction={() => setIsDialogOpen(true)}
+          />
         )}
 
         {/* Trips List */}

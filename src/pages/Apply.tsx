@@ -1,9 +1,13 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import {
@@ -26,64 +30,79 @@ import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { WhatsAppButton } from "@/components/ui/WhatsAppButton";
 
+// 1. Define Zod Schema
+const applyFormSchema = z.object({
+  // Owner Info
+  ownerName: z.string().min(3, "الاسم يجب أن يكون 3 أحرف على الأقل"),
+  ownerPhone: z.string().regex(/^05\d{8}$/, "رقم الجوال يجب أن يبدأ بـ 05 ويتكون من 10 أرقام"),
+  ownerEmail: z.string().email("البريد الإلكتروني غير صحيح"),
+  ownerIdNumber: z.string().optional(),
+  password: z.string().min(6, "كلمة المرور يجب أن تكون 6 أحرف على الأقل"),
+  confirmPassword: z.string(),
+
+  // Company Info
+  companyName: z.string().min(2, "اسم الشركة مطلوب"),
+  companyEmail: z.string().email("بريد الشركة غير صحيح").optional().or(z.literal("")),
+  companyPhone: z.string().optional(),
+  companyAddress: z.string().optional(),
+  companyCity: z.string().min(2, "المدينة مطلوبة"),
+  fleetSize: z.preprocess((val) => Number(val), z.number().min(1, "يجب أن يكون لديك حافلة واحدة على الأقل").optional()),
+  website: z.string().url("رابط الموقع غير صحيح").optional().or(z.literal("")),
+  taxNumber: z.string().optional(),
+
+  // Financial Info (Optional for now)
+  bankName: z.string().optional(),
+  iban: z.string().optional(),
+  accountNumber: z.string().optional(),
+  swiftCode: z.string().optional(),
+
+  // Documents (We handle files manually or via custom validation, simplified here to "any" for file objects)
+  commercialRegister: z.any().optional(),
+  taxCertificate: z.any().optional(),
+  description: z.string().optional(),
+
+  // Terms
+  acceptTerms: z.boolean().refine(val => val === true, "يجب الموافقة على الشروط"),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "كلمات المرور غير متطابقة",
+  path: ["confirmPassword"],
+});
+
+type ApplyFormValues = z.infer<typeof applyFormSchema>;
+
 const Apply = () => {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [formData, setFormData] = useState({
-    // Owner Info
-    ownerName: "",
-    ownerPhone: "",
-    ownerEmail: "",
-    ownerIdNumber: "",
-    password: "",
-    confirmPassword: "",
-    // Company Info
-    companyName: "",
-    companyEmail: "",
-    companyPhone: "",
-    companyAddress: "",
-    companyCity: "",
-    fleetSize: "",
-    website: "",
-    taxNumber: "",
-    // Financial Info
-    bankName: "",
-    iban: "",
-    accountNumber: "",
-    swiftCode: "",
-    // Documents
-    commercialRegister: null as File | null,
-    taxCertificate: null as File | null,
-    ownerIdFile: null as File | null,
-    // Additional
-    description: ""
+  const [submitted, setSubmitted] = useState(false);
+
+  // 2. Initialize Form
+  const form = useForm<ApplyFormValues>({
+    resolver: zodResolver(applyFormSchema),
+    mode: "onChange",
+    defaultValues: {
+      ownerName: "",
+      ownerPhone: "",
+      ownerEmail: "",
+      ownerIdNumber: "",
+      password: "",
+      confirmPassword: "",
+      // Company
+      companyName: "",
+      companyEmail: "",
+      companyPhone: "",
+      companyAddress: "",
+      companyCity: "",
+      fleetSize: undefined,
+      website: "",
+      taxNumber: "",
+      // Checkbox
+      acceptTerms: false,
+    }
   });
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, field: string) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      if (file.size > 5 * 1024 * 1024) {
-        toast({
-          title: "خطأ",
-          description: "حجم الملف كبير جداً. الحد الأقصى 5 ميجابايت",
-          variant: "destructive"
-        });
-        return;
-      }
-      setFormData({ ...formData, [field]: file });
-    }
-  };
-
-  const removeFile = (field: string) => {
-    setFormData({ ...formData, [field]: null });
-  };
-
+  // Helper for file upload
   const uploadFile = async (file: File, path: string): Promise<string | null> => {
     const fileExt = file.name.split('.').pop();
     const fileName = `${path}/${Date.now()}.${fileExt}`;
@@ -104,94 +123,101 @@ const Apply = () => {
     return urlData.publicUrl;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // 3. Multi-step Validation
+  const nextStep = async () => {
+    let fieldsToValidate: (keyof ApplyFormValues)[] = [];
 
-    if (formData.password !== formData.confirmPassword) {
-      toast({ title: "خطأ", description: "كلمات المرور غير متطابقة", variant: "destructive" });
-      return;
+    if (step === 1) {
+      fieldsToValidate = ['ownerName', 'ownerPhone', 'ownerEmail', 'password', 'confirmPassword'];
+    } else if (step === 2) {
+      fieldsToValidate = ['companyName', 'companyCity'];
     }
 
-    if (formData.password.length < 6) {
-      toast({ title: "خطأ", description: "كلمة المرور يجب أن تكون 6 أحرف على الأقل", variant: "destructive" });
-      return;
+    const isValid = await form.trigger(fieldsToValidate);
+    if (isValid) {
+      setStep(prev => prev + 1);
+    } else {
+      toast({
+        title: "بيانات ناقصة",
+        description: "يرجى التحقق من الخانات المطلوبة قبل المتابعة",
+        variant: "destructive"
+      });
     }
+  };
 
+  const prevStep = () => setStep(prev => prev - 1);
+
+  // 4. Submit Handler (Zod Verified Data)
+  const onSubmit = async (values: ApplyFormValues) => {
     setIsSubmitting(true);
-
     try {
-      // 1. Create auth user account
+      // Create auth user
       const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: formData.ownerEmail,
-        password: formData.password,
+        email: values.ownerEmail,
+        password: values.password,
         options: {
           emailRedirectTo: `${window.location.origin}/login`,
           data: {
-            full_name: formData.ownerName,
-            phone: formData.ownerPhone,
+            full_name: values.ownerName,
+            phone: values.ownerPhone,
             user_type: 'partner'
           }
         }
       });
 
-      if (authError) {
-        toast({
-          title: "خطأ في إنشاء الحساب",
-          description: authError.message,
-          variant: "destructive",
-        });
-        return;
-      }
+      if (authError) throw authError;
 
       const userId = authData.user?.id;
 
-      // 2. Upload documents
+      // Upload files
       let commercialRegisterUrl = null;
       let taxCertificateUrl = null;
 
-      if (formData.commercialRegister) {
-        commercialRegisterUrl = await uploadFile(formData.commercialRegister, `applications/${userId || 'anonymous'}/commercial`);
+      if (values.commercialRegister instanceof File) {
+        commercialRegisterUrl = await uploadFile(values.commercialRegister, `applications/${userId || 'anonymous'}/commercial`);
       }
-      if (formData.taxCertificate) {
-        taxCertificateUrl = await uploadFile(formData.taxCertificate, `applications/${userId || 'anonymous'}/tax`);
+      if (values.taxCertificate instanceof File) {
+        taxCertificateUrl = await uploadFile(values.taxCertificate, `applications/${userId || 'anonymous'}/tax`);
       }
 
-      // 3. Create application record
-      const { error: applicationError } = await supabase
+      // Create application
+      const { error: appError } = await supabase
         .from('partner_applications')
         .insert({
-          owner_name: formData.ownerName,
-          owner_phone: formData.ownerPhone,
-          owner_email: formData.ownerEmail,
-          owner_id_number: formData.ownerIdNumber || null,
-          company_name: formData.companyName,
-          company_email: formData.companyEmail || null,
-          company_phone: formData.companyPhone || null,
-          company_address: formData.companyAddress || null,
-          company_city: formData.companyCity,
-          fleet_size: formData.fleetSize ? parseInt(formData.fleetSize) : null,
-          website: formData.website || null,
-          tax_number: formData.taxNumber || null,
-          bank_name: formData.bankName || null,
-          iban: formData.iban || null,
-          account_number: formData.accountNumber || null,
-          swift_code: formData.swiftCode || null,
+          owner_name: values.ownerName,
+          owner_phone: values.ownerPhone,
+          owner_email: values.ownerEmail,
+          owner_id_number: values.ownerIdNumber || null,
+          company_name: values.companyName,
+          company_email: values.companyEmail || null,
+          company_phone: values.companyPhone || null,
+          company_address: values.companyAddress || null,
+          company_city: values.companyCity,
+          fleet_size: values.fleetSize || null,
+          website: values.website || null,
+          tax_number: values.taxNumber || null,
+
+          bank_name: values.bankName || null,
+          iban: values.iban || null,
+          account_number: values.accountNumber || null,
+          swift_code: values.swiftCode || null,
+
           commercial_register_url: commercialRegisterUrl,
           tax_certificate_url: taxCertificateUrl,
-          description: formData.description || null,
+          description: values.description || null,
           auth_user_id: userId || null,
           status: 'pending'
         });
 
-      if (applicationError) throw applicationError;
+      if (appError) throw appError;
 
-      // 4. Create user record
+      // Create profile if user exists
       if (userId) {
         await supabase.from('users').insert({
           auth_id: userId,
-          full_name: formData.ownerName,
-          email: formData.ownerEmail,
-          phone_number: formData.ownerPhone,
+          full_name: values.ownerName,
+          email: values.ownerEmail,
+          phone_number: values.ownerPhone,
           user_type: 'partner',
           account_status: 'pending'
         });
@@ -201,18 +227,16 @@ const Apply = () => {
       setSubmitted(true);
 
     } catch (error: any) {
-      console.error('Error submitting application:', error);
+      console.error('Submission Error:', error);
       toast({
         title: "حدث خطأ",
-        description: error.message || "فشل في إرسال الطلب، يرجى المحاولة مرة أخرى",
+        description: error.message || "فشل إرسال الطلب",
         variant: "destructive"
       });
     } finally {
       setIsSubmitting(false);
     }
   };
-
-  const [submitted, setSubmitted] = useState(false);
 
   if (submitted) {
     return (
@@ -238,71 +262,12 @@ const Apply = () => {
     );
   }
 
-  const validateStep = (stepNum: number): boolean => {
-    if (stepNum === 1) {
-      if (!formData.ownerName || !formData.ownerPhone || !formData.ownerEmail || !formData.password || !formData.confirmPassword) {
-        toast({
-          title: "خطأ",
-          description: "يرجى ملء جميع الحقول المطلوبة",
-          variant: "destructive"
-        });
-        return false;
-      }
-      // Validate email format
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(formData.ownerEmail)) {
-        toast({
-          title: "خطأ",
-          description: "البريد الإلكتروني غير صحيح",
-          variant: "destructive"
-        });
-        return false;
-      }
-      // Validate password match
-      if (formData.password !== formData.confirmPassword) {
-        toast({
-          title: "خطأ",
-          description: "كلمات المرور غير متطابقة",
-          variant: "destructive"
-        });
-        return false;
-      }
-      if (formData.password.length < 6) {
-        toast({
-          title: "خطأ",
-          description: "كلمة المرور يجب أن تكون 6 أحرف على الأقل",
-          variant: "destructive"
-        });
-        return false;
-      }
-    } else if (stepNum === 2) {
-      if (!formData.companyName || !formData.companyCity) {
-        toast({
-          title: "خطأ",
-          description: "يرجى ملء جميع الحقول المطلوبة",
-          variant: "destructive"
-        });
-        return false;
-      }
-    }
-    return true;
-  };
-
-  const nextStep = () => {
-    if (validateStep(step)) {
-      setStep(step + 1);
-    }
-  };
-
-  const prevStep = () => setStep(step - 1);
-
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
 
       <main className="flex-1 pt-24 pb-16">
         <div className="container mx-auto px-4">
-          {/* Page Header */}
           <div className="max-w-3xl mx-auto text-center mb-12">
             <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
               انضم إلى منصة احجزلي
@@ -312,7 +277,7 @@ const Apply = () => {
             </p>
           </div>
 
-          {/* Progress Steps */}
+          {/* Steps Indicator */}
           <div className="max-w-2xl mx-auto mb-8">
             <div className="flex items-center justify-between">
               {[
@@ -341,395 +306,369 @@ const Apply = () => {
             </div>
           </div>
 
-          {/* Form */}
-          <form onSubmit={handleSubmit} className="max-w-2xl mx-auto">
-            <div className="bg-card rounded-2xl border border-border p-6 md:p-8 shadow-elegant">
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="max-w-2xl mx-auto">
+              <div className="bg-card rounded-2xl border border-border p-6 md:p-8 shadow-elegant">
 
-              {/* Step 1: Owner Info */}
-              {step === 1 && (
-                <div className="space-y-6 animate-fade-in">
-                  <div className="flex items-center gap-3 mb-6">
-                    <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center">
-                      <User className="w-5 h-5 text-primary-foreground" />
-                    </div>
-                    <h2 className="text-xl font-semibold text-foreground">معلومات صاحب الشركة</h2>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="ownerName">الاسم الكامل *</Label>
-                      <Input
-                        id="ownerName"
-                        name="ownerName"
-                        value={formData.ownerName}
-                        onChange={handleInputChange}
-                        placeholder="أدخل اسمك الكامل"
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="ownerIdNumber">رقم الهوية</Label>
-                      <Input
-                        id="ownerIdNumber"
-                        name="ownerIdNumber"
-                        value={formData.ownerIdNumber}
-                        onChange={handleInputChange}
-                        placeholder="رقم الهوية الوطنية"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="ownerPhone">رقم الجوال *</Label>
-                      <div className="relative">
-                        <Phone className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                        <Input
-                          id="ownerPhone"
-                          name="ownerPhone"
-                          type="tel"
-                          value={formData.ownerPhone}
-                          onChange={handleInputChange}
-                          placeholder="05xxxxxxxx"
-                          className="pr-10"
-                          required
-                        />
+                {/* Step 1: Owner Info */}
+                {step === 1 && (
+                  <div className="space-y-6 animate-fade-in">
+                    <div className="flex items-center gap-3 mb-6">
+                      <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center">
+                        <User className="w-5 h-5 text-primary-foreground" />
                       </div>
+                      <h2 className="text-xl font-semibold text-foreground">معلومات صاحب الشركة</h2>
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="ownerEmail">البريد الإلكتروني *</Label>
-                      <div className="relative">
-                        <Mail className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                        <Input
-                          id="ownerEmail"
-                          name="ownerEmail"
-                          type="email"
-                          value={formData.ownerEmail}
-                          onChange={handleInputChange}
-                          placeholder="email@example.com"
-                          className="pr-10"
-                          required
-                        />
-                      </div>
-                    </div>
-                  </div>
 
-                  {/* Password Section */}
-                  <div className="border-t border-border pt-6 mt-6">
-                    <h3 className="text-lg font-medium text-foreground mb-4 flex items-center gap-2">
-                      <Lock className="w-5 h-5 text-primary" />
-                      إنشاء كلمة مرور للحساب
-                    </h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="password">كلمة المرور *</Label>
-                        <div className="relative">
-                          <Lock className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                          <Input
-                            id="password"
-                            name="password"
-                            type={showPassword ? "text" : "password"}
-                            value={formData.password}
-                            onChange={handleInputChange}
-                            placeholder="6 أحرف على الأقل"
-                            className="pr-10 pl-10"
-                            required
-                            minLength={6}
-                          />
-                          <button
-                            type="button"
-                            className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                            onClick={() => setShowPassword(!showPassword)}
-                          >
-                            {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                          </button>
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="confirmPassword">تأكيد كلمة المرور *</Label>
-                        <div className="relative">
-                          <Lock className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                          <Input
-                            id="confirmPassword"
-                            name="confirmPassword"
-                            type={showPassword ? "text" : "password"}
-                            value={formData.confirmPassword}
-                            onChange={handleInputChange}
-                            placeholder="أعد كتابة كلمة المرور"
-                            className="pr-10"
-                            required
-                            minLength={6}
-                          />
-                        </div>
+                      <FormField
+                        control={form.control}
+                        name="ownerName"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>الاسم الكامل *</FormLabel>
+                            <FormControl>
+                              <Input placeholder="الاسم الكامل" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="ownerIdNumber"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>رقم الهوية</FormLabel>
+                            <FormControl>
+                              <Input placeholder="رقم الهوية الوطنية" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="ownerPhone"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>رقم الجوال *</FormLabel>
+                            <FormControl>
+                              <div className="relative">
+                                <Phone className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                                <Input className="pr-10" placeholder="05xxxxxxxx" {...field} />
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="ownerEmail"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>البريد الإلكتروني *</FormLabel>
+                            <FormControl>
+                              <div className="relative">
+                                <Mail className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                                <Input className="pr-10" type="email" placeholder="email@example.com" {...field} />
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <div className="border-t border-border pt-6 mt-6">
+                      <h3 className="text-lg font-medium text-foreground mb-4 flex items-center gap-2">
+                        <Lock className="w-5 h-5 text-primary" />
+                        إنشاء كلمة مرور للحساب
+                      </h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="password"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>كلمة المرور *</FormLabel>
+                              <FormControl>
+                                <div className="relative">
+                                  <Lock className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                                  <Input
+                                    className="pr-10 pl-10"
+                                    type={showPassword ? "text" : "password"}
+                                    placeholder="6 أحرف على الأقل"
+                                    {...field}
+                                  />
+                                  <button
+                                    type="button"
+                                    className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                  >
+                                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                  </button>
+                                </div>
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="confirmPassword"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>تأكيد كلمة المرور *</FormLabel>
+                              <FormControl>
+                                <div className="relative">
+                                  <Lock className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                                  <Input
+                                    className="pr-10"
+                                    type={showPassword ? "text" : "password"}
+                                    placeholder="تأكيد كلمة المرور"
+                                    {...field}
+                                  />
+                                </div>
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
                       </div>
                     </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              {/* Step 2: Company Info */}
-              {step === 2 && (
-                <div className="space-y-6 animate-fade-in">
-                  <div className="flex items-center gap-3 mb-6">
-                    <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center">
-                      <Building2 className="w-5 h-5 text-primary-foreground" />
+                {/* Step 2: Company Info */}
+                {step === 2 && (
+                  <div className="space-y-6 animate-fade-in">
+                    <div className="flex items-center gap-3 mb-6">
+                      <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center">
+                        <Building2 className="w-5 h-5 text-primary-foreground" />
+                      </div>
+                      <h2 className="text-xl font-semibold text-foreground">بيانات الشركة</h2>
                     </div>
-                    <h2 className="text-xl font-semibold text-foreground">بيانات الشركة</h2>
-                  </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="companyName">اسم الشركة *</Label>
-                    <Input
-                      id="companyName"
+                    <FormField
+                      control={form.control}
                       name="companyName"
-                      value={formData.companyName}
-                      onChange={handleInputChange}
-                      placeholder="الاسم التجاري للشركة"
-                      required
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>اسم الشركة *</FormLabel>
+                          <FormControl>
+                            <Input placeholder="الاسم التجاري للشركة" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
                     />
-                  </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="companyEmail">البريد الإلكتروني الرسمي</Label>
-                      <Input
-                        id="companyEmail"
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
                         name="companyEmail"
-                        type="email"
-                        value={formData.companyEmail}
-                        onChange={handleInputChange}
-                        placeholder="info@company.com"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>البريد الإلكتروني للشركة</FormLabel>
+                            <FormControl>
+                              <Input type="email" placeholder="info@company.com" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
                       />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="companyPhone">هاتف الشركة</Label>
-                      <Input
-                        id="companyPhone"
+                      <FormField
+                        control={form.control}
                         name="companyPhone"
-                        type="tel"
-                        value={formData.companyPhone}
-                        onChange={handleInputChange}
-                        placeholder="رقم الهاتف الثابت"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>هاتف الشركة</FormLabel>
+                            <FormControl>
+                              <Input placeholder="الهاتف الثابت" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
                       />
                     </div>
-                  </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="companyCity">المدينة *</Label>
-                      <Input
-                        id="companyCity"
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
                         name="companyCity"
-                        value={formData.companyCity}
-                        onChange={handleInputChange}
-                        placeholder="المدينة"
-                        required
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>المدينة *</FormLabel>
+                            <FormControl>
+                              <Input placeholder="المدينة" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
                       />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="fleetSize">عدد الحافلات</Label>
-                      <Input
-                        id="fleetSize"
+                      <FormField
+                        control={form.control}
                         name="fleetSize"
-                        type="number"
-                        value={formData.fleetSize}
-                        onChange={handleInputChange}
-                        placeholder="عدد حافلات الأسطول"
-                        min="1"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>عدد الحافلات</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                placeholder="عدد الحافلات"
+                                min="1"
+                                {...field}
+                                value={field.value || ''}
+                                onChange={(e) => field.onChange(e.target.valueAsNumber)}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
                       />
                     </div>
-                  </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="companyAddress">العنوان التفصيلي</Label>
-                    <Textarea
-                      id="companyAddress"
+                    <FormField
+                      control={form.control}
                       name="companyAddress"
-                      value={formData.companyAddress}
-                      onChange={handleInputChange}
-                      placeholder="العنوان الكامل للشركة"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>العنوان التفصيلي</FormLabel>
+                          <FormControl>
+                            <Textarea placeholder="العنوان الكامل" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
                     />
                   </div>
-                </div>
-              )}
+                )}
 
-              {/* Step 3: Documents */}
-              {step === 3 && (
-                <div className="space-y-6 animate-fade-in">
-                  <div className="flex items-center gap-3 mb-6">
-                    <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center">
-                      <FileText className="w-5 h-5 text-primary-foreground" />
-                    </div>
-                    <h2 className="text-xl font-semibold text-foreground">الوثائق المطلوبة</h2>
-                  </div>
-
-                  <p className="text-sm text-muted-foreground mb-4">
-                    رفع الوثائق اختياري، لكنه يسرّع عملية مراجعة طلبك. الحد الأقصى لحجم الملف 5 ميجابايت.
-                  </p>
-
-                  <div className="space-y-4">
-                    {/* Commercial Register */}
-                    <div className={`border-2 border-dashed rounded-xl p-6 text-center transition-colors ${formData.commercialRegister
-                      ? "border-primary bg-primary/5"
-                      : "border-border hover:border-primary/50"
-                      }`}>
-                      {formData.commercialRegister ? (
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <CheckCircle2 className="w-6 h-6 text-primary" />
-                            <div className="text-right">
-                              <p className="font-medium text-foreground">السجل التجاري</p>
-                              <p className="text-sm text-muted-foreground">{formData.commercialRegister.name}</p>
-                            </div>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => removeFile("commercialRegister")}
-                            className="p-2 hover:bg-destructive/10 rounded-lg transition-colors"
-                          >
-                            <XCircle className="w-5 h-5 text-destructive" />
-                          </button>
-                        </div>
-                      ) : (
-                        <>
-                          <input
-                            type="file"
-                            id="commercialRegister"
-                            className="hidden"
-                            accept=".pdf,.jpg,.jpeg,.png"
-                            onChange={(e) => handleFileChange(e, "commercialRegister")}
-                          />
-                          <label htmlFor="commercialRegister" className="cursor-pointer">
-                            <Upload className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
-                            <p className="font-medium text-foreground mb-1">السجل التجاري</p>
-                            <p className="text-sm text-muted-foreground">
-                              اسحب الملف هنا أو اضغط للتحميل (PDF, JPG, PNG)
-                            </p>
-                          </label>
-                        </>
-                      )}
+                {/* Step 3: Documents and Final Submit */}
+                {step === 3 && (
+                  <div className="space-y-6 animate-fade-in">
+                    <div className="flex items-center gap-3 mb-6">
+                      <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center">
+                        <FileText className="w-5 h-5 text-primary-foreground" />
+                      </div>
+                      <h2 className="text-xl font-semibold text-foreground">الوثائق المطلوبة</h2>
                     </div>
 
-                    {/* Tax Certificate */}
-                    <div className={`border-2 border-dashed rounded-xl p-6 text-center transition-colors ${formData.taxCertificate
-                      ? "border-primary bg-primary/5"
-                      : "border-border hover:border-primary/50"
-                      }`}>
-                      {formData.taxCertificate ? (
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <CheckCircle2 className="w-6 h-6 text-primary" />
-                            <div className="text-right">
-                              <p className="font-medium text-foreground">شهادة الزكاة والضريبة</p>
-                              <p className="text-sm text-muted-foreground">{formData.taxCertificate.name}</p>
-                            </div>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => removeFile("taxCertificate")}
-                            className="p-2 hover:bg-destructive/10 rounded-lg transition-colors"
-                          >
-                            <XCircle className="w-5 h-5 text-destructive" />
-                          </button>
-                        </div>
-                      ) : (
-                        <>
-                          <input
-                            type="file"
-                            id="taxCertificate"
-                            className="hidden"
-                            accept=".pdf,.jpg,.jpeg,.png"
-                            onChange={(e) => handleFileChange(e, "taxCertificate")}
-                          />
-                          <label htmlFor="taxCertificate" className="cursor-pointer">
-                            <Upload className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
-                            <p className="font-medium text-foreground mb-1">شهادة الزكاة والضريبة</p>
-                            <p className="text-sm text-muted-foreground">
-                              اسحب الملف هنا أو اضغط للتحميل (PDF, JPG, PNG)
-                            </p>
-                          </label>
-                        </>
-                      )}
+                    {/* File Uploads - Handling manually inside React Hook Form logic */}
+                    <div className="space-y-4">
+                      <div className="border-2 border-dashed border-border p-6 rounded-xl text-center">
+                        <p className="font-medium mb-2">السجل التجاري</p>
+                        <Input
+                          type="file"
+                          accept="image/*,.pdf"
+                          onChange={(e) => {
+                            if (e.target.files) form.setValue('commercialRegister', e.target.files[0]);
+                          }}
+                        />
+                        {form.watch('commercialRegister') && (
+                          <p className="text-sm text-green-600 mt-2 flex items-center justify-center gap-1">
+                            <CheckCircle2 className="w-4 h-4" /> تم اختيار الملف
+                          </p>
+                        )}
+                      </div>
+                      <div className="border-2 border-dashed border-border p-6 rounded-xl text-center">
+                        <p className="font-medium mb-2">شهادة الزكاة</p>
+                        <Input
+                          type="file"
+                          accept="image/*,.pdf"
+                          onChange={(e) => {
+                            if (e.target.files) form.setValue('taxCertificate', e.target.files[0]);
+                          }}
+                        />
+                        {form.watch('taxCertificate') && (
+                          <p className="text-sm text-green-600 mt-2 flex items-center justify-center gap-1">
+                            <CheckCircle2 className="w-4 h-4" /> تم اختيار الملف
+                          </p>
+                        )}
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="description">معلومات إضافية (اختياري)</Label>
-                    <Textarea
-                      id="description"
+                    <FormField
+                      control={form.control}
                       name="description"
-                      value={formData.description}
-                      onChange={handleInputChange}
-                      placeholder="أي معلومات إضافية ترغب في مشاركتها معنا"
-                      rows={4}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>معلومات إضافية</FormLabel>
+                          <FormControl>
+                            <Textarea placeholder="أي معلومات إضافية.." {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="acceptTerms"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-start space-x-3 space-x-reverse space-y-0 rounded-md border p-4">
+                          <FormControl>
+                            <input
+                              type="checkbox"
+                              checked={field.value}
+                              onChange={field.onChange}
+                              className="w-4 h-4 mt-1 rounded border-gray-300 text-primary"
+                            />
+                          </FormControl>
+                          <div className="space-y-1 leading-none mr-2">
+                            <FormLabel>
+                              أوافق على شروط الاستخدام وسياسة الخصوصية
+                            </FormLabel>
+                            <FormMessage />
+                          </div>
+                        </FormItem>
+                      )}
                     />
                   </div>
+                )}
 
-                  {/* Summary */}
-                  <div className="bg-muted/50 rounded-xl p-4 mt-6">
-                    <h3 className="font-medium text-foreground mb-3">ملخص الطلب</h3>
-                    <div className="grid grid-cols-2 gap-2 text-sm">
-                      <p className="text-muted-foreground">الاسم:</p>
-                      <p className="text-foreground">{formData.ownerName}</p>
-                      <p className="text-muted-foreground">الشركة:</p>
-                      <p className="text-foreground">{formData.companyName}</p>
-                      <p className="text-muted-foreground">المدينة:</p>
-                      <p className="text-foreground">{formData.companyCity}</p>
-                      <p className="text-muted-foreground">البريد:</p>
-                      <p className="text-foreground">{formData.ownerEmail}</p>
-                    </div>
-                  </div>
+                {/* Navigation Buttons */}
+                <div className="flex justify-between mt-8 pt-6 border-t border-border">
+                  {step > 1 ? (
+                    <Button type="button" variant="outline" onClick={prevStep}>
+                      <ArrowRight className="w-4 h-4 ml-2" />
+                      السابق
+                    </Button>
+                  ) : (
+                    <div />
+                  )}
 
-                  <div className="flex items-center space-x-2 space-x-reverse mt-6">
-                    <input
-                      type="checkbox"
-                      id="terms"
-                      className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
-                      required
-                    />
-                    <Label htmlFor="terms" className="text-sm font-normal text-muted-foreground mr-2">
-                      أوافق على <Link to="/terms" className="text-primary hover:underline">شروط الاستخدام</Link> و <Link to="/privacy" className="text-primary hover:underline">سياسة الخصوصية</Link> الخاصة بالمنصة
-                    </Label>
-                  </div>
+                  {step < 3 ? (
+                    <Button type="button" onClick={nextStep}>
+                      التالي
+                      <ArrowLeft className="w-4 h-4 mr-2" />
+                    </Button>
+                  ) : (
+                    <Button type="submit" disabled={isSubmitting}>
+                      {isSubmitting ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          جاري الإرسال...
+                        </>
+                      ) : (
+                        <>
+                          إرسال الطلب
+                          <CheckCircle2 className="w-4 h-4 mr-2" />
+                        </>
+                      )}
+                    </Button>
+                  )}
                 </div>
-              )}
 
-              {/* Navigation Buttons */}
-              <div className="flex justify-between mt-8 pt-6 border-t border-border">
-                {step > 1 ? (
-                  <Button type="button" variant="outline" onClick={prevStep}>
-                    <ArrowRight className="w-4 h-4 ml-2" />
-                    السابق
-                  </Button>
-                ) : (
-                  <div />
-                )}
-
-                {step < 3 ? (
-                  <Button type="button" onClick={nextStep}>
-                    التالي
-                    <ArrowLeft className="w-4 h-4 mr-2" />
-                  </Button>
-                ) : (
-                  <Button type="submit" disabled={isSubmitting}>
-                    {isSubmitting ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        جاري الإرسال...
-                      </>
-                    ) : (
-                      <>
-                        إرسال الطلب
-                        <CheckCircle2 className="w-4 h-4 mr-2" />
-                      </>
-                    )}
-                  </Button>
-                )}
               </div>
-            </div>
-          </form>
+            </form>
+          </Form>
 
-          {/* Help Text */}
           <p className="text-center text-muted-foreground text-sm mt-6">
             هل لديك حساب بالفعل؟{" "}
             <Link to="/login" className="text-primary hover:underline">
