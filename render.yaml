@@ -2,6 +2,14 @@ staticSites:
   - name: ahjazly-admin-panel
     buildCommand: npm install && npm run build
     publishDir: dist
+    
+    # SPA Routing Configuration - CRITICAL for React Router
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    
+    # Security Headers
     headers:
       - path: /*
         name: X-Frame-Options
@@ -20,14 +28,9 @@ staticSites:
         value: public, max-age=31536000, immutable
       - path: /index.html
         name: Cache-Control
-        value: no-cache
-      - path: /*
-        name: Content-Security-Policy
-        value: "default-src 'self' https: data: blob: 'unsafe-inline' 'unsafe-eval'; connect-src 'self' https: wss:;"
-    routes:
-      - type: rewrite
-        source: /*
-        destination: /index.html
+        value: no-cache, no-store, must-revalidate
+      # CSP is handled in index.html meta tag, not here to avoid conflicts
+    
     envVars:
       - key: VITE_SUPABASE_URL
       - key: VITE_SUPABASE_PUBLISHABLE_KEY
