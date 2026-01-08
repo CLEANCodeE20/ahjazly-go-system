@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
@@ -22,10 +22,57 @@ import {
 import { toast } from "@/hooks/use-toast";
 import { WhatsAppButton } from "@/components/ui/WhatsAppButton";
 import { supabase } from "@/integrations/supabase/client";
+import gsap from "gsap";
+import ScrollReveal from "scrollreveal";
+import Typed from "typed.js";
 
 const Contact = () => {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isSuccess, setIsSuccess] = useState(false);
+
+    // Refs for animations
+    const titleRef = useRef(null);
+    const formRef = useRef(null);
+    const infoRef = useRef(null);
+
+    useEffect(() => {
+        if (typeof document === "undefined") return;
+
+        // 1. Typed.js for Title
+        const typed = new Typed(titleRef.current, {
+            strings: ["مع فريقنا", "لتحقيق أهدافك", "لبناء مستقبلك"],
+            typeSpeed: 60,
+            backSpeed: 40,
+            backDelay: 2500,
+            loop: true,
+            showCursor: true,
+            cursorChar: "_",
+        });
+
+        // 2. GSAP for Form Entrance
+        gsap.fromTo(formRef.current,
+            { y: 50, opacity: 0 },
+            { y: 0, opacity: 1, duration: 1, ease: "power3.out", delay: 0.5 }
+        );
+
+        // 3. ScrollReveal
+        const sr = ScrollReveal({
+            origin: "bottom",
+            distance: "30px",
+            duration: 1000,
+            reset: false,
+            easing: "cubic-bezier(0.5, 0, 0, 1)",
+        });
+
+        sr.reveal(".contact-item-reveal", { interval: 100, delay: 300 });
+        sr.reveal(".social-reveal", { interval: 50, delay: 800, origin: "top" });
+
+        return () => {
+            typed.destroy();
+            sr.destroy();
+            gsap.killTweensOf(formRef.current);
+        };
+    }, []);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -93,7 +140,9 @@ const Contact = () => {
 
                         <h1 className="text-5xl md:text-7xl font-black text-foreground mb-8 tracking-tight leading-tight">
                             ابدأ محادثة <br />
-                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary">مع فريقنا</span>
+                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary">
+                                <span ref={titleRef}></span>
+                            </span>
                         </h1>
 
                         <p className="text-xl md:text-2xl text-muted-foreground max-w-2xl mx-auto leading-relaxed font-light">
@@ -107,43 +156,51 @@ const Contact = () => {
 
                         {/* Contact Info Column */}
                         <div className="lg:col-span-4 space-y-6">
-                            <div className="bg-card/80 backdrop-blur-xl rounded-3xl p-8 border border-white/20 shadow-xl sticky top-24">
+                            <div ref={infoRef} className="bg-card/80 backdrop-blur-xl rounded-3xl p-8 border border-white/20 shadow-xl sticky top-24">
                                 <h3 className="text-2xl font-bold mb-8 flex items-center gap-3">
                                     معلومات التواصل
                                     <div className="h-1 w-12 bg-primary rounded-full"></div>
                                 </h3>
 
                                 <div className="space-y-8">
-                                    <ContactItem
-                                        icon={Mail}
-                                        label="البريد الإلكتروني"
-                                        value="support@ahjazly.com"
-                                        color="text-blue-500"
-                                        bg="bg-blue-500/10"
-                                    />
-                                    <ContactItem
-                                        icon={Phone}
-                                        label="الهاتف الموحد"
-                                        value="+967 71215295"
-                                        subValue="متاح من 9 صباحاً - 6 مساءً"
-                                        color="text-green-500"
-                                        bg="bg-green-500/10"
-                                        isLtr
-                                    />
-                                    <ContactItem
-                                        icon={MapPin}
-                                        label="المقر الرئيسي"
-                                        value="الرياض، المملكة العربية السعودية"
-                                        color="text-red-500"
-                                        bg="bg-red-500/10"
-                                    />
-                                    <ContactItem
-                                        icon={Clock}
-                                        label="ساعات العمل"
-                                        value="الأحد - الخميس: 9ص - 6م"
-                                        color="text-purple-500"
-                                        bg="bg-purple-500/10"
-                                    />
+                                    <div className="contact-item-reveal">
+                                        <ContactItem
+                                            icon={Mail}
+                                            label="البريد الإلكتروني"
+                                            value="support@ahjazly.com"
+                                            color="text-blue-500"
+                                            bg="bg-blue-500/10"
+                                        />
+                                    </div>
+                                    <div className="contact-item-reveal">
+                                        <ContactItem
+                                            icon={Phone}
+                                            label="الهاتف الموحد"
+                                            value="+967 71215295"
+                                            subValue="متاح من 9 صباحاً - 6 مساءً"
+                                            color="text-green-500"
+                                            bg="bg-green-500/10"
+                                            isLtr
+                                        />
+                                    </div>
+                                    <div className="contact-item-reveal">
+                                        <ContactItem
+                                            icon={MapPin}
+                                            label="المقر الرئيسي"
+                                            value="الرياض، المملكة العربية السعودية"
+                                            color="text-red-500"
+                                            bg="bg-red-500/10"
+                                        />
+                                    </div>
+                                    <div className="contact-item-reveal">
+                                        <ContactItem
+                                            icon={Clock}
+                                            label="ساعات العمل"
+                                            value="الأحد - الخميس: 9ص - 6م"
+                                            color="text-purple-500"
+                                            bg="bg-purple-500/10"
+                                        />
+                                    </div>
                                 </div>
 
                                 <div className="mt-10 pt-8 border-t border-border/50">
@@ -151,17 +208,17 @@ const Contact = () => {
                                         تواصل معنا اجتماعياً
                                     </h4>
                                     <div className="flex gap-3">
-                                        <SocialButton icon={Facebook} href="#" color="hover:bg-[#1877F2]" />
-                                        <SocialButton icon={Twitter} href="#" color="hover:bg-[#1DA1F2]" />
-                                        <SocialButton icon={Instagram} href="#" color="hover:bg-[#E4405F]" />
-                                        <SocialButton icon={Linkedin} href="#" color="hover:bg-[#0A66C2]" />
+                                        <div className="social-reveal"><SocialButton icon={Facebook} href="#" color="hover:bg-[#1877F2]" /></div>
+                                        <div className="social-reveal"><SocialButton icon={Twitter} href="#" color="hover:bg-[#1DA1F2]" /></div>
+                                        <div className="social-reveal"><SocialButton icon={Instagram} href="#" color="hover:bg-[#E4405F]" /></div>
+                                        <div className="social-reveal"><SocialButton icon={Linkedin} href="#" color="hover:bg-[#0A66C2]" /></div>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
                         {/* Contact Form Column */}
-                        <div className="lg:col-span-8">
+                        <div className="lg:col-span-8" ref={formRef}>
                             <div className="bg-card rounded-[2.5rem] p-8 md:p-12 border border-border/50 shadow-2xl relative overflow-hidden group">
                                 {/* Decorative elements */}
                                 <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -mr-32 -mt-32 transition-all duration-1000 group-hover:bg-primary/10"></div>
