@@ -133,7 +133,7 @@ export const TwoFactorGuard = ({ children }: TwoFactorGuardProps) => {
     // Block access if 2FA is required but not verified
     if (requires2FA) {
         console.warn('[TwoFactorGuard] Blocking access due to requires2FA=true');
-        return null;
+        return <div className="p-4 text-red-500 border border-red-500 m-4">DEBUG: Access Blocked by 2FA Guard</div>;
     }
 
     console.log('[TwoFactorGuard] Allowing access to children');
