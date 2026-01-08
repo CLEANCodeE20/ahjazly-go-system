@@ -119,6 +119,7 @@ export const TwoFactorGuard = ({ children }: TwoFactorGuardProps) => {
     }
 
     if (isLoading || checking) {
+        console.log('[TwoFactorGuard] Loading/Checking... (isLoading:', isLoading, 'checking:', checking, ')');
         return (
             <div className="min-h-screen flex items-center justify-center">
                 <div className="text-center space-y-4">
@@ -131,9 +132,10 @@ export const TwoFactorGuard = ({ children }: TwoFactorGuardProps) => {
 
     // Block access if 2FA is required but not verified
     if (requires2FA) {
-        // Technically we should have navigated away, but if we are here returning null is correct to prevent content flash
+        console.warn('[TwoFactorGuard] Blocking access due to requires2FA=true');
         return null;
     }
 
+    console.log('[TwoFactorGuard] Allowing access to children');
     return <>{children}</>;
 };

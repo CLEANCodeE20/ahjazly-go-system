@@ -9,6 +9,7 @@ import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 
 const Login = () => {
+  console.log('[Login] Rendering Login Page');
   const navigate = useNavigate();
   const { user, userRole, userStatus, isLoading: authLoading, signIn } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
