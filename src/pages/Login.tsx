@@ -106,8 +106,10 @@ const Login = () => {
     }
   };
 
+  console.log('[Login] Rendering Login Page. Loading:', isLoading, 'AuthLoading:', authLoading);
+
   return (
-    <div className="min-h-screen flex flex-col bg-muted/30" dir="rtl">
+    <div className="min-h-screen flex flex-col bg-muted/30" dir="rtl" id="login-container">
       <Header />
 
       <main className="flex-1 flex items-center justify-center pt-20 pb-12 px-4">
