@@ -38,7 +38,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import AdminSidebar from "@/components/layout/AdminSidebar";
+import { AdminLayout } from "@/components/layout/AdminLayout";
 
 import {
     Tabs,
@@ -300,14 +300,12 @@ const PartnersManagement = () => {
 
             let error;
             if (currentPartner.partner_id) {
-                // Update
                 const { error: updateError } = await supabase
                     .from('partners')
                     .update(payload)
                     .eq('partner_id', currentPartner.partner_id);
                 error = updateError;
             } else {
-                // Insert
                 const { error: insertError } = await supabase
                     .from('partners')
                     .insert([payload]);
@@ -335,57 +333,57 @@ const PartnersManagement = () => {
     };
 
     return (
-        <div className="min-h-screen bg-muted/30">
-            <AdminSidebar />
-            <main className="lg:mr-64 p-6">
-                <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-                    <div>
-                        <h1 className="text-2xl font-bold text-foreground">الشركاء المسجلين</h1>
-                        <p className="text-muted-foreground">إدارة شركات النقل المتعاقد معها</p>
+        <AdminLayout
+            title="الشركاء المسجلين"
+            subtitle="إدارة شركات النقل المتعاقد معها"
+            actions={
+                <div className="flex items-center gap-2">
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="outline" size="sm" className="gap-2 hidden sm:flex">
+                                <Download className="w-4 h-4" />
+                                تصدير
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleExport('excel')}>
+                                <FileSpreadsheet className="w-4 h-4 ml-2 text-green-600" />
+                                Excel
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleExport('pdf')}>
+                                <FileText className="w-4 h-4 ml-2 text-red-600" />
+                                PDF
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+
+                    <Button onClick={() => openDialog()} size="sm">
+                        <Building2 className="w-4 h-4 ml-2" />
+                        <span className="hidden sm:inline">إضافة شريك جديد</span>
+                        <span className="sm:hidden">إضافة</span>
+                    </Button>
+                </div>
+            }
+        >
+            <div className="bg-card rounded-xl border border-border p-4 mb-6">
+                <div className="relative">
+                    <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                    <Input
+                        placeholder="بحث عن شركة..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="pr-10 w-full md:w-1/3"
+                    />
+                </div>
+            </div>
+
+            <div className="bg-card rounded-xl border border-border overflow-hidden">
+                {loading ? (
+                    <div className="flex items-center justify-center py-12">
+                        <Loader2 className="w-8 h-8 animate-spin text-primary" />
                     </div>
-                    <div className="flex items-center gap-3">
-                        <div className="relative">
-                            <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                            <Input
-                                placeholder="بحث عن شركة..."
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                className="pr-9 w-64"
-                            />
-                        </div>
-
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="outline" className="gap-2">
-                                    <Download className="w-4 h-4" />
-                                    تصدير
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => handleExport('excel')}>
-                                    <FileSpreadsheet className="w-4 h-4 ml-2 text-green-600" />
-                                    Excel
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleExport('pdf')}>
-                                    <FileText className="w-4 h-4 ml-2 text-red-600" />
-                                    PDF
-                                </DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-
-                        <Button onClick={() => openDialog()}>
-                            <Building2 className="w-4 h-4 ml-2" />
-                            إضافة شريك جديد
-                        </Button>
-                    </div>
-                </header>
-
-                <div className="bg-card rounded-xl border border-border overflow-hidden">
-                    {loading ? (
-                        <div className="flex items-center justify-center py-12">
-                            <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                        </div>
-                    ) : (
+                ) : (
+                    <div className="overflow-x-auto">
                         <Table>
                             <TableHeader>
                                 <TableRow>
@@ -465,261 +463,262 @@ const PartnersManagement = () => {
                                 )}
                             </TableBody>
                         </Table>
-                    )}
-                </div>
+                    </div>
+                )}
+            </div>
 
-                {/* Partner Dialog */}
-                {isDialogOpen && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
-                        <div className="bg-card w-full max-w-2xl rounded-xl border shadow-lg p-6 animate-in fade-in zoom-in-95 duration-200">
-                            <h2 className="text-xl font-semibold mb-4">
-                                {currentPartner.partner_id ? "تعديل بيانات الشريك" : "إضافة شريك جديد"}
-                            </h2>
-                            <Tabs defaultValue="company" className="w-full">
-                                <TabsList className="grid w-full grid-cols-4">
-                                    <TabsTrigger value="company">الشركة</TabsTrigger>
-                                    <TabsTrigger value="owner">المالك</TabsTrigger>
-                                    <TabsTrigger value="financial">المالية</TabsTrigger>
-                                    <TabsTrigger value="documents">المستندات</TabsTrigger>
-                                </TabsList>
+            {/* Partner Dialog */}
+            {isDialogOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4 overflow-y-auto">
+                    <div className="bg-card w-full max-w-2xl rounded-xl border shadow-lg p-6 animate-in fade-in zoom-in-95 duration-200">
+                        <h2 className="text-xl font-semibold mb-4">
+                            {currentPartner.partner_id ? "تعديل بيانات الشريك" : "إضافة شريك جديد"}
+                        </h2>
+                        <Tabs defaultValue="company" className="w-full">
+                            <TabsList className="grid w-full grid-cols-4">
+                                <TabsTrigger value="company">الشركة</TabsTrigger>
+                                <TabsTrigger value="owner">المالك</TabsTrigger>
+                                <TabsTrigger value="financial">المالية</TabsTrigger>
+                                <TabsTrigger value="documents">المستندات</TabsTrigger>
+                            </TabsList>
 
-                                <TabsContent value="company" className="space-y-4 pt-4">
-                                    <div className="flex flex-col items-center gap-4 mb-6">
-                                        <div className="relative group">
-                                            <div className="w-24 h-24 rounded-xl border-2 border-dashed flex items-center justify-center bg-muted overflow-hidden">
-                                                {currentPartner.logo_url ? (
-                                                    <img src={currentPartner.logo_url} className="w-full h-full object-cover" />
-                                                ) : (
-                                                    <ImageIcon className="w-8 h-8 text-muted-foreground/50" />
-                                                )}
-                                                <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                                    <label htmlFor="logo-upload" className="cursor-pointer p-2 bg-white/20 rounded-full hover:bg-white/40 transition-colors">
-                                                        <UploadCloud className="w-5 h-5 text-white" />
-                                                    </label>
-                                                </div>
-                                            </div>
-                                            <input
-                                                type="file"
-                                                id="logo-upload"
-                                                className="hidden"
-                                                accept="image/*"
-                                                onChange={async (e) => {
-                                                    const file = e.target.files?.[0];
-                                                    if (!file) return;
-
-                                                    const toastId = toast({ title: "جاري الرفع...", description: "يتم الآن رفع شعار الشركة" });
-                                                    try {
-                                                        const fileExt = file.name.split('.').pop();
-                                                        const fileName = `logo_${Date.now()}.${fileExt}`;
-                                                        const filePath = `${fileName}`;
-
-                                                        const { error: uploadError } = await supabase.storage
-                                                            .from('partner-logos')
-                                                            .upload(filePath, file);
-
-                                                        if (uploadError) throw uploadError;
-
-                                                        const { data: { publicUrl } } = supabase.storage
-                                                            .from('partner-logos')
-                                                            .getPublicUrl(filePath);
-
-                                                        setCurrentPartner({ ...currentPartner, logo_url: publicUrl });
-                                                        toast({ title: "تم الرفع", description: "تم تحديث الشعار بنجاح" });
-                                                    } catch (error) {
-                                                        console.error(error);
-                                                        toast({ title: "خطأ", description: "فشل رفع الشعار", variant: "destructive" });
-                                                    }
-                                                }}
-                                            />
-                                        </div>
-                                        <div className="text-center">
-                                            <Label className="text-sm font-medium">شعار الشركة</Label>
-                                            <p className="text-xs text-muted-foreground mt-1">يفضل أن تكون الصورة مربعة</p>
-                                        </div>
-                                    </div>
-
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="space-y-2">
-                                            <Label>اسم الشركة</Label>
-                                            <Input
-                                                value={currentPartner.company_name}
-                                                onChange={(e) => setCurrentPartner({ ...currentPartner, company_name: e.target.value })}
-                                                placeholder="شركة النقل ..."
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label>الموقع الإلكتروني</Label>
-                                            <Input
-                                                value={currentPartner.website || ""}
-                                                onChange={(e) => setCurrentPartner({ ...currentPartner, website: e.target.value })}
-                                                placeholder="https://example.com"
-                                            />
-                                        </div>
-                                    </div>
-
-                                    <div className="space-y-2">
-                                        <Label>العنوان</Label>
-                                        <Input
-                                            value={currentPartner.address || ""}
-                                            onChange={(e) => setCurrentPartner({ ...currentPartner, address: e.target.value })}
-                                            placeholder="العنوان التفصيلي"
-                                        />
-                                    </div>
-
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="space-y-2">
-                                            <Label>السجل التجاري</Label>
-                                            <Input
-                                                value={currentPartner.commercial_registration || ""}
-                                                onChange={(e) => setCurrentPartner({ ...currentPartner, commercial_registration: e.target.value })}
-                                                placeholder="رقم السجل"
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label>الرقم الضريبي</Label>
-                                            <Input
-                                                value={currentPartner.tax_number || ""}
-                                                onChange={(e) => setCurrentPartner({ ...currentPartner, tax_number: e.target.value })}
-                                                placeholder="الرقم الضريبي"
-                                            />
-                                        </div>
-                                    </div>
-
-                                    <div className="space-y-2">
-                                        <Label>اسم المسؤول (للتواصل)</Label>
-                                        <Input
-                                            value={currentPartner.contact_person || ""}
-                                            onChange={(e) => setCurrentPartner({ ...currentPartner, contact_person: e.target.value })}
-                                            placeholder="مدير التشغيل / المسؤول"
-                                        />
-                                    </div>
-                                </TabsContent>
-
-                                <TabsContent value="owner" className="space-y-4 pt-4">
-                                    <div className="space-y-2">
-                                        <Label>اسم المالك</Label>
-                                        <Input
-                                            value={currentPartner.owner_name || ""}
-                                            onChange={(e) => setCurrentPartner({ ...currentPartner, owner_name: e.target.value })}
-                                            placeholder="الاسم الكامل للمالك"
-                                        />
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="space-y-2">
-                                            <Label>رقم الجوال</Label>
-                                            <Input
-                                                value={currentPartner.owner_phone || ""}
-                                                onChange={(e) => setCurrentPartner({ ...currentPartner, owner_phone: e.target.value })}
-                                                placeholder="05xxxxxxxx"
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label>البريد الإلكتروني</Label>
-                                            <Input
-                                                value={currentPartner.owner_email || ""}
-                                                onChange={(e) => setCurrentPartner({ ...currentPartner, owner_email: e.target.value })}
-                                                placeholder="owner@example.com"
-                                            />
-                                        </div>
-                                    </div>
-                                </TabsContent>
-
-                                <TabsContent value="financial" className="space-y-4 pt-4">
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="space-y-2">
-                                            <Label>نسبة العمولة (%)</Label>
-                                            <Input
-                                                type="number"
-                                                value={currentPartner.commission_percentage || 0}
-                                                onChange={(e) => setCurrentPartner({ ...currentPartner, commission_percentage: Number(e.target.value) })}
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label>اسم البنك</Label>
-                                            <Input
-                                                value={currentPartner.bank_name || ""}
-                                                onChange={(e) => setCurrentPartner({ ...currentPartner, bank_name: e.target.value })}
-                                                placeholder="مصرف الراجحي"
-                                            />
-                                        </div>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label>رقم الحساب (IBAN)</Label>
-                                        <Input
-                                            value={currentPartner.iban || ""}
-                                            onChange={(e) => setCurrentPartner({ ...currentPartner, iban: e.target.value })}
-                                            placeholder="SA.................."
-                                        />
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="space-y-2">
-                                            <Label>رقم الحساب</Label>
-                                            <Input
-                                                value={currentPartner.account_number || ""}
-                                                onChange={(e) => setCurrentPartner({ ...currentPartner, account_number: e.target.value })}
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label>Swift Code</Label>
-                                            <Input
-                                                value={currentPartner.swift_code || ""}
-                                                onChange={(e) => setCurrentPartner({ ...currentPartner, swift_code: e.target.value })}
-                                            />
-                                        </div>
-                                    </div>
-                                </TabsContent>
-
-                                <TabsContent value="documents" className="space-y-6 pt-4">
-                                    <div className="bg-blue-50/50 border border-blue-100 rounded-lg p-4 mb-4">
-                                        <div className="flex items-start gap-3">
-                                            <div className="p-2 bg-blue-100 rounded-full">
-                                                <FileText className="w-4 h-4 text-blue-600" />
-                                            </div>
-                                            <div>
-                                                <h4 className="font-medium text-blue-900 text-sm">متطلبات الانضمام</h4>
-                                                <p className="text-blue-700 text-xs mt-1">يرجى رفع النسخ الأصلية (PDF أو صور واضحة) للمستندات التالية لإكمال طلب الانضمام.</p>
+                            <TabsContent value="company" className="space-y-4 pt-4">
+                                <div className="flex flex-col items-center gap-4 mb-6">
+                                    <div className="relative group">
+                                        <div className="w-24 h-24 rounded-xl border-2 border-dashed flex items-center justify-center bg-muted overflow-hidden">
+                                            {currentPartner.logo_url ? (
+                                                <img src={currentPartner.logo_url} className="w-full h-full object-cover" />
+                                            ) : (
+                                                <ImageIcon className="w-8 h-8 text-muted-foreground/50" />
+                                            )}
+                                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <label htmlFor="logo-upload" className="cursor-pointer p-2 bg-white/20 rounded-full hover:bg-white/40 transition-colors">
+                                                    <UploadCloud className="w-5 h-5 text-white" />
+                                                </label>
                                             </div>
                                         </div>
-                                    </div>
+                                        <input
+                                            type="file"
+                                            id="logo-upload"
+                                            className="hidden"
+                                            accept="image/*"
+                                            onChange={async (e) => {
+                                                const file = e.target.files?.[0];
+                                                if (!file) return;
 
-                                    {/* Document Items */}
-                                    {[
-                                        { id: 'cr', label: 'السجل التجاري', type: 'commercial_registration', dbValue: 'registration', required: true },
-                                        { id: 'tax', label: 'شهادة الضريبة', type: 'tax_certificate', dbValue: 'other', required: true },
-                                        { id: 'owner_id', label: 'هوية المالك', type: 'owner_id', dbValue: 'id_card', required: true },
-                                        { id: 'contract', label: 'عقد التأسيس', type: 'foundation_contract', dbValue: 'other', required: false },
-                                    ].map((docItem) => (
-                                        <DocumentUploadItem
-                                            key={docItem.id}
-                                            docItem={docItem}
-                                            partnerId={currentPartner.partner_id}
+                                                const toastId = toast({ title: "جاري الرفع...", description: "يتم الآن رفع شعار الشركة" });
+                                                try {
+                                                    const fileExt = file.name.split('.').pop();
+                                                    const fileName = `logo_${Date.now()}.${fileExt}`;
+                                                    const filePath = `${fileName}`;
+
+                                                    const { error: uploadError } = await supabase.storage
+                                                        .from('partner-logos')
+                                                        .upload(filePath, file);
+
+                                                    if (uploadError) throw uploadError;
+
+                                                    const { data: { publicUrl } } = supabase.storage
+                                                        .from('partner-logos')
+                                                        .getPublicUrl(filePath);
+
+                                                    setCurrentPartner({ ...currentPartner, logo_url: publicUrl });
+                                                    toast({ title: "تم الرفع", description: "تم تحديث الشعار بنجاح" });
+                                                } catch (error) {
+                                                    console.error(error);
+                                                    toast({ title: "خطأ", description: "فشل رفع الشعار", variant: "destructive" });
+                                                }
+                                            }}
                                         />
-                                    ))}
-
-                                    <div className="flex items-center gap-2 mt-4 text-xs text-muted-foreground bg-muted p-2 rounded justify-center">
-                                        <ShieldAlert className="w-4 h-4" />
-                                        جميع المستندات يتم تشفيرها وحفظها بشكل آمن.
                                     </div>
-                                </TabsContent>
-                            </Tabs>
-
-                            <div className="flex items-center justify-between mt-6 pt-4 border-t">
-                                <div className="text-xs text-muted-foreground">
-                                    * الحقول الإجبارية مطلوبة لإرسال الطلب
+                                    <div className="text-center">
+                                        <Label className="text-sm font-medium">شعار الشركة</Label>
+                                        <p className="text-xs text-muted-foreground mt-1">يفضل أن تكون الصورة مربعة</p>
+                                    </div>
                                 </div>
-                                <div className="flex gap-2">
-                                    <Button variant="ghost" onClick={() => setIsDialogOpen(false)}>إلغاء</Button>
-                                    <Button onClick={handleSave} disabled={isSaving}>
-                                        {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : (currentPartner.partner_id ? "حفظ التغييرات" : "إرسال الطلب")}
-                                    </Button>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label>اسم الشركة</Label>
+                                        <Input
+                                            value={currentPartner.company_name}
+                                            onChange={(e) => setCurrentPartner({ ...currentPartner, company_name: e.target.value })}
+                                            placeholder="شركة النقل ..."
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>الموقع الإلكتروني</Label>
+                                        <Input
+                                            value={currentPartner.website || ""}
+                                            onChange={(e) => setCurrentPartner({ ...currentPartner, website: e.target.value })}
+                                            placeholder="https://example.com"
+                                        />
+                                    </div>
                                 </div>
+
+                                <div className="space-y-2">
+                                    <Label>العنوان</Label>
+                                    <Input
+                                        value={currentPartner.address || ""}
+                                        onChange={(e) => setCurrentPartner({ ...currentPartner, address: e.target.value })}
+                                        placeholder="العنوان التفصيلي"
+                                    />
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label>السجل التجاري</Label>
+                                        <Input
+                                            value={currentPartner.commercial_registration || ""}
+                                            onChange={(e) => setCurrentPartner({ ...currentPartner, commercial_registration: e.target.value })}
+                                            placeholder="رقم السجل"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>الرقم الضريبي</Label>
+                                        <Input
+                                            value={currentPartner.tax_number || ""}
+                                            onChange={(e) => setCurrentPartner({ ...currentPartner, tax_number: e.target.value })}
+                                            placeholder="الرقم الضريبي"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label>اسم المسؤول (للتواصل)</Label>
+                                    <Input
+                                        value={currentPartner.contact_person || ""}
+                                        onChange={(e) => setCurrentPartner({ ...currentPartner, contact_person: e.target.value })}
+                                        placeholder="مدير التشغيل / المسؤول"
+                                    />
+                                </div>
+                            </TabsContent>
+
+                            <TabsContent value="owner" className="space-y-4 pt-4">
+                                <div className="space-y-2">
+                                    <Label>اسم المالك</Label>
+                                    <Input
+                                        value={currentPartner.owner_name || ""}
+                                        onChange={(e) => setCurrentPartner({ ...currentPartner, owner_name: e.target.value })}
+                                        placeholder="الاسم الكامل للمالك"
+                                    />
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label>رقم الجوال</Label>
+                                        <Input
+                                            value={currentPartner.owner_phone || ""}
+                                            onChange={(e) => setCurrentPartner({ ...currentPartner, owner_phone: e.target.value })}
+                                            placeholder="05xxxxxxxx"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>البريد الإلكتروني</Label>
+                                        <Input
+                                            value={currentPartner.owner_email || ""}
+                                            onChange={(e) => setCurrentPartner({ ...currentPartner, owner_email: e.target.value })}
+                                            placeholder="owner@example.com"
+                                        />
+                                    </div>
+                                </div>
+                            </TabsContent>
+
+                            <TabsContent value="financial" className="space-y-4 pt-4">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label>نسبة العمولة (%)</Label>
+                                        <Input
+                                            type="number"
+                                            value={currentPartner.commission_percentage || 0}
+                                            onChange={(e) => setCurrentPartner({ ...currentPartner, commission_percentage: Number(e.target.value) })}
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>اسم البنك</Label>
+                                        <Input
+                                            value={currentPartner.bank_name || ""}
+                                            onChange={(e) => setCurrentPartner({ ...currentPartner, bank_name: e.target.value })}
+                                            placeholder="مصرف الراجحي"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>رقم الحساب (IBAN)</Label>
+                                    <Input
+                                        value={currentPartner.iban || ""}
+                                        onChange={(e) => setCurrentPartner({ ...currentPartner, iban: e.target.value })}
+                                        placeholder="SA.................."
+                                    />
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label>رقم الحساب</Label>
+                                        <Input
+                                            value={currentPartner.account_number || ""}
+                                            onChange={(e) => setCurrentPartner({ ...currentPartner, account_number: e.target.value })}
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Swift Code</Label>
+                                        <Input
+                                            value={currentPartner.swift_code || ""}
+                                            onChange={(e) => setCurrentPartner({ ...currentPartner, swift_code: e.target.value })}
+                                        />
+                                    </div>
+                                </div>
+                            </TabsContent>
+
+                            <TabsContent value="documents" className="space-y-6 pt-4">
+                                <div className="bg-blue-50/50 border border-blue-100 rounded-lg p-4 mb-4">
+                                    <div className="flex items-start gap-3">
+                                        <div className="p-2 bg-blue-100 rounded-full">
+                                            <FileText className="w-4 h-4 text-blue-600" />
+                                        </div>
+                                        <div>
+                                            <h4 className="font-medium text-blue-900 text-sm">متطلبات الانضمام</h4>
+                                            <p className="text-blue-700 text-xs mt-1">يرجى رفع النسخ الأصلية (PDF أو صور واضحة) للمستندات التالية لإكمال طلب الانضمام.</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {[
+                                    { id: 'cr', label: 'السجل التجاري', type: 'commercial_registration', dbValue: 'registration', required: true },
+                                    { id: 'tax', label: 'شهادة الضريبة', type: 'tax_certificate', dbValue: 'other', required: true },
+                                    { id: 'owner_id', label: 'هوية المالك', type: 'owner_id', dbValue: 'id_card', required: true },
+                                    { id: 'contract', label: 'عقد التأسيس', type: 'foundation_contract', dbValue: 'other', required: false },
+                                ].map((docItem) => (
+                                    <DocumentUploadItem
+                                        key={docItem.id}
+                                        docItem={docItem}
+                                        partnerId={currentPartner.partner_id}
+                                    />
+                                ))}
+
+                                <div className="flex items-center gap-2 mt-4 text-xs text-muted-foreground bg-muted p-2 rounded justify-center">
+                                    <ShieldAlert className="w-4 h-4" />
+                                    جميع المستندات يتم تشفيرها وحفظها بشكل آمن.
+                                </div>
+                            </TabsContent>
+                        </Tabs>
+
+                        <div className="flex items-center justify-between mt-6 pt-4 border-t">
+                            <div className="text-xs text-muted-foreground">
+                                * الحقول الإجبارية مطلوبة لإرسال الطلب
+                            </div>
+                            <div className="flex gap-2">
+                                <Button variant="ghost" onClick={() => setIsDialogOpen(false)}>إلغاء</Button>
+                                <Button onClick={handleSave} disabled={isSaving}>
+                                    {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : (currentPartner.partner_id ? "حفظ التغييرات" : "إرسال الطلب")}
+                                </Button>
                             </div>
                         </div>
                     </div>
-                )}
-            </main>
-        </div>
+                </div>
+            )}
+        </AdminLayout>
     );
 };
+
+export default PartnersManagement;
 
 export default PartnersManagement;

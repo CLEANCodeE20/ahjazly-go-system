@@ -41,7 +41,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import AdminSidebar from "@/components/layout/AdminSidebar";
+import { AdminLayout } from "@/components/layout/AdminLayout";
 
 interface Banner {
     id: number;
@@ -191,20 +191,17 @@ const BannerManager = () => {
     };
 
     return (
-        <div className="min-h-screen bg-muted/30">
-            <AdminSidebar />
-            <main className="lg:mr-64 p-6">
-                <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-                    <div>
-                        <h1 className="text-2xl font-bold text-foreground">إدارة السلايدر الإعلاني</h1>
-                        <p className="text-muted-foreground">التحكم في الصور والعروض المتحركة في واجهة التطبيق الرئيسية</p>
-                    </div>
-                    <Button onClick={() => openEditor()}>
-                        <Plus className="w-4 h-4 ml-2" />
-                        إضافة إعلان جديد
-                    </Button>
-                </header>
-
+        <AdminLayout
+            title="إدارة السلايدر الإعلاني"
+            subtitle="التحكم في الصور والعروض المتحركة في واجهة التطبيق الرئيسية"
+            actions={
+                <Button onClick={() => openEditor()}>
+                    <Plus className="w-4 h-4 ml-2" />
+                    إضافة إعلان جديد
+                </Button>
+            }
+        >
+            <div className="space-y-6">
                 <div className="bg-card rounded-xl border border-border overflow-hidden">
                     {loading ? (
                         <div className="flex items-center justify-center py-12">
@@ -366,9 +363,8 @@ const BannerManager = () => {
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>
-            </main>
-        </div>
+            </div>
+        </AdminLayout>
     );
 };
-
 export default BannerManager;

@@ -44,7 +44,7 @@ import {
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import AdminSidebar from "@/components/layout/AdminSidebar";
+import { AdminLayout } from "@/components/layout/AdminLayout";
 import { PaginationControls } from "@/components/ui/pagination-controls";
 
 interface SupportTicket {
@@ -167,16 +167,11 @@ const SupportManager = () => {
     };
 
     return (
-        <div className="min-h-screen bg-muted/30">
-            <AdminSidebar />
-            <main className="lg:mr-64 p-6">
-                <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-                    <div>
-                        <h1 className="text-2xl font-bold text-foreground">مركز الدعم الفني</h1>
-                        <p className="text-muted-foreground">إدارة استفسارات وشكاوى المستخدمين</p>
-                    </div>
-                </header>
-
+        <AdminLayout
+            title="مركز الدعم الفني"
+            subtitle="إدارة استفسارات وشكاوى المستخدمين"
+        >
+            <div className="space-y-6">
                 <div className="flex flex-col md:flex-row gap-4 mb-6">
                     <div className="flex items-center gap-2 bg-card p-2 rounded-lg border flex-1">
                         <Search className="w-4 h-4 text-muted-foreground" />
@@ -351,8 +346,8 @@ const SupportManager = () => {
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>
-            </main>
-        </div>
+            </div>
+        </AdminLayout>
     );
 };
 

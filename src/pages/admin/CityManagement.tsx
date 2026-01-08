@@ -2,59 +2,63 @@ import { useState, useEffect } from "react";
 import {
     MapPin,
     Search,
-    MoreVertical,
-    Edit,
-    CheckCircle2,
-    XCircle,
-    Loader2,
     Plus,
-    Trash2
+    Trash2,
+    Loader2,
+    Building2,
+    Bus,
+    Edit,
+    Save,
+    X,
+    CheckCircle2,
+    MoreVertical
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow
-} from "@/components/ui/table";
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
     Dialog,
     DialogContent,
+    DialogDescription,
+    DialogFooter,
     DialogHeader,
     DialogTitle,
-    DialogFooter,
+    DialogTrigger,
 } from "@/components/ui/dialog";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "@/hooks/use-toast";
-import AdminSidebar from "@/components/layout/AdminSidebar";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
+import { toast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { AdminLayout } from "@/components/layout/AdminLayout";
+import { useAuth } from "@/hooks/useAuth"; // Assuming useAuth is needed, though not directly used in the provided snippet
 
 interface City {
-    city_id: number;
+    id: string;
     name_ar: string;
-    name_en: string | null;
+    name_en: string;
+    region: string;
     is_active: boolean;
-    country_code: string;
-    created_at: string;
+    code: string;
+    created_at?: string;
 }
 
 const CityManagement = () => {
     const [cities, setCities] = useState<City[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState("");
-    const [isDialogOpen, setIsDialogOpen] = useState(false);
-    const [currentCity, setCurrentCity] = useState<Partial<City>>({});
-    const [isSaving, setIsSaving] = useState(false);
+    const [isAddOpen, setIsAddOpen] = useState(false);
+    const [isEditOpen, setIsEditOpen] = useState(false);
+    const [processing, setProcessing] = useState(false);
+    const [selectedCity, setSelectedCity] = useState<City | null>(null);
+
+    // Form State
+    const [cityNameAr, setCityNameAr] = useState("");
+    const [cityNameEn, setCityNameEn] = useState("");
+    const [cityRegion, setCityRegion] = useState("");
+    const [cityCode, setCityCode] = useState("");
+    const [cityActive, setCityActive] = useState(true);
+
+    // Delete Dialog
+    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+    const [cityToDelete, setCityToDelete] = useState<City | null>(null);
 
     useEffect(() => {
         fetchCities();
@@ -62,281 +66,383 @@ const CityManagement = () => {
 
     const fetchCities = async () => {
         setLoading(true);
-        const { data, error } = await supabase
-            .from('cities')
-            .select('*')
-            .order('name_ar');
+        try {
+            const { data, error } = await supabase
+                .from('cities')
+                .select('*')
+                .order('name_ar');
 
-        if (error) {
+            if (error) throw error;
+            setCities(data || []);
+        } catch (error) {
             console.error('Error fetching cities:', error);
             toast({
                 title: "خطأ",
-                description: "فشل في تحميل بيانات المدن",
-                variant: "destructive"
+                description: "فشل في جلب قائمة المدن",
+                variant: "destructive",
             });
-        } else {
-            setCities(data || []);
-        }
-        setLoading(false);
-    };
-
-    const toggleCityStatus = async (cityId: number, currentStatus: boolean) => {
-        const { error } = await supabase
-            .from('cities')
-            .update({ is_active: !currentStatus })
-            .eq('city_id', cityId);
-
-        if (error) {
-            toast({
-                title: "خطأ",
-                description: "فشل في تحديث حالة المدينة",
-                variant: "destructive"
-            });
-        } else {
-            toast({
-                title: "تم التحديث",
-                description: `تم ${!currentStatus ? 'تفعيل' : 'تعطيل'} المدينة بنجاح`,
-            });
-            fetchCities();
+        } finally {
+            setLoading(false);
         }
     };
 
-    const deleteCity = async (cityId: number) => {
-        if (!confirm("هل أنت متأكد من حذف هذه المدينة؟ قد يؤثر ذلك على الرحلات المرتبطة بها.")) return;
-
-        const { error } = await supabase
-            .from('cities')
-            .delete()
-            .eq('city_id', cityId);
-
-        if (error) {
+    const handleAddCity = async () => {
+        if (!cityNameAr || !cityNameEn || !cityRegion || !cityCode) {
             toast({
-                title: "خطأ",
-                description: "لا يمكن حذف المدينة لارتباطها ببيانات أخرى. يمكنك تعطيلها بدلاً من ذلك.",
-                variant: "destructive"
-            });
-        } else {
-            toast({
-                title: "تم الحذف",
-                description: "تم حذف المدينة بنجاح",
-            });
-            fetchCities();
-        }
-    };
-
-    const openDialog = (city?: City) => {
-        if (city) {
-            setCurrentCity({ ...city });
-        } else {
-            setCurrentCity({
-                name_ar: "",
-                name_en: "",
-                is_active: true,
-                country_code: "YE"
-            });
-        }
-        setIsDialogOpen(true);
-    };
-
-    const handleSave = async () => {
-        if (!currentCity.name_ar) {
-            toast({
-                title: "خطأ",
-                description: "يرجى إدخال اسم المدينة بالعربية",
-                variant: "destructive"
+                title: "حقول ناقصة",
+                description: "يرجى ملء جميع الحقول المطلوبة",
+                variant: "destructive",
             });
             return;
         }
 
-        setIsSaving(true);
+        setProcessing(true);
         try {
-            const payload = {
-                name_ar: currentCity.name_ar,
-                name_en: currentCity.name_en,
-                is_active: currentCity.is_active ?? true,
-                country_code: currentCity.country_code || "YE"
-            };
-
-            let error;
-            if (currentCity.city_id) {
-                const { error: updateError } = await supabase
-                    .from('cities')
-                    .update(payload)
-                    .eq('city_id', currentCity.city_id);
-                error = updateError;
-            } else {
-                const { error: insertError } = await supabase
-                    .from('cities')
-                    .insert([payload]);
-                error = insertError;
-            }
+            const { error } = await supabase
+                .from('cities')
+                .insert([{
+                    name_ar: cityNameAr,
+                    name_en: cityNameEn,
+                    region: cityRegion,
+                    code: cityCode,
+                    is_active: cityActive
+                }]);
 
             if (error) throw error;
 
             toast({
-                title: "تم الحفظ",
-                description: currentCity.city_id ? "تم تحديث بيانات المدينة" : "تم إضافة مدينة جديدة",
+                title: "تمت الإضافة",
+                description: "تم إضافة المدينة بنجاح",
             });
-            setIsDialogOpen(false);
+
+            setIsAddOpen(false);
+            resetForm();
             fetchCities();
         } catch (error: any) {
-            console.error('Error saving city:', error);
+            console.error('Error adding city:', error);
             toast({
                 title: "خطأ",
-                description: "اسم المدينة موجود بالفعل أو حدث خطأ في النظام",
-                variant: "destructive"
+                description: error.message || "فشل في إضافة المدينة",
+                variant: "destructive",
             });
         } finally {
-            setIsSaving(false);
+            setProcessing(false);
         }
     };
 
-    const filteredCities = cities.filter(c =>
-        c.name_ar.includes(searchQuery) ||
-        (c.name_en?.toLowerCase().includes(searchQuery.toLowerCase()))
+    const handleEditCity = async () => {
+        if (!selectedCity || !cityNameAr || !cityNameEn || !cityRegion || !cityCode) return;
+
+        setProcessing(true);
+        try {
+            const { error } = await supabase
+                .from('cities')
+                .update({
+                    name_ar: cityNameAr,
+                    name_en: cityNameEn,
+                    region: cityRegion,
+                    code: cityCode,
+                    is_active: cityActive
+                })
+                .eq('id', selectedCity.id);
+
+            if (error) throw error;
+
+            toast({
+                title: "تم التحديث",
+                description: "تم تحديث بيانات المدينة بنجاح",
+            });
+
+            setIsEditOpen(false);
+            resetForm();
+            fetchCities();
+        } catch (error: any) {
+            console.error('Error updating city:', error);
+            toast({
+                title: "خطأ",
+                description: error.message || "فشل في تحديث المدينة",
+                variant: "destructive",
+            });
+        } finally {
+            setProcessing(false);
+        }
+    };
+
+    const handleDeleteCity = async () => {
+        if (!cityToDelete) return;
+
+        setProcessing(true);
+        try {
+            const { error } = await supabase
+                .from('cities')
+                .delete()
+                .eq('id', cityToDelete.id);
+
+            if (error) throw error;
+
+            toast({
+                title: "تم الحذف",
+                description: "تم حذف المدينة بنجاح",
+            });
+
+            setDeleteDialogOpen(false);
+            fetchCities();
+        } catch (error: any) {
+            console.error('Error deleting city:', error);
+            toast({
+                title: "خطأ",
+                description: error.message || "فشل في حذف المدينة",
+                variant: "destructive",
+            });
+        } finally {
+            setProcessing(false);
+        }
+    };
+
+    const openEditDialog = (city: City) => {
+        setSelectedCity(city);
+        setCityNameAr(city.name_ar);
+        setCityNameEn(city.name_en);
+        setCityRegion(city.region);
+        setCityCode(city.code);
+        setCityActive(city.is_active);
+        setIsEditOpen(true);
+    };
+
+    const resetForm = () => {
+        setCityNameAr("");
+        setCityNameEn("");
+        setCityRegion("");
+        setCityCode("");
+        setCityActive(true);
+        setSelectedCity(null);
+    };
+
+    const filteredCities = cities.filter(city =>
+        city.name_ar.includes(searchQuery) ||
+        city.name_en.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        city.code.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
     return (
-        <div className="min-h-screen bg-muted/30">
-            <AdminSidebar />
-            <main className="lg:mr-64 p-6">
-                <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-                    <div>
-                        <h1 className="text-2xl font-bold text-foreground">إدارة المدن</h1>
-                        <p className="text-muted-foreground">التحكم في المدن المتاحة في نظام الحجز</p>
-                    </div>
-                    <div className="flex items-center gap-3">
-                        <div className="relative">
-                            <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                            <Input
-                                placeholder="بحث عن مدينة..."
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                className="pr-9 w-64"
-                            />
-                        </div>
-
-                        <Button onClick={() => openDialog()}>
+        <AdminLayout
+            title="إدارة المدن"
+            actions={
+                <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
+                    <DialogTrigger asChild>
+                        <Button>
                             <Plus className="w-4 h-4 ml-2" />
                             إضافة مدينة
                         </Button>
-                    </div>
-                </header>
-
-                <div className="bg-card rounded-xl border border-border overflow-hidden">
-                    {loading ? (
-                        <div className="flex items-center justify-center py-12">
-                            <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                        </div>
-                    ) : (
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead className="text-right">المدينة (بالعربية)</TableHead>
-                                    <TableHead className="text-right">City (English)</TableHead>
-                                    <TableHead className="text-right">الحالة</TableHead>
-                                    <TableHead className="text-right">تاريخ الإضافة</TableHead>
-                                    <TableHead className="text-right">الإجراءات</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {filteredCities.length === 0 ? (
-                                    <TableRow>
-                                        <TableCell colSpan={5} className="text-center py-12 text-muted-foreground">
-                                            لا توجد مدن مسجلة حالياً
-                                        </TableCell>
-                                    </TableRow>
-                                ) : (
-                                    filteredCities.map((city) => (
-                                        <TableRow key={city.city_id}>
-                                            <TableCell className="font-medium">{city.name_ar}</TableCell>
-                                            <TableCell>{city.name_en || "-"}</TableCell>
-                                            <TableCell>
-                                                <div className="flex items-center gap-2">
-                                                    <Switch
-                                                        checked={city.is_active}
-                                                        onCheckedChange={() => toggleCityStatus(city.city_id, city.is_active)}
-                                                    />
-                                                    {city.is_active ? (
-                                                        <span className="text-xs text-green-600 font-medium">نشط</span>
-                                                    ) : (
-                                                        <span className="text-xs text-red-600 font-medium">معطل</span>
-                                                    )}
-                                                </div>
-                                            </TableCell>
-                                            <TableCell className="text-sm text-muted-foreground" dir="ltr">
-                                                {new Date(city.created_at).toLocaleDateString('ar-SA')}
-                                            </TableCell>
-                                            <TableCell>
-                                                <DropdownMenu>
-                                                    <DropdownMenuTrigger asChild>
-                                                        <Button variant="ghost" size="sm">
-                                                            <MoreVertical className="w-4 h-4" />
-                                                        </Button>
-                                                    </DropdownMenuTrigger>
-                                                    <DropdownMenuContent align="end">
-                                                        <DropdownMenuItem onClick={() => openDialog(city)}>
-                                                            <Edit className="w-4 h-4 ml-2" /> تعديل
-                                                        </DropdownMenuItem>
-                                                        <DropdownMenuItem
-                                                            className="text-destructive"
-                                                            onClick={() => deleteCity(city.city_id)}
-                                                        >
-                                                            <Trash2 className="w-4 h-4 ml-2" /> حذف
-                                                        </DropdownMenuItem>
-                                                    </DropdownMenuContent>
-                                                </DropdownMenu>
-                                            </TableCell>
-                                        </TableRow>
-                                    ))
-                                )}
-                            </TableBody>
-                        </Table>
-                    )}
-                </div>
-
-                <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                    <DialogContent className="sm:max-w-[425px]">
+                    </DialogTrigger>
+                    <DialogContent>
                         <DialogHeader>
-                            <DialogTitle>{currentCity.city_id ? "تعديل مدينة" : "إضافة مدينة جديدة"}</DialogTitle>
+                            <DialogTitle>إضافة مدينة جديدة</DialogTitle>
+                            <DialogDescription>
+                                أدخل تفاصيل المدينة الجديدة لإضافتها للنظام
+                            </DialogDescription>
                         </DialogHeader>
                         <div className="grid gap-4 py-4">
-                            <div className="grid gap-2">
-                                <Label htmlFor="name_ar">اسم المدينة بالعربية</Label>
-                                <Input
-                                    id="name_ar"
-                                    value={currentCity.name_ar}
-                                    onChange={(e) => setCurrentCity({ ...currentCity, name_ar: e.target.value })}
-                                />
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="name_ar">الاسم بالعربية</Label>
+                                    <Input id="name_ar" value={cityNameAr} onChange={(e) => setCityNameAr(e.target.value)} placeholder="الرياض" />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="name_en">الاسم بالإنجليزية</Label>
+                                    <Input id="name_en" value={cityNameEn} onChange={(e) => setCityNameEn(e.target.value)} placeholder="Riyadh" />
+                                </div>
                             </div>
-                            <div className="grid gap-2">
-                                <Label htmlFor="name_en">City Name (English)</Label>
-                                <Input
-                                    id="name_en"
-                                    value={currentCity.name_en || ""}
-                                    onChange={(e) => setCurrentCity({ ...currentCity, name_en: e.target.value })}
-                                />
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="code">الكود</Label>
+                                    <Input id="code" value={cityCode} onChange={(e) => setCityCode(e.target.value)} placeholder="RUH" />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="region">المنطقة</Label>
+                                    <Input id="region" value={cityRegion} onChange={(e) => setCityRegion(e.target.value)} placeholder="المنطقة الوسطى" />
+                                </div>
                             </div>
-                            <div className="flex items-center gap-2">
-                                <Switch
-                                    id="is_active"
-                                    checked={currentCity.is_active}
-                                    onCheckedChange={(checked) => setCurrentCity({ ...currentCity, is_active: checked })}
+                            <div className="flex items-center gap-2 mt-2">
+                                <input
+                                    type="checkbox"
+                                    id="active"
+                                    className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
+                                    checked={cityActive}
+                                    onChange={(e) => setCityActive(e.target.checked)}
                                 />
-                                <Label htmlFor="is_active">تفعيل المدينة</Label>
+                                <Label htmlFor="active">مدينة نشطة</Label>
                             </div>
                         </div>
                         <DialogFooter>
-                            <Button variant="ghost" onClick={() => setIsDialogOpen(false)}>إلغاء</Button>
-                            <Button onClick={handleSave} disabled={isSaving}>
-                                {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : "حفظ"}
+                            <Button variant="outline" onClick={() => setIsAddOpen(false)}>إلغاء</Button>
+                            <Button onClick={handleAddCity} disabled={processing}>
+                                {processing ? <Loader2 className="w-4 h-4 animate-spin ml-2" /> : <Save className="w-4 h-4 ml-2" />}
+                                حفظ
                             </Button>
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>
-            </main>
-        </div>
+            }
+        >
+            <div className="bg-card rounded-xl border border-border p-4 mb-6">
+                <div className="relative">
+                    <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                    <Input
+                        placeholder="بحث عن مدينة..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="pr-10 w-full md:w-1/3"
+                    />
+                </div>
+            </div>
+
+            <div className="bg-card rounded-xl border border-border overflow-hidden">
+                {loading ? (
+                    <div className="flex items-center justify-center py-12">
+                        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                    </div>
+                ) : (
+                    <div className="overflow-x-auto">
+                        <table className="w-full">
+                            <thead className="bg-muted/50 border-b border-border">
+                                <tr>
+                                    <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">الاسم</th>
+                                    <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">الرمز</th>
+                                    <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">المنطقة</th>
+                                    <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">الحالة</th>
+                                    <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">الإجراءات</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {filteredCities.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={5} className="py-12 text-center text-muted-foreground">
+                                            لا توجد مدن مطابقة للبحث
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    filteredCities.map((city) => (
+                                        <tr key={city.id} className="border-b border-border hover:bg-muted/30 transition-colors">
+                                            <td className="py-3 px-4">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                                                        <MapPin className="w-4 h-4 text-primary" />
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-medium text-foreground">{city.name_ar}</p>
+                                                        <p className="text-xs text-muted-foreground">{city.name_en}</p>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="py-3 px-4 font-mono text-sm">{city.code}</td>
+                                            <td className="py-3 px-4">{city.region}</td>
+                                            <td className="py-3 px-4">
+                                                {city.is_active ? (
+                                                    <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-500/10 text-green-500">
+                                                        <CheckCircle2 className="w-3 h-3" /> نشط
+                                                    </span>
+                                                ) : (
+                                                    <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-red-500/10 text-red-500">
+                                                        <X className="w-3 h-3" /> غير نشط
+                                                    </span>
+                                                )}
+                                            </td>
+                                            <td className="py-3 px-4">
+                                                <div className="flex items-center gap-2">
+                                                    <Button variant="ghost" size="icon" onClick={() => openEditDialog(city)}>
+                                                        <Edit className="w-4 h-4 text-muted-foreground hover:text-primary" />
+                                                    </Button>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        onClick={() => {
+                                                            setCityToDelete(city);
+                                                            setDeleteDialogOpen(true);
+                                                        }}
+                                                    >
+                                                        <Trash2 className="w-4 h-4 text-muted-foreground hover:text-destructive" />
+                                                    </Button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+            </div>
+
+            {/* Edit Dialog */}
+            <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>تعديل بيانات المدينة</DialogTitle>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="edit_name_ar">الاسم بالعربية</Label>
+                                <Input id="edit_name_ar" value={cityNameAr} onChange={(e) => setCityNameAr(e.target.value)} />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="edit_name_en">الاسم بالإنجليزية</Label>
+                                <Input id="edit_name_en" value={cityNameEn} onChange={(e) => setCityNameEn(e.target.value)} />
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="edit_code">الكود</Label>
+                                <Input id="edit_code" value={cityCode} onChange={(e) => setCityCode(e.target.value)} />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="edit_region">المنطقة</Label>
+                                <Input id="edit_region" value={cityRegion} onChange={(e) => setCityRegion(e.target.value)} />
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-2 mt-2">
+                            <input
+                                type="checkbox"
+                                id="edit_active"
+                                className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
+                                checked={cityActive}
+                                onChange={(e) => setCityActive(e.target.checked)}
+                            />
+                            <Label htmlFor="edit_active">مدينة نشطة</Label>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsEditOpen(false)}>إلغاء</Button>
+                        <Button onClick={handleEditCity} disabled={processing}>
+                            {processing ? <Loader2 className="w-4 h-4 animate-spin ml-2" /> : <Save className="w-4 h-4 ml-2" />}
+                            حفظ التغييرات
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Delete Dialog */}
+            <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>تأكيد الحذف</DialogTitle>
+                        <DialogDescription>
+                            هل أنت متأكد من رغبتك في حذف مدينة {cityToDelete?.name_ar}؟ لا يمكن التراجع عن هذا الإجراء
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>إلغاء</Button>
+                        <Button variant="destructive" onClick={handleDeleteCity} disabled={processing}>
+                            {processing ? <Loader2 className="w-4 h-4 animate-spin ml-2" /> : <Trash2 className="w-4 h-4 ml-2" />}
+                            حذف
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </AdminLayout>
     );
 };
 
 export default CityManagement;
+

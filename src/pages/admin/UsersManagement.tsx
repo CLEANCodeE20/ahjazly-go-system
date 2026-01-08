@@ -41,7 +41,7 @@ import {
 } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import AdminSidebar from "@/components/layout/AdminSidebar";
+import { AdminLayout } from "@/components/layout/AdminLayout";
 import { PaginationControls } from "@/components/ui/pagination-controls";
 import { useExport } from "@/hooks/useExport";
 import {
@@ -359,22 +359,41 @@ const UsersManagement = () => {
     };
 
     return (
-        <div className="min-h-screen bg-muted/30">
-            <AdminSidebar />
-            <main className="lg:mr-64 p-6">
-                <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-                    <div>
-                        <h1 className="text-2xl font-bold text-foreground">إدارة المستخدمين</h1>
-                        <p className="text-muted-foreground">التحكم في حسابات المستخدمين وصلاحياتهم</p>
-                    </div>
+        <AdminLayout
+            title="إدارة المستخدمين"
+            subtitle="التحكم في حسابات المستخدمين وصلاحياتهم"
+            actions={
+                <div className="flex items-center gap-2">
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="outline" size="sm" className="gap-2 hidden sm:flex">
+                                <Download className="w-4 h-4" />
+                                تصدير
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleExport('excel')}>
+                                <FileSpreadsheet className="w-4 h-4 ml-2 text-green-600" />
+                                Excel
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleExport('pdf')}>
+                                <FileText className="w-4 h-4 ml-2 text-red-600" />
+                                PDF
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+
                     <Button onClick={() => setIsCreateDialogOpen(true)}>
                         <UserCog className="w-4 h-4 ml-2" />
-                        مستخدم جديد
+                        <span className="hidden sm:inline">مستخدم جديد</span>
+                        <span className="sm:hidden">إضافة</span>
                     </Button>
-                </header>
-
-                <div className="flex flex-col gap-4">
-                    <div className="flex items-center gap-2 bg-card p-2 rounded-lg border w-fit">
+                </div>
+            }
+        >
+            <div className="space-y-6">
+                <div className="bg-card rounded-xl border border-border p-4">
+                    <div className="flex items-center gap-2 bg-background p-2 rounded-lg border w-full md:w-fit">
                         <Search className="w-4 h-4 text-muted-foreground" />
                         <Input
                             placeholder="بحث عن مستخدم..."
@@ -383,38 +402,19 @@ const UsersManagement = () => {
                                 setSearchQuery(e.target.value);
                                 setCurrentPage(1);
                             }}
-                            className="border-none shadow-none focus-visible:ring-0 w-64 h-8"
+                            className="border-none shadow-none focus-visible:ring-0 w-full md:w-64 h-8"
                         />
                     </div>
+                </div>
 
-                    <div className="flex gap-2">
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="outline" className="gap-2">
-                                    <Download className="w-4 h-4" />
-                                    تصدير
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => handleExport('excel')}>
-                                    <FileSpreadsheet className="w-4 h-4 ml-2 text-green-600" />
-                                    Excel
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleExport('pdf')}>
-                                    <FileText className="w-4 h-4 ml-2 text-red-600" />
-                                    PDF
-                                </DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                    </div>
-
-                    <div className="bg-card rounded-xl border border-border overflow-hidden">
-                        {loading ? (
-                            <div className="flex items-center justify-center py-12">
-                                <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                            </div>
-                        ) : (
-                            <>
+                <div className="bg-card rounded-xl border border-border overflow-hidden">
+                    {loading ? (
+                        <div className="flex items-center justify-center py-12">
+                            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                        </div>
+                    ) : (
+                        <>
+                            <div className="overflow-x-auto">
                                 <Table>
                                     <TableHeader>
                                         <TableRow>
@@ -491,16 +491,10 @@ const UsersManagement = () => {
                                                                 <DropdownMenuItem onClick={() => {
                                                                     setNewUser({
                                                                         email: user.email || "",
-                                                                        password: "", // Keep empty to not change
+                                                                        password: "",
                                                                         fullName: user.full_name || "",
                                                                         role: user.role || "user"
                                                                     });
-                                                                    // We need to store editing user ID.
-                                                                    // Let's stick it in a ref or state. 
-                                                                    // Since I declared newUser state, I can add an 'id' field to it or a separate state.
-                                                                    // Quickest way: add id to newUser type (it's inferred currently).
-                                                                    // Or use a separate state `editingUserId`.
-                                                                    // Let's use `editingUserId`.
                                                                     setEditingUserId(user.auth_id);
                                                                     setIsCreateDialogOpen(true);
                                                                 }}>
@@ -547,148 +541,148 @@ const UsersManagement = () => {
                                         )}
                                     </TableBody>
                                 </Table>
+                            </div>
 
-                                {/* Pagination Controls */}
-                                {totalUsers > 0 && (
-                                    <PaginationControls
-                                        currentPage={currentPage}
-                                        totalPages={Math.ceil(totalUsers / itemsPerPage)}
-                                        totalItems={totalUsers}
-                                        itemsPerPage={itemsPerPage}
-                                        onPageChange={setCurrentPage}
-                                    />
-                                )}
-                            </>
+                            {/* Pagination Controls */}
+                            {totalUsers > 0 && (
+                                <PaginationControls
+                                    currentPage={currentPage}
+                                    totalPages={Math.ceil(totalUsers / itemsPerPage)}
+                                    totalItems={totalUsers}
+                                    itemsPerPage={itemsPerPage}
+                                    onPageChange={setCurrentPage}
+                                />
+                            )}
+                        </>
+                    )}
+                </div>
+            </div>
+
+            {/* Create/Edit User Dialog */}
+            <Dialog open={isCreateDialogOpen} onOpenChange={(open) => {
+                setIsCreateDialogOpen(open);
+                if (!open) {
+                    setNewUser({ email: "", password: "", fullName: "", role: "user" });
+                    setEditingUserId(null);
+                }
+            }}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>{editingUserId ? "تعديل بيانات المستخدم" : "إضافة مستخدم جديد"}</DialogTitle>
+                        <DialogDescription>
+                            {editingUserId ? "تعديل بيانات الحساب والصلاحيات" : "قم بإدخال بيانات المستخدم الجديد لإنشاء حساب"}
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium">الاسم الكامل</label>
+                            <Input
+                                value={newUser.fullName}
+                                onChange={(e) => setNewUser({ ...newUser, fullName: e.target.value })}
+                                placeholder="الاسم الكامل"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium">البريد الإلكتروني</label>
+                            <Input
+                                type="email"
+                                value={newUser.email}
+                                onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+                                placeholder="example@domain.com"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium">كلمة المرور</label>
+                            <Input
+                                type="password"
+                                value={newUser.password}
+                                onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
+                                placeholder="********"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium">الصلاحية</label>
+                            <Select
+                                value={newUser.role}
+                                onValueChange={(val) => setNewUser({ ...newUser, role: val })}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder="اختر الصلاحية" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="user">مستخدم (عميل)</SelectItem>
+                                    <SelectItem value="admin">مدير نظام</SelectItem>
+                                    <SelectItem value="partner">شريك</SelectItem>
+                                    <SelectItem value="employee">موظف</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>إلغاء</Button>
+                        <Button onClick={handleCreateUser} disabled={isCreating}>
+                            {isCreating && <Loader2 className="w-4 h-4 ml-2 animate-spin" />}
+                            إنشاء الحساب
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Confirmation Dialog */}
+            <Dialog open={confirmDialog.open} onOpenChange={(open) => !open && setConfirmDialog({ open: false, userId: null, userName: "", newRole: "user" })}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>تأكيد تغيير الصلاحيات</DialogTitle>
+                        <DialogDescription>
+                            هل أنت متأكد من تغيير صلاحيات <span className="font-semibold">{confirmDialog.userName}</span> إلى <span className="font-semibold">{getRoleName(confirmDialog.newRole)}</span>؟
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter className="gap-2">
+                        <Button variant="outline" onClick={() => setConfirmDialog({ open: false, userId: null, userName: "", newRole: "user" })}>
+                            إلغاء
+                        </Button>
+                        <Button onClick={() => confirmDialog.userId && updateUserRole(confirmDialog.userId, confirmDialog.newRole)}>
+                            تأكيد التغيير
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Role History Dialog */}
+            <Dialog open={showHistory} onOpenChange={setShowHistory}>
+                <DialogContent className="max-w-2xl">
+                    <DialogHeader>
+                        <DialogTitle>سجل تغييرات الصلاحيات</DialogTitle>
+                        <DialogDescription>
+                            تاريخ جميع التغييرات التي حدثت على صلاحيات هذا المستخدم
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="max-h-96 overflow-y-auto">
+                        {roleHistory.length === 0 ? (
+                            <p className="text-center text-muted-foreground py-8">لا توجد تغييرات مسجلة</p>
+                        ) : (
+                            <div className="space-y-3">
+                                {roleHistory.map((log) => (
+                                    <div key={log.id} className="border rounded-lg p-3">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <span className="text-sm font-medium">
+                                                {log.old_role ? `${log.old_role} ← ${log.new_role}` : `تم التعيين: ${log.new_role}`}
+                                            </span>
+                                            <span className="text-xs text-muted-foreground">
+                                                {new Date(log.changed_at).toLocaleString('ar-SA')}
+                                            </span>
+                                        </div>
+                                        {log.change_reason && (
+                                            <p className="text-sm text-muted-foreground">{log.change_reason}</p>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
                         )}
                     </div>
-                </div>
-
-                {/* Create/Edit User Dialog */}
-                <Dialog open={isCreateDialogOpen} onOpenChange={(open) => {
-                    setIsCreateDialogOpen(open);
-                    if (!open) {
-                        setNewUser({ email: "", password: "", fullName: "", role: "user" });
-                        setEditingUserId(null);
-                    }
-                }}>
-                    <DialogContent>
-                        <DialogHeader>
-                            <DialogTitle>{editingUserId ? "تعديل بيانات المستخدم" : "إضافة مستخدم جديد"}</DialogTitle>
-                            <DialogDescription>
-                                {editingUserId ? "تعديل بيانات الحساب والصلاحيات" : "قم بإدخال بيانات المستخدم الجديد لإنشاء حساب"}
-                            </DialogDescription>
-                        </DialogHeader>
-                        <div className="space-y-4 py-4">
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium">الاسم الكامل</label>
-                                <Input
-                                    value={newUser.fullName}
-                                    onChange={(e) => setNewUser({ ...newUser, fullName: e.target.value })}
-                                    placeholder="الاسم الكامل"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium">البريد الإلكتروني</label>
-                                <Input
-                                    type="email"
-                                    value={newUser.email}
-                                    onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
-                                    placeholder="example@domain.com"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium">كلمة المرور</label>
-                                <Input
-                                    type="password"
-                                    value={newUser.password}
-                                    onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
-                                    placeholder="********"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium">الصلاحية</label>
-                                <Select
-                                    value={newUser.role}
-                                    onValueChange={(val) => setNewUser({ ...newUser, role: val })}
-                                >
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="اختر الصلاحية" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="user">مستخدم (عميل)</SelectItem>
-                                        <SelectItem value="admin">مدير نظام</SelectItem>
-                                        <SelectItem value="partner">شريك</SelectItem>
-                                        <SelectItem value="employee">موظف</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                        </div>
-                        <DialogFooter>
-                            <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>إلغاء</Button>
-                            <Button onClick={handleCreateUser} disabled={isCreating}>
-                                {isCreating && <Loader2 className="w-4 h-4 ml-2 animate-spin" />}
-                                إنشاء الحساب
-                            </Button>
-                        </DialogFooter>
-                    </DialogContent>
-                </Dialog>
-
-                {/* Confirmation Dialog */}
-                <Dialog open={confirmDialog.open} onOpenChange={(open) => !open && setConfirmDialog({ open: false, userId: null, userName: "", newRole: "user" })}>
-                    <DialogContent>
-                        <DialogHeader>
-                            <DialogTitle>تأكيد تغيير الصلاحيات</DialogTitle>
-                            <DialogDescription>
-                                هل أنت متأكد من تغيير صلاحيات <span className="font-semibold">{confirmDialog.userName}</span> إلى <span className="font-semibold">{getRoleName(confirmDialog.newRole)}</span>؟
-                            </DialogDescription>
-                        </DialogHeader>
-                        <DialogFooter className="gap-2">
-                            <Button variant="outline" onClick={() => setConfirmDialog({ open: false, userId: null, userName: "", newRole: "user" })}>
-                                إلغاء
-                            </Button>
-                            <Button onClick={() => confirmDialog.userId && updateUserRole(confirmDialog.userId, confirmDialog.newRole)}>
-                                تأكيد التغيير
-                            </Button>
-                        </DialogFooter>
-                    </DialogContent>
-                </Dialog>
-
-                {/* Role History Dialog */}
-                <Dialog open={showHistory} onOpenChange={setShowHistory}>
-                    <DialogContent className="max-w-2xl">
-                        <DialogHeader>
-                            <DialogTitle>سجل تغييرات الصلاحيات</DialogTitle>
-                            <DialogDescription>
-                                تاريخ جميع التغييرات التي حدثت على صلاحيات هذا المستخدم
-                            </DialogDescription>
-                        </DialogHeader>
-                        <div className="max-h-96 overflow-y-auto">
-                            {roleHistory.length === 0 ? (
-                                <p className="text-center text-muted-foreground py-8">لا توجد تغييرات مسجلة</p>
-                            ) : (
-                                <div className="space-y-3">
-                                    {roleHistory.map((log) => (
-                                        <div key={log.id} className="border rounded-lg p-3">
-                                            <div className="flex items-center justify-between mb-2">
-                                                <span className="text-sm font-medium">
-                                                    {log.old_role ? `${log.old_role} ← ${log.new_role}` : `تم التعيين: ${log.new_role}`}
-                                                </span>
-                                                <span className="text-xs text-muted-foreground">
-                                                    {new Date(log.changed_at).toLocaleString('ar-SA')}
-                                                </span>
-                                            </div>
-                                            {log.change_reason && (
-                                                <p className="text-sm text-muted-foreground">{log.change_reason}</p>
-                                            )}
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    </DialogContent>
-                </Dialog>
-            </main>
-        </div>
+                </DialogContent>
+            </Dialog>
+        </AdminLayout>
     );
 };
 

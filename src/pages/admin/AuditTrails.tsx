@@ -29,7 +29,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
-import AdminSidebar from "@/components/layout/AdminSidebar";
+import { AdminLayout } from "@/components/layout/AdminLayout";
 import { format } from "date-fns";
 import { arSA } from "date-fns/locale";
 
@@ -111,22 +111,17 @@ const AuditTrails = () => {
     );
 
     return (
-        <div className="min-h-screen bg-muted/30">
-            <AdminSidebar />
-            <main className="lg:mr-64 p-6">
-                <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-                    <div>
-                        <h1 className="text-2xl font-bold text-foreground">سجل العمليات</h1>
-                        <p className="text-muted-foreground">تتبع جميع التغييرات والإجراءات في النظام</p>
-                    </div>
-                    <div className="flex gap-2">
-                        <Button variant="outline" onClick={() => handleExport('excel')}>
-                            تصدير Excel
-                        </Button>
-                    </div>
-                </header>
-
-                <div className="flex flex-wrap items-center gap-4 mb-6">
+        <AdminLayout
+            title="سجل العمليات"
+            subtitle="تتبع جميع التغييرات والإجراءات في النظام"
+            actions={
+                <Button variant="outline" onClick={() => handleExport('excel')}>
+                    تصدير Excel
+                </Button>
+            }
+        >
+            <div className="space-y-6">
+                <div className="flex flex-wrap items-center gap-4">
                     <div className="flex items-center gap-2 bg-card p-2 rounded-lg border w-full md:w-auto">
                         <Search className="w-4 h-4 text-muted-foreground" />
                         <Input
@@ -205,9 +200,8 @@ const AuditTrails = () => {
                         </Table>
                     )}
                 </div>
-            </main>
-        </div>
+            </div>
+        </AdminLayout>
     );
 };
-
 export default AuditTrails;

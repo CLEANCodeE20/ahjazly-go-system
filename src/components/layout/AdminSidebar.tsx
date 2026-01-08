@@ -2,7 +2,6 @@ import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
     Bus,
-    LayoutDashboard,
     Users,
     Building2,
     DollarSign,
@@ -15,10 +14,13 @@ import {
     MapPin,
     LifeBuoy,
     HelpCircle,
-    Image as ImageIcon
+    Image as ImageIcon,
+    X
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { NotificationBell } from "../notifications/NotificationBell"; const adminSidebarLinks = [
+import { NotificationBell } from "../notifications/NotificationBell";
+
+const adminSidebarLinks = [
     { href: "/admin", label: "طلبات الانضمام", icon: FileText },
     { href: "/admin/cities", label: "المدن", icon: MapPin },
     { href: "/admin/partners", label: "الشركاء", icon: Building2 },
@@ -35,30 +37,38 @@ import { NotificationBell } from "../notifications/NotificationBell"; const admi
     { href: "/admin/settings", label: "إعدادات المنصة", icon: Settings }
 ];
 
-const AdminSidebar = () => {
+interface AdminSidebarProps {
+    isOpen?: boolean;
+    onClose?: () => void;
+}
+
+export const AdminSidebar = ({ isOpen = false, onClose }: AdminSidebarProps) => {
     const location = useLocation();
     const { signOut } = useAuth();
 
     return (
-        <aside className="fixed top-0 right-0 bottom-0 w-64 bg-sidebar text-sidebar-foreground hidden lg:flex lg:flex-col border-l border-sidebar-border">
-            <div className="flex items-center gap-3 p-4 mb-4 shrink-0">
+        <aside
+            className={`fixed top-0 right-0 bottom-0 w-64 bg-sidebar text-sidebar-foreground transition-transform duration-300 z-50 flex flex-col border-l border-sidebar-border ${isOpen ? "translate-x-0" : "translate-x-full"} lg:translate-x-0`}
+        >
+            <div className="flex items-center gap-3 p-4 border-b border-sidebar-border shrink-0">
                 <div className="w-10 h-10 rounded-xl bg-sidebar-primary flex items-center justify-center">
                     <Bus className="w-6 h-6 text-sidebar-primary-foreground" />
                 </div>
-                <div>
-                    <span className="text-lg font-bold">احجزلي</span>
+                <div className="flex-1">
+                    <span className="text-lg font-bold block">احجزلي</span>
                     <p className="text-xs text-sidebar-foreground/60">لوحة الإدارة</p>
                 </div>
-                <div className="mr-auto">
-                    <NotificationBell />
-                </div>
+                <Button variant="ghost" size="icon" className="lg:hidden" onClick={onClose}>
+                    <X className="w-5 h-5" />
+                </Button>
             </div>
 
-            <nav className="space-y-1 px-2 flex-1 overflow-y-auto custom-scrollbar">
+            <nav className="p-3 space-y-1 flex-1 overflow-y-auto custom-scrollbar">
                 {adminSidebarLinks.map((link) => (
                     <Link
                         key={link.href}
                         to={link.href}
+                        onClick={onClose}
                         className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${location.pathname === link.href
                             ? "bg-sidebar-accent text-sidebar-accent-foreground"
                             : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
@@ -70,7 +80,7 @@ const AdminSidebar = () => {
                 ))}
             </nav>
 
-            <div className="p-4 shrink-0 mt-auto border-t border-sidebar-border/50">
+            <div className="p-4 shrink-0 border-t border-sidebar-border">
                 <Button
                     variant="ghost"
                     className="w-full justify-start text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50"

@@ -1,10 +1,9 @@
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Bus,
   Building2,
   FileText,
   Users,
@@ -13,9 +12,7 @@ import {
   Clock,
   Search,
   Bell,
-  LogOut,
   Eye,
-  MoreVertical,
   Loader2,
   ExternalLink,
   Phone,
@@ -34,6 +31,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { AdminLayout } from "@/components/layout/AdminLayout";
 
 interface PartnerApplication {
   application_id: number;
@@ -55,8 +53,6 @@ interface PartnerApplication {
   created_at: string;
   auth_user_id: string | null;
 }
-
-import AdminSidebar from "@/components/layout/AdminSidebar";
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -220,11 +216,6 @@ const AdminDashboard = () => {
     }
   };
 
-  const handleSignOut = async () => {
-    await signOut();
-    navigate('/login');
-  };
-
   const filteredApplications = applications.filter(app => {
     const matchesSearch = app.company_name?.includes(searchQuery) ||
       app.owner_name?.includes(searchQuery) ||
@@ -270,175 +261,160 @@ const AdminDashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-muted/30">
-      <AdminSidebar />
-
-      {/* Main Content */}
-      <main className="lg:mr-64 min-h-screen">
-        {/* Top Bar */}
-        <header className="sticky top-0 z-40 bg-card/80 backdrop-blur-lg border-b border-border px-6 py-4">
-          <div className="flex items-center justify-between">
-            <h1 className="text-xl font-bold text-foreground">طلبات الانضمام</h1>
-            <div className="flex items-center gap-3">
-              <button className="relative p-2 text-muted-foreground hover:text-foreground transition-colors">
-                <Bell className="w-5 h-5" />
-                {pendingCount > 0 && (
-                  <span className="absolute top-1 right-1 w-2 h-2 bg-destructive rounded-full" />
-                )}
-              </button>
-              <div className="w-9 h-9 rounded-full gradient-primary flex items-center justify-center text-primary-foreground font-medium">
-                م
-              </div>
+    <AdminLayout
+      title="طلبات الانضمام"
+      actions={
+        <button className="relative p-2 text-muted-foreground hover:text-foreground transition-colors">
+          <Bell className="w-5 h-5" />
+          {pendingCount > 0 && (
+            <span className="absolute top-1 right-1 w-2 h-2 bg-destructive rounded-full" />
+          )}
+        </button>
+      }
+    >
+      {/* Stats */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        {stats.map((stat, index) => (
+          <div key={index} className="bg-card rounded-xl border border-border p-4">
+            <div className="flex items-center justify-between mb-2">
+              <stat.icon className={`w-5 h-5 ${stat.color}`} />
+              <span className="text-2xl font-bold text-foreground">{stat.value}</span>
             </div>
+            <p className="text-sm text-muted-foreground">{stat.label}</p>
           </div>
-        </header>
+        ))}
+      </div>
 
-        <div className="p-6">
-          {/* Stats */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            {stats.map((stat, index) => (
-              <div key={index} className="bg-card rounded-xl border border-border p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <stat.icon className={`w-5 h-5 ${stat.color}`} />
-                  <span className="text-2xl font-bold text-foreground">{stat.value}</span>
-                </div>
-                <p className="text-sm text-muted-foreground">{stat.label}</p>
-              </div>
+      {/* Filters */}
+      <div className="bg-card rounded-xl border border-border p-4 mb-6">
+        <div className="flex flex-col md:flex-row gap-4">
+          <div className="flex-1 relative">
+            <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+            <Input
+              placeholder="بحث عن شركة أو مالك..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pr-10"
+            />
+          </div>
+          <div className="flex gap-2 flex-wrap">
+            {["all", "pending", "approved", "rejected"].map((status) => (
+              <Button
+                key={status}
+                variant={filterStatus === status ? "default" : "outline"}
+                size="sm"
+                onClick={() => setFilterStatus(status)}
+              >
+                {status === "all" && "الكل"}
+                {status === "pending" && "قيد المراجعة"}
+                {status === "approved" && "مقبول"}
+                {status === "rejected" && "مرفوض"}
+              </Button>
             ))}
           </div>
+        </div>
+      </div>
 
-          {/* Filters */}
-          <div className="bg-card rounded-xl border border-border p-4 mb-6">
-            <div className="flex flex-col md:flex-row gap-4">
-              <div className="flex-1 relative">
-                <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                <Input
-                  placeholder="بحث عن شركة أو مالك..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pr-10"
-                />
-              </div>
-              <div className="flex gap-2 flex-wrap">
-                {["all", "pending", "approved", "rejected"].map((status) => (
-                  <Button
-                    key={status}
-                    variant={filterStatus === status ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setFilterStatus(status)}
-                  >
-                    {status === "all" && "الكل"}
-                    {status === "pending" && "قيد المراجعة"}
-                    {status === "approved" && "مقبول"}
-                    {status === "rejected" && "مرفوض"}
-                  </Button>
-                ))}
-              </div>
-            </div>
+      {/* Applications Table */}
+      <div className="bg-card rounded-xl border border-border overflow-hidden">
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
           </div>
-
-          {/* Applications Table */}
-          <div className="bg-card rounded-xl border border-border overflow-hidden">
-            {loading ? (
-              <div className="flex items-center justify-center py-12">
-                <Loader2 className="w-8 h-8 animate-spin text-primary" />
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-muted/50 border-b border-border">
-                    <tr>
-                      <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">الشركة</th>
-                      <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">المالك</th>
-                      <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">المدينة</th>
-                      <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">عدد الحافلات</th>
-                      <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">الحالة</th>
-                      <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">التاريخ</th>
-                      <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">الإجراءات</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredApplications.length === 0 ? (
-                      <tr>
-                        <td colSpan={7} className="py-20 text-center">
-                          <div className="flex flex-col items-center justify-center text-muted-foreground">
-                            <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
-                              <FileText className="w-8 h-8 opacity-20" />
-                            </div>
-                            <p className="text-lg font-medium">لا توجد طلبات انضمام حالياً</p>
-                            <p className="text-sm">سيتم عرض جميع الطلبات الجديدة هنا للمراجعة</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-muted/50 border-b border-border">
+                <tr>
+                  <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">الشركة</th>
+                  <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">المالك</th>
+                  <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">المدينة</th>
+                  <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">عدد الحافلات</th>
+                  <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">الحالة</th>
+                  <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">التاريخ</th>
+                  <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">الإجراءات</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredApplications.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="py-20 text-center">
+                      <div className="flex flex-col items-center justify-center text-muted-foreground">
+                        <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
+                          <FileText className="w-8 h-8 opacity-20" />
+                        </div>
+                        <p className="text-lg font-medium">لا توجد طلبات انضمام حالياً</p>
+                        <p className="text-sm">سيتم عرض جميع الطلبات الجديدة هنا للمراجعة</p>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  filteredApplications.map((app) => (
+                    <tr key={app.application_id} className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors">
+                      <td className="py-4 px-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                            <Building2 className="w-5 h-5 text-primary" />
                           </div>
-                        </td>
-                      </tr>
-                    ) : (
-                      filteredApplications.map((app) => (
-                        <tr key={app.application_id} className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors">
-                          <td className="py-4 px-4">
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                                <Building2 className="w-5 h-5 text-primary" />
-                              </div>
-                              <div>
-                                <p className="font-medium text-foreground">{app.company_name}</p>
-                                <p className="text-xs text-muted-foreground">{app.owner_email}</p>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="py-4 px-4 text-foreground">{app.owner_name}</td>
-                          <td className="py-4 px-4 text-muted-foreground">{app.company_city}</td>
-                          <td className="py-4 px-4 text-muted-foreground">{app.fleet_size || "-"}</td>
-                          <td className="py-4 px-4">{getStatusBadge(app.status)}</td>
-                          <td className="py-4 px-4 text-muted-foreground text-sm">
-                            {new Date(app.created_at).toLocaleDateString('ar-SA')}
-                          </td>
-                          <td className="py-4 px-4">
-                            <div className="flex items-center gap-2">
+                          <div>
+                            <p className="font-medium text-foreground">{app.company_name}</p>
+                            <p className="text-xs text-muted-foreground">{app.owner_email}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-4 px-4 text-foreground">{app.owner_name}</td>
+                      <td className="py-4 px-4 text-muted-foreground">{app.company_city}</td>
+                      <td className="py-4 px-4 text-muted-foreground">{app.fleet_size || "-"}</td>
+                      <td className="py-4 px-4">{getStatusBadge(app.status)}</td>
+                      <td className="py-4 px-4 text-muted-foreground text-sm">
+                        {new Date(app.created_at).toLocaleDateString('ar-SA')}
+                      </td>
+                      <td className="py-4 px-4">
+                        <div className="flex items-center gap-2">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              setSelectedApplication(app);
+                              setViewDialogOpen(true);
+                            }}
+                          >
+                            <Eye className="w-4 h-4" />
+                          </Button>
+                          {app.status === "pending" && (
+                            <>
                               <Button
                                 size="sm"
-                                variant="ghost"
+                                variant="default"
+                                onClick={() => handleApprove(app)}
+                                className="bg-secondary hover:bg-secondary/90"
+                                disabled={processing}
+                              >
+                                <CheckCircle2 className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="destructive"
                                 onClick={() => {
                                   setSelectedApplication(app);
-                                  setViewDialogOpen(true);
+                                  setRejectDialogOpen(true);
                                 }}
+                                disabled={processing}
                               >
-                                <Eye className="w-4 h-4" />
+                                <XCircle className="w-4 h-4" />
                               </Button>
-                              {app.status === "pending" && (
-                                <>
-                                  <Button
-                                    size="sm"
-                                    variant="default"
-                                    onClick={() => handleApprove(app)}
-                                    className="bg-secondary hover:bg-secondary/90"
-                                    disabled={processing}
-                                  >
-                                    <CheckCircle2 className="w-4 h-4" />
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="destructive"
-                                    onClick={() => {
-                                      setSelectedApplication(app);
-                                      setRejectDialogOpen(true);
-                                    }}
-                                    disabled={processing}
-                                  >
-                                    <XCircle className="w-4 h-4" />
-                                  </Button>
-                                </>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            )}
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
           </div>
-        </div>
-      </main>
+        )}
+      </div>
 
       {/* View Application Dialog */}
       <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
@@ -642,7 +618,7 @@ const AdminDashboard = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </AdminLayout>
   );
 };
 

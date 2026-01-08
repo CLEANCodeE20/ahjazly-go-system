@@ -49,7 +49,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import AdminSidebar from "@/components/layout/AdminSidebar";
+import { AdminLayout } from "@/components/layout/AdminLayout";
 
 interface FAQ {
     faq_id: number;
@@ -170,21 +170,18 @@ const FAQManager = () => {
     );
 
     return (
-        <div className="min-h-screen bg-muted/30">
-            <AdminSidebar />
-            <main className="lg:mr-64 p-6">
-                <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-                    <div>
-                        <h1 className="text-2xl font-bold text-foreground">إدارة الأسئلة الشائعة</h1>
-                        <p className="text-muted-foreground">التحكم في محتوى قسم المساعدة لركاب التطبيق</p>
-                    </div>
-                    <Button onClick={() => openEditor()}>
-                        <Plus className="w-4 h-4 ml-2" />
-                        سؤال جديد
-                    </Button>
-                </header>
-
-                <div className="flex items-center gap-2 mb-6 bg-card p-2 rounded-lg border w-fit">
+        <AdminLayout
+            title="إدارة الأسئلة الشائعة"
+            subtitle="التحكم في محتوى قسم المساعدة لركاب التطبيق"
+            actions={
+                <Button onClick={() => openEditor()}>
+                    <Plus className="w-4 h-4 ml-2" />
+                    سؤال جديد
+                </Button>
+            }
+        >
+            <div className="space-y-6">
+                <div className="flex items-center gap-2 bg-card p-2 rounded-lg border w-fit">
                     <Search className="w-4 h-4 text-muted-foreground" />
                     <Input
                         placeholder="بحث في الأسئلة..."
@@ -315,8 +312,8 @@ const FAQManager = () => {
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>
-            </main>
-        </div>
+            </div>
+        </AdminLayout>
     );
 };
 

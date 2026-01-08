@@ -89,7 +89,7 @@ interface InvoiceRecord {
   created_at: string | null;
 }
 
-import AdminSidebar from "@/components/layout/AdminSidebar";
+import { AdminLayout } from "@/components/layout/AdminLayout";
 
 const CommissionsManagement = () => {
   const location = useLocation();
@@ -254,293 +254,283 @@ const CommissionsManagement = () => {
   };
 
   return (
-    <div className="min-h-screen bg-muted/30">
-      <AdminSidebar />
-
-      {/* Main Content */}
-      <main className="lg:mr-64 min-h-screen">
-        {/* Header */}
-        <header className="sticky top-0 z-40 bg-card/80 backdrop-blur-lg border-b border-border px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-xl font-bold text-foreground">إدارة العمولات</h1>
-              <p className="text-sm text-muted-foreground">متابعة وإدارة عمولات المنصة</p>
-            </div>
-            <div className="flex gap-2">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline">
-                    <Download className="w-4 h-4 ml-2" />
-                    تصدير
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => handleExport('excel')}>
-                    <FileSpreadsheet className="w-4 h-4 ml-2 text-green-600" />
-                    Excel
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleExport('pdf')}>
-                    <FileText className="w-4 h-4 ml-2 text-red-600" />
-                    PDF
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-              <Dialog open={showInvoiceDialog} onOpenChange={setShowInvoiceDialog}>
-                <DialogTrigger asChild>
-                  <Button>
-                    <Receipt className="w-4 h-4 ml-2" />
-                    إنشاء فاتورة
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>إنشاء فاتورة شهرية</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4 pt-4">
-                    <div>
-                      <label className="text-sm font-medium">اختر الشركة</label>
-                      <Select onValueChange={(value) => {
-                        const partner = partners.find(p => p.partner_id.toString() === value);
-                        setSelectedPartner(partner || null);
-                      }}>
-                        <SelectTrigger className="mt-1">
-                          <SelectValue placeholder="اختر شركة..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {partners.map(partner => (
-                            <SelectItem key={partner.partner_id} value={partner.partner_id.toString()}>
-                              {partner.company_name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+    <AdminLayout
+      title="إدارة العمولات"
+      subtitle="متابعة وإدارة عمولات المنصة"
+      actions={
+        <div className="flex gap-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline">
+                <Download className="w-4 h-4 ml-2" />
+                <span className="hidden sm:inline">تصدير</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => handleExport('excel')}>
+                <FileSpreadsheet className="w-4 h-4 ml-2 text-green-600" />
+                Excel
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExport('pdf')}>
+                <FileText className="w-4 h-4 ml-2 text-red-600" />
+                PDF
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <Dialog open={showInvoiceDialog} onOpenChange={setShowInvoiceDialog}>
+            <DialogTrigger asChild>
+              <Button>
+                <Receipt className="w-4 h-4 ml-2" />
+                <span className="hidden sm:inline">إنشاء فاتورة</span>
+                <span className="sm:hidden">فاتورة</span>
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>إنشاء فاتورة شهرية</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 pt-4">
+                <div>
+                  <label className="text-sm font-medium">اختر الشركة</label>
+                  <Select onValueChange={(value) => {
+                    const partner = partners.find(p => p.partner_id.toString() === value);
+                    setSelectedPartner(partner || null);
+                  }}>
+                    <SelectTrigger className="mt-1">
+                      <SelectValue placeholder="اختر شركة..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {partners.map(partner => (
+                        <SelectItem key={partner.partner_id} value={partner.partner_id.toString()}>
+                          {partner.company_name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {selectedPartner && (
+                  <div className="bg-muted/50 rounded-lg p-4">
+                    <p className="text-sm text-muted-foreground mb-2">تفاصيل الفاتورة:</p>
+                    <div className="space-y-1 text-sm">
+                      <p>الشركة: <span className="font-medium">{selectedPartner.company_name}</span></p>
+                      <p>نسبة العمولة: <span className="font-medium">{selectedPartner.commission_percentage || 10}%</span></p>
+                      <p>الفترة: <span className="font-medium">الشهر السابق</span></p>
                     </div>
-                    {selectedPartner && (
-                      <div className="bg-muted/50 rounded-lg p-4">
-                        <p className="text-sm text-muted-foreground mb-2">تفاصيل الفاتورة:</p>
-                        <div className="space-y-1 text-sm">
-                          <p>الشركة: <span className="font-medium">{selectedPartner.company_name}</span></p>
-                          <p>نسبة العمولة: <span className="font-medium">{selectedPartner.commission_percentage || 10}%</span></p>
-                          <p>الفترة: <span className="font-medium">الشهر السابق</span></p>
-                        </div>
-                      </div>
-                    )}
-                    <Button
-                      className="w-full"
-                      onClick={generateInvoice}
-                      disabled={!selectedPartner || generatingInvoice}
-                    >
-                      {generatingInvoice ? (
-                        <Loader2 className="w-4 h-4 animate-spin ml-2" />
-                      ) : (
-                        <Receipt className="w-4 h-4 ml-2" />
-                      )}
-                      إنشاء الفاتورة
-                    </Button>
                   </div>
-                </DialogContent>
-              </Dialog>
-            </div>
-          </div>
-        </header>
-
-        <div className="p-6">
-          {/* Stats */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            <div className="bg-card rounded-xl border border-border p-5">
-              <div className="flex items-center justify-between mb-3">
-                <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
-                  <DollarSign className="w-5 h-5 text-green-600" />
-                </div>
-                <TrendingUp className="w-4 h-4 text-green-600" />
+                )}
+                <Button
+                  className="w-full"
+                  onClick={generateInvoice}
+                  disabled={!selectedPartner || generatingInvoice}
+                >
+                  {generatingInvoice ? (
+                    <Loader2 className="w-4 h-4 animate-spin ml-2" />
+                  ) : (
+                    <Receipt className="w-4 h-4 ml-2" />
+                  )}
+                  إنشاء الفاتورة
+                </Button>
               </div>
-              <p className="text-2xl font-bold text-foreground">{stats.totalCommission.toLocaleString()} ر.س</p>
-              <p className="text-sm text-muted-foreground">إجمالي العمولات</p>
-            </div>
-
-            <div className="bg-card rounded-xl border border-border p-5">
-              <div className="flex items-center justify-between mb-3">
-                <div className="w-10 h-10 rounded-lg bg-yellow-100 flex items-center justify-center">
-                  <Clock className="w-5 h-5 text-yellow-600" />
-                </div>
+            </DialogContent>
+          </Dialog>
+        </div>
+      }
+    >
+      <div className="space-y-6">
+        {/* Stats */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="bg-card rounded-xl border border-border p-5">
+            <div className="flex items-center justify-between mb-3">
+              <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
+                <DollarSign className="w-5 h-5 text-green-600" />
               </div>
-              <p className="text-2xl font-bold text-foreground">{stats.pendingCommission.toLocaleString()} ر.س</p>
-              <p className="text-sm text-muted-foreground">عمولات قيد الانتظار</p>
+              <TrendingUp className="w-4 h-4 text-green-600" />
             </div>
-
-            <div className="bg-card rounded-xl border border-border p-5">
-              <div className="flex items-center justify-between mb-3">
-                <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
-                  <Building2 className="w-5 h-5 text-blue-600" />
-                </div>
-              </div>
-              <p className="text-2xl font-bold text-foreground">{stats.totalPartnerRevenue.toLocaleString()} ر.س</p>
-              <p className="text-sm text-muted-foreground">إيرادات الشركاء</p>
-            </div>
-
-            <div className="bg-card rounded-xl border border-border p-5">
-              <div className="flex items-center justify-between mb-3">
-                <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center">
-                  <Calendar className="w-5 h-5 text-purple-600" />
-                </div>
-              </div>
-              <p className="text-2xl font-bold text-foreground">{stats.totalBookings}</p>
-              <p className="text-sm text-muted-foreground">إجمالي الحجوزات</p>
-            </div>
+            <p className="text-2xl font-bold text-foreground">{stats.totalCommission.toLocaleString()} ر.س</p>
+            <p className="text-sm text-muted-foreground">إجمالي العمولات</p>
           </div>
 
-          {/* Filters */}
-          <div className="bg-card rounded-xl border border-border p-4 mb-6">
-            <div className="flex flex-col md:flex-row gap-4">
-              <div className="relative flex-1">
-                <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                <Input
-                  placeholder="بحث برقم الحجز أو اسم الشركة..."
-                  className="pr-10"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
+          <div className="bg-card rounded-xl border border-border p-5">
+            <div className="flex items-center justify-between mb-3">
+              <div className="w-10 h-10 rounded-lg bg-yellow-100 flex items-center justify-center">
+                <Clock className="w-5 h-5 text-yellow-600" />
               </div>
-              <Select value={filterPartner} onValueChange={setFilterPartner}>
-                <SelectTrigger className="w-48">
-                  <SelectValue placeholder="الشركة" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">كل الشركاء</SelectItem>
-                  {partners.map(partner => (
-                    <SelectItem key={partner.partner_id} value={partner.partner_id.toString()}>
-                      {partner.company_name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select value={filterStatus} onValueChange={setFilterStatus}>
-                <SelectTrigger className="w-40">
-                  <SelectValue placeholder="الحالة" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">كل الحالات</SelectItem>
-                  <SelectItem value="confirmed">مؤكد</SelectItem>
-                  <SelectItem value="pending">قيد الانتظار</SelectItem>
-                  <SelectItem value="cancelled">ملغي</SelectItem>
-                </SelectContent>
-              </Select>
             </div>
+            <p className="text-2xl font-bold text-foreground">{stats.pendingCommission.toLocaleString()} ر.س</p>
+            <p className="text-sm text-muted-foreground">عمولات قيد الانتظار</p>
           </div>
 
-          {/* Commissions Table */}
-          <div className="bg-card rounded-xl border border-border overflow-hidden">
-            {loading ? (
-              <div className="flex items-center justify-center py-12">
-                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          <div className="bg-card rounded-xl border border-border p-5">
+            <div className="flex items-center justify-between mb-3">
+              <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
+                <Building2 className="w-5 h-5 text-blue-600" />
               </div>
-            ) : (
+            </div>
+            <p className="text-2xl font-bold text-foreground">{stats.totalPartnerRevenue.toLocaleString()} ر.س</p>
+            <p className="text-sm text-muted-foreground">إيرادات الشركاء</p>
+          </div>
+
+          <div className="bg-card rounded-xl border border-border p-5">
+            <div className="flex items-center justify-between mb-3">
+              <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center">
+                <Calendar className="w-5 h-5 text-purple-600" />
+              </div>
+            </div>
+            <p className="text-2xl font-bold text-foreground">{stats.totalBookings}</p>
+            <p className="text-sm text-muted-foreground">إجمالي الحجوزات</p>
+          </div>
+        </div>
+
+        {/* Filters */}
+        <div className="bg-card rounded-xl border border-border p-4">
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+              <Input
+                placeholder="بحث برقم الحجز أو اسم الشركة..."
+                className="pr-10"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            <Select value={filterPartner} onValueChange={setFilterPartner}>
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="الشركة" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">كل الشركاء</SelectItem>
+                {partners.map(partner => (
+                  <SelectItem key={partner.partner_id} value={partner.partner_id.toString()}>
+                    {partner.company_name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={filterStatus} onValueChange={setFilterStatus}>
+              <SelectTrigger className="w-40">
+                <SelectValue placeholder="الحالة" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">كل الحالات</SelectItem>
+                <SelectItem value="confirmed">مؤكد</SelectItem>
+                <SelectItem value="pending">قيد الانتظار</SelectItem>
+                <SelectItem value="cancelled">ملغي</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {/* Commissions Table */}
+        <div className="bg-card rounded-xl border border-border overflow-hidden">
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-muted/50 border-b border-border">
+                  <tr>
+                    <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">رقم الحجز</th>
+                    <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">الشركة</th>
+                    <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">مبلغ الحجز</th>
+                    <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">نسبة العمولة</th>
+                    <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">عمولة المنصة</th>
+                    <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">إيراد الشريك</th>
+                    <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">الحالة</th>
+                    <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">التاريخ</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredCommissions.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} className="py-12 text-center text-muted-foreground">
+                        <DollarSign className="w-12 h-12 mx-auto text-muted-foreground/30 mb-3" />
+                        لا توجد عمولات
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredCommissions.map((commission) => (
+                      <tr key={commission.commission_id} className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors">
+                        <td className="py-4 px-4">
+                          <span className="font-mono text-sm font-medium text-primary">
+                            BK-{commission.booking_id}
+                          </span>
+                        </td>
+                        <td className="py-4 px-4">
+                          <span className="font-medium text-foreground">
+                            {getPartnerName(commission.partner_id)}
+                          </span>
+                        </td>
+                        <td className="py-4 px-4 font-medium">
+                          {commission.booking_amount?.toLocaleString()} ر.س
+                        </td>
+                        <td className="py-4 px-4">
+                          <span className="px-2 py-1 rounded bg-muted text-sm">
+                            {commission.commission_percentage}%
+                          </span>
+                        </td>
+                        <td className="py-4 px-4 font-bold text-green-600">
+                          {commission.commission_amount?.toLocaleString()} ر.س
+                        </td>
+                        <td className="py-4 px-4 font-medium text-blue-600">
+                          {commission.partner_revenue?.toLocaleString()} ر.س
+                        </td>
+                        <td className="py-4 px-4">
+                          {getStatusBadge(commission.status)}
+                        </td>
+                        <td className="py-4 px-4 text-sm text-muted-foreground">
+                          {commission.created_at ? new Date(commission.created_at).toLocaleDateString('ar-SA') : '-'}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        {/* Invoices Section */}
+        {invoices.length > 0 && (
+          <div className="mt-8">
+            <h2 className="text-lg font-bold text-foreground mb-4">الفواتير الشهرية</h2>
+            <div className="bg-card rounded-xl border border-border overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead className="bg-muted/50 border-b border-border">
                     <tr>
-                      <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">رقم الحجز</th>
+                      <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">رقم الفاتورة</th>
                       <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">الشركة</th>
-                      <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">مبلغ الحجز</th>
-                      <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">نسبة العمولة</th>
+                      <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">الفترة</th>
+                      <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">إجمالي المبلغ</th>
                       <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">عمولة المنصة</th>
-                      <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">إيراد الشريك</th>
+                      <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">صافي الشريك</th>
                       <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">الحالة</th>
-                      <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">التاريخ</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredCommissions.length === 0 ? (
-                      <tr>
-                        <td colSpan={8} className="py-12 text-center text-muted-foreground">
-                          <DollarSign className="w-12 h-12 mx-auto text-muted-foreground/30 mb-3" />
-                          لا توجد عمولات
+                    {invoices.map((invoice) => (
+                      <tr key={invoice.invoice_id} className="border-b border-border last:border-0 hover:bg-muted/30">
+                        <td className="py-4 px-4 font-mono text-sm text-primary">{invoice.invoice_number}</td>
+                        <td className="py-4 px-4 font-medium">{getPartnerName(invoice.partner_id)}</td>
+                        <td className="py-4 px-4 text-sm text-muted-foreground">
+                          {invoice.period_start} - {invoice.period_end}
                         </td>
+                        <td className="py-4 px-4 font-medium">{invoice.total_amount?.toLocaleString()} ر.س</td>
+                        <td className="py-4 px-4 text-green-600 font-bold">{invoice.platform_commission?.toLocaleString()} ر.س</td>
+                        <td className="py-4 px-4 text-blue-600 font-medium">{invoice.partner_net?.toLocaleString()} ر.س</td>
+                        <td className="py-4 px-4">{getStatusBadge(invoice.status)}</td>
                       </tr>
-                    ) : (
-                      filteredCommissions.map((commission) => (
-                        <tr key={commission.commission_id} className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors">
-                          <td className="py-4 px-4">
-                            <span className="font-mono text-sm font-medium text-primary">
-                              BK-{commission.booking_id}
-                            </span>
-                          </td>
-                          <td className="py-4 px-4">
-                            <span className="font-medium text-foreground">
-                              {getPartnerName(commission.partner_id)}
-                            </span>
-                          </td>
-                          <td className="py-4 px-4 font-medium">
-                            {commission.booking_amount?.toLocaleString()} ر.س
-                          </td>
-                          <td className="py-4 px-4">
-                            <span className="px-2 py-1 rounded bg-muted text-sm">
-                              {commission.commission_percentage}%
-                            </span>
-                          </td>
-                          <td className="py-4 px-4 font-bold text-green-600">
-                            {commission.commission_amount?.toLocaleString()} ر.س
-                          </td>
-                          <td className="py-4 px-4 font-medium text-blue-600">
-                            {commission.partner_revenue?.toLocaleString()} ر.س
-                          </td>
-                          <td className="py-4 px-4">
-                            {getStatusBadge(commission.status)}
-                          </td>
-                          <td className="py-4 px-4 text-sm text-muted-foreground">
-                            {commission.created_at ? new Date(commission.created_at).toLocaleDateString('ar-SA') : '-'}
-                          </td>
-                        </tr>
-                      ))
-                    )}
+                    ))}
                   </tbody>
                 </table>
               </div>
-            )}
-          </div>
-
-          {/* Invoices Section */}
-          {invoices.length > 0 && (
-            <div className="mt-8">
-              <h2 className="text-lg font-bold text-foreground mb-4">الفواتير الشهرية</h2>
-              <div className="bg-card rounded-xl border border-border overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead className="bg-muted/50 border-b border-border">
-                      <tr>
-                        <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">رقم الفاتورة</th>
-                        <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">الشركة</th>
-                        <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">الفترة</th>
-                        <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">إجمالي المبلغ</th>
-                        <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">عمولة المنصة</th>
-                        <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">صافي الشريك</th>
-                        <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">الحالة</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {invoices.map((invoice) => (
-                        <tr key={invoice.invoice_id} className="border-b border-border last:border-0 hover:bg-muted/30">
-                          <td className="py-4 px-4 font-mono text-sm text-primary">{invoice.invoice_number}</td>
-                          <td className="py-4 px-4 font-medium">{getPartnerName(invoice.partner_id)}</td>
-                          <td className="py-4 px-4 text-sm text-muted-foreground">
-                            {invoice.period_start} - {invoice.period_end}
-                          </td>
-                          <td className="py-4 px-4 font-medium">{invoice.total_amount?.toLocaleString()} ر.س</td>
-                          <td className="py-4 px-4 text-green-600 font-bold">{invoice.platform_commission?.toLocaleString()} ر.س</td>
-                          <td className="py-4 px-4 text-blue-600 font-medium">{invoice.partner_net?.toLocaleString()} ر.س</td>
-                          <td className="py-4 px-4">{getStatusBadge(invoice.status)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
             </div>
-          )}
-        </div>
-      </main>
-    </div>
+          </div>
+        )}
+      </div>
+    </AdminLayout>
   );
 };
-
 export default CommissionsManagement;
