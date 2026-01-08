@@ -721,4 +721,4 @@ const PartnersManagement = () => {
 
 export default PartnersManagement;
 
-export default PartnersManagement;
+
