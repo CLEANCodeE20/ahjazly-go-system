@@ -107,14 +107,17 @@ const App = () => {
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/verify-email" element={<VerifyEmail />} />
 
+              {/* === PUBLIC PAGES (Unprotected) === */}
+              {/* These pages should be accessible to everyone without checks */}
+              <Route path="/" element={<Index />} />
+              <Route path="/apply" element={<Apply />} />
+              <Route path="/features" element={<Features />} />
+              <Route path="/about" element={<About />} />
+              <Route path="/contact" element={<Contact />} />
+
               {/* === GUARDED ROUTES === */}
               {/* All other routes are wrapped in Maintenance and 2FA guards */}
               <Route element={<GuardedLayout />}>
-                <Route path="/" element={<Index />} />
-                <Route path="/apply" element={<Apply />} />
-                <Route path="/features" element={<Features />} />
-                <Route path="/about" element={<About />} />
-                <Route path="/contact" element={<Contact />} />
 
                 {/* Admin Routes */}
                 <Route path="/setup-admin" element={<SetupAdmin />} />
