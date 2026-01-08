@@ -5,7 +5,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Outlet } from "react-router-dom";
 import { Suspense, lazy } from "react";
 import { LoadingSpinner } from "./components/ui/loading-spinner";
-import { DashboardSkeleton } from "./components/ui/DashboardSkeleton";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import { MaintenanceGuard } from "./components/auth/MaintenanceGuard";
 import { TwoFactorGuard } from "./components/auth/TwoFactorGuard";
@@ -64,19 +63,14 @@ const TwoFactorSetup = lazy(() => import("./pages/TwoFactorSetup"));
 const TwoFactorVerify = lazy(() => import("./pages/TwoFactorVerify"));
 const OnboardingWizard = lazy(() => import("./pages/OnboardingWizard"));
 
-
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 1000 * 60 * 5, // 5 minutes - data stays fresh longer
-      gcTime: 1000 * 60 * 10, // 10 minutes - keep unused data in cache longer
+      staleTime: 1000 * 60 * 5,
+      gcTime: 1000 * 60 * 10,
       refetchOnWindowFocus: false,
       refetchOnReconnect: true,
-      retry: 2, // Retry failed requests twice
-      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000), // Exponential backoff
-    },
-    mutations: {
-      retry: 1, // Retry mutations once on failure
+      retry: 2,
     },
   },
 });
@@ -99,16 +93,13 @@ const App = () => {
         <BrowserRouter>
           <Suspense fallback={<LoadingSpinner />}>
             <Routes>
-              {/* === PUBLIC INFRASTRUCTURE ROUTES (No Guards) === */}
-              {/* These are isolated to prevent redirect loops or flicker on logout */}
+              {/* === PUBLIC PAGES (Unprotected) === */}
               <Route path="/login" element={<Login />} />
               <Route path="/maintenance" element={<MaintenancePage />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/verify-email" element={<VerifyEmail />} />
 
-              {/* === PUBLIC PAGES (Unprotected) === */}
-              {/* These pages should be accessible to everyone without checks */}
               <Route path="/" element={<Index />} />
               <Route path="/apply" element={<Apply />} />
               <Route path="/features" element={<Features />} />
@@ -116,10 +107,7 @@ const App = () => {
               <Route path="/contact" element={<Contact />} />
 
               {/* === GUARDED ROUTES === */}
-              {/* All other routes are wrapped in Maintenance and 2FA guards */}
               <Route element={<GuardedLayout />}>
-
-                {/* Admin Routes */}
                 <Route path="/setup-admin" element={<SetupAdmin />} />
                 <Route path="/admin" element={
                   <ProtectedRoute allowedRoles={['admin']}>
@@ -192,7 +180,6 @@ const App = () => {
                   </ProtectedRoute>
                 } />
 
-                {/* Dashboard & User Routes */}
                 <Route path="/notifications" element={
                   <ProtectedRoute allowedRoles={['admin', 'partner', 'employee']}>
                     <NotificationsPage />
@@ -294,7 +281,6 @@ const App = () => {
                   </ProtectedRoute>
                 } />
 
-                {/* 404 Route */}
                 <Route path="*" element={<NotFound />} />
               </Route>
             </Routes>
