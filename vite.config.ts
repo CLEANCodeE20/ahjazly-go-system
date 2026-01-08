@@ -15,6 +15,7 @@ export default defineConfig(({ mode }) => ({
     },
   },
   build: {
+    sourcemap: false, // Disable source maps to avoid warnings from dependencies
     rollupOptions: {
       output: {
         manualChunks: {
