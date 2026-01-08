@@ -11,28 +11,43 @@ const app = express();
 // Enable Gzip compression
 app.use(compression());
 
-// Security headers
+// CSP and Security headers
 app.use((req, res, next) => {
     res.setHeader('X-Frame-Options', 'DENY');
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    res.setHeader(
+        'Content-Security-Policy',
+        "default-src 'self'; " +
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://o4510671251177472.ingest.us.sentry.io https://cdn.jsdelivr.net blob:; " +
+        "worker-src 'self' blob:; " +
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; " +
+        "font-src 'self' data: https://fonts.gstatic.com https://cdn.jsdelivr.net; " +
+        "img-src 'self' data: https: blob:; " +
+        "media-src 'self' data:; " +
+        "connect-src 'self' https://*.supabase.co https://*.googleapis.com https://*.firebaseio.com https://o4510671251177472.ingest.us.sentry.io wss://*.supabase.co;"
+    );
     next();
 });
 
 // Serve static files from dist directory
 app.use(express.static(path.join(__dirname, 'dist'), {
     maxAge: '1y',
-    etag: false,
+    etag: true,
     setHeaders: (res, filePath) => {
-        // No cache for HTML files
         if (filePath.endsWith('.html')) {
             res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
         }
     }
 }));
 
-// SPA fallback - all routes return index.html
+// SPA fallback - only return index.html for non-asset requests
 app.get('*', (req, res) => {
+    // If the request looks like an asset (has an extension), return 404
+    if (path.extname(req.path)) {
+        res.status(404).end();
+        return;
+    }
     res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 
