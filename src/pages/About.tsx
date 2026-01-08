@@ -1,26 +1,3 @@
-import Header from "@/components/layout/Header";
-import Footer from "@/components/layout/Footer";
-import { Button } from "@/components/ui/button";
-import { Link } from "react-router-dom";
-import {
-    Target,
-    Eye,
-    History,
-    Users2,
-    Globe2,
-    Award,
-    TrendingUp,
-    ShieldCheck,
-    ArrowLeft
-} from "lucide-react";
-import { WhatsAppButton } from "@/components/ui/WhatsAppButton";
-
-const stats = [
-    { label: "عام من الخبرة", value: "5+", icon: History },
-    { label: "شركة شريكة", value: "100+", icon: Globe2 },
-    { label: "حجز ناجح", value: "50K+", icon: TrendingUp },
-    { label: "مستخدم نشط", value: "10K+", icon: Users2 },
-];
 
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
