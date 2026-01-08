@@ -96,7 +96,10 @@ const UsersManagement = () => {
         try {
             let query = supabase
                 .from('users')
-                .select('user_id, auth_id, full_name, email, created_at, account_status, user_roles(role)', { count: 'exact' });
+                .select('user_id, auth_id, full_name, email, created_at, account_status, user_roles!inner(role)', { count: 'exact' });
+
+            // Only show CUSTOMERS and DRIVERS in this page
+            query = query.in('user_roles.role', ['user', 'driver']);
 
             // Server-side Filtering
             if (searchQuery) {
@@ -166,7 +169,7 @@ const UsersManagement = () => {
         }
     };
 
-    const updateUserRole = async (authId: string | null, newRole: "admin" | "partner" | "employee" | "driver" | "user") => {
+    const updateUserRole = async (authId: string | null, newRole: "driver" | "user") => {
         if (!authId) {
             toast({
                 title: "خطأ",
@@ -360,8 +363,8 @@ const UsersManagement = () => {
 
     return (
         <AdminLayout
-            title="إدارة المستخدمين"
-            subtitle="التحكم في حسابات المستخدمين وصلاحياتهم"
+            title="إدارة العملاء"
+            subtitle="التحكم في حسابات العملاء والسائقين"
             actions={
                 <div className="flex items-center gap-2">
                     <DropdownMenu>
@@ -468,25 +471,10 @@ const UsersManagement = () => {
                                                                     open: true,
                                                                     userId: user.auth_id,
                                                                     userName: user.full_name || "مستخدم غير معروف",
-                                                                    newRole: 'admin'
+                                                                    newRole: user.role === 'driver' ? 'user' : 'driver'
                                                                 })}>
-                                                                    <Shield className="w-4 h-4 ml-2" /> ترقية لمدير
-                                                                </DropdownMenuItem>
-                                                                <DropdownMenuItem onClick={() => setConfirmDialog({
-                                                                    open: true,
-                                                                    userId: user.auth_id,
-                                                                    userName: user.full_name || "مستخدم غير معروف",
-                                                                    newRole: 'partner'
-                                                                })}>
-                                                                    <UserCog className="w-4 h-4 ml-2" /> تعيين كشريك
-                                                                </DropdownMenuItem>
-                                                                <DropdownMenuItem onClick={() => setConfirmDialog({
-                                                                    open: true,
-                                                                    userId: user.auth_id,
-                                                                    userName: user.full_name || "مستخدم غير معروف",
-                                                                    newRole: 'employee'
-                                                                })}>
-                                                                    <UserCog className="w-4 h-4 ml-2" /> تعيين كموظف
+                                                                    <UserCog className="w-4 h-4 ml-2" />
+                                                                    {user.role === 'driver' ? 'تحويل لعميل' : 'تعيين كسائق'}
                                                                 </DropdownMenuItem>
                                                                 <DropdownMenuItem onClick={() => {
                                                                     setNewUser({
@@ -610,10 +598,8 @@ const UsersManagement = () => {
                                     <SelectValue placeholder="اختر الصلاحية" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="user">مستخدم (عميل)</SelectItem>
-                                    <SelectItem value="admin">مدير نظام</SelectItem>
-                                    <SelectItem value="partner">شريك</SelectItem>
-                                    <SelectItem value="employee">موظف</SelectItem>
+                                    <SelectItem value="user">عميل (مسافر)</SelectItem>
+                                    <SelectItem value="driver">سائق</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>

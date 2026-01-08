@@ -4,6 +4,11 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Outlet } from "react-router-dom";
 import { Suspense, lazy } from "react";
+import {
+  ImageIcon,
+  Shield,
+  X
+} from "lucide-react";
 import { LoadingSpinner } from "./components/ui/loading-spinner";
 
 // Monitoring Components
@@ -37,6 +42,7 @@ const CommissionsManagement = lazy(() => import("./pages/admin/CommissionsManage
 const FinancialReports = lazy(() => import("./pages/admin/FinancialReports"));
 const PartnersManagement = lazy(() => import("./pages/admin/PartnersManagement"));
 const UsersManagement = lazy(() => import("./pages/admin/UsersManagement"));
+const StaffManagement = lazy(() => import("./pages/admin/StaffManagement"));
 const AuditTrails = lazy(() => import("./pages/admin/AuditTrails"));
 const PolicyManagement = lazy(() => import("./pages/admin/PolicyManagement"));
 const PlatformSettings = lazy(() => import("./pages/admin/PlatformSettings"));
@@ -150,6 +156,11 @@ const App = () => {
                 <Route path="/admin/users" element={
                   <ProtectedRoute allowedRoles={['admin']}>
                     <UsersManagement />
+                  </ProtectedRoute>
+                } />
+                <Route path="/admin/staff" element={
+                  <ProtectedRoute allowedRoles={['admin']}>
+                    <StaffManagement />
                   </ProtectedRoute>
                 } />
                 <Route path="/admin/audit-logs" element={

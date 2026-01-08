@@ -30,6 +30,28 @@ BEGIN
         body := payload
       );
 
+  -- Case 2: Status changed to 'rejected'
+  ELSIF OLD.status != 'rejected' AND NEW.status = 'rejected' THEN
+    
+    payload := json_build_object(
+      'email', NEW.owner_email,
+      'name', NEW.owner_name,
+      'title', 'تحديث بخصوص طلب انضمام شركتكم',
+      'message', 'شكراً لاهتمامكم بالانضمام لمنصة احجزلي. نأسف لإبلاغكم بأنه تم رفض طلبكم لعدم استيفاء الشروط المطلوبة. السبب: ' || COALESCE(NEW.rejection_reason, 'لم يتم تحديد سبب'),
+      'priority', 'high'
+    );
+
+    -- Call the Supabase Edge Function
+    PERFORM
+      net.http_post(
+        url := 'https://kbgbftyvbdgyoeosxlok.supabase.co/functions/v1/notify',
+        headers := jsonb_build_object(
+          'Content-Type', 'application/json',
+          'Authorization', 'Bearer ' || current_setting('app.settings.service_role_key', true)
+        ),
+        body := payload
+      );
+      
   END IF;
 
   RETURN NEW;

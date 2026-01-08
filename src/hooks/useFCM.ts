@@ -22,29 +22,45 @@ interface UseFCMReturn {
  */
 export const useFCM = (): UseFCMReturn => {
     const [token, setToken] = useState<string | null>(null);
-    const [isLoading, setIsLoading] = useState(false);
-    const [isSupported] = useState(areNotificationsSupported());
+    const [isLoading, setIsLoading] = useState(true);
+    const [isSupported, setIsSupported] = useState<boolean>(false);
     const [permission, setPermission] = useState<NotificationPermission>(
         getNotificationPermission()
     );
+
+    // Initial support check
+    useEffect(() => {
+        const checkSupport = async () => {
+            const supported = await areNotificationsSupported();
+            setIsSupported(supported);
+            setIsLoading(false);
+        };
+        checkSupport();
+    }, []);
 
     // Setup foreground message listener
     useEffect(() => {
         if (!isSupported) return;
 
-        const unsubscribe = setupForegroundMessageListener((payload) => {
-            console.log('📬 Received foreground notification:', payload);
+        let cleanup: (() => void) | null = null;
 
-            // Show toast notification
-            toast({
-                title: payload.notification?.title || 'إشعار جديد',
-                description: payload.notification?.body || '',
-                duration: 5000,
+        const setup = async () => {
+            const unsubscribe = await setupForegroundMessageListener((payload) => {
+                console.log('📬 Received foreground notification:', payload);
+
+                toast({
+                    title: payload.notification?.title || 'إشعار جديد',
+                    description: payload.notification?.body || '',
+                    duration: 5000,
+                });
             });
-        });
+            if (unsubscribe) cleanup = unsubscribe;
+        };
+
+        setup();
 
         return () => {
-            if (unsubscribe) unsubscribe();
+            if (cleanup) cleanup();
         };
     }, [isSupported]);
 

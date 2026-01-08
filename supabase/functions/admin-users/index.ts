@@ -21,7 +21,7 @@ serve(async (req) => {
 
         // Function handleUpdate defined inside to capture supabaseClient
         const handleUpdate = async (body: any) => {
-            const { userId, email, password, fullName, role, account_status } = body
+            const { userId, email, password, fullName, role, account_status, partnerId } = body
             if (!userId) throw new Error("Missing userId")
 
             const authUpdates: any = {}
@@ -43,9 +43,12 @@ serve(async (req) => {
 
             // 2. Role Sync
             if (role) {
+                const roleData: any = { user_id: userId, role: role }
+                if (partnerId) roleData.partner_id = partnerId
+
                 const { error: roleErr } = await supabaseClient
                     .from('user_roles')
-                    .upsert({ user_id: userId, role: role }, { onConflict: 'user_id' })
+                    .upsert(roleData, { onConflict: 'user_id' })
                 if (roleErr) throw new Error(`Role Error: ${roleErr.message}`)
 
                 const userTypeMap: Record<string, string> = {
@@ -79,7 +82,7 @@ serve(async (req) => {
             }
 
             // Otherwise, it's a CREATE
-            const { email, password, fullName, role } = body
+            const { email, password, fullName, role, partnerId } = body
             if (!email || !password || !role) throw new Error("Missing required fields for user creation")
 
             const { data: user, error: createError } = await supabaseClient.auth.admin.createUser({
@@ -87,7 +90,9 @@ serve(async (req) => {
             })
             if (createError) throw new Error(`Auth Create Error: ${createError.message}`)
 
-            await supabaseClient.from('user_roles').insert({ user_id: user.user.id, role: role })
+            const roleData: any = { user_id: user.user.id, role: role }
+            if (partnerId) roleData.partner_id = partnerId
+            await supabaseClient.from('user_roles').insert(roleData)
 
             const userTypeMap: Record<string, string> = {
                 'user': 'customer', 'admin': 'admin', 'partner': 'partner', 'driver': 'driver', 'employee': 'employee'
