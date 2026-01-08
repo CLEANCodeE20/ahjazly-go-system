@@ -140,14 +140,9 @@ export const useAuth = () => {
         isLoading: false,
       }));
 
-      // Request FCM token and save it (only if supported)
-      if (isSupported && userData && (userData as any).user_id) {
-        requestPermission().then((granted) => {
-          if (granted) {
-            saveFCMToken(userData.user_id);
-          }
-        });
-      }
+      // NOTE: We do NOT request permission automatically here anymore.
+      // Browsers block programmatic permission requests.
+      // It must be triggered by a user gesture (e.g. clicking a button).
     } catch (err) {
       console.error('[Auth] Critical error in fetchUserRole:', err);
       setAuthState(prev => ({ ...prev, isLoading: false }));

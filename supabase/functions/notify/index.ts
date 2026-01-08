@@ -43,23 +43,41 @@ serve(async (req) => {
             return new Response(JSON.stringify({ message: "Unknown format" }), { status: 200 })
         }
 
-        const { user_id, message, title } = notificationData
+        const { user_id, email: directEmail, name: directName, message, title } = notificationData
 
-        const supabase = createClient(
-            Deno.env.get('SUPABASE_URL') ?? '',
-            Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-        )
+        let user = null;
 
-        // Get user details
-        const { data: user, error: userError } = await supabase
-            .from('users')
-            .select('email, phone_number, full_name')
-            .eq('user_id', user_id)
-            .single()
+        // Case A: Direct Email provided (No DB lookup needed)
+        if (directEmail) {
+            console.log(`📧 Using direct email: ${directEmail}`);
+            user = {
+                email: directEmail,
+                full_name: directName || 'User',
+                phone_number: null,
+                user_id: user_id || null
+            }
+        }
+        // Case B: User ID provided (Fetch from DB)
+        else if (user_id) {
+            const supabase = createClient(
+                Deno.env.get('SUPABASE_URL') ?? '',
+                Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+            )
 
-        if (userError || !user) {
-            console.error("❌ User not found", userError)
-            return new Response(JSON.stringify({ error: "User not found" }), { status: 404 })
+            const { data: dbUser, error: userError } = await supabase
+                .from('users')
+                .select('email, phone_number, full_name')
+                .eq('user_id', user_id)
+                .single()
+
+            if (userError || !dbUser) {
+                console.error("❌ User not found", userError)
+                return new Response(JSON.stringify({ error: "User not found" }), { status: 404 })
+            }
+            user = dbUser;
+        }
+        else {
+            return new Response(JSON.stringify({ error: "Missing recipient (user_id or email)" }), { status: 400 })
         }
 
         console.log(`👤 User found: ${user.full_name} (ID: ${user_id})`)
