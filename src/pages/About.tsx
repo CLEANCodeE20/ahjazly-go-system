@@ -22,96 +22,171 @@ const stats = [
     { label: "مستخدم نشط", value: "10K+", icon: Users2 },
 ];
 
+import Header from "@/components/layout/Header";
+import Footer from "@/components/layout/Footer";
+import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
+import {
+    Target,
+    Eye,
+    History,
+    Users2,
+    Globe2,
+    Award,
+    TrendingUp,
+    ShieldCheck,
+    ArrowLeft,
+    Handshake,
+    Lightbulb
+} from "lucide-react";
+import { WhatsAppButton } from "@/components/ui/WhatsAppButton";
+
+const stats = [
+    { label: "سنة من الريادة", value: "5+", icon: History, color: "text-orange-500", bg: "bg-orange-500/10" },
+    { label: "شريك نجاح", value: "100+", icon: Handshake, color: "text-blue-500", bg: "bg-blue-500/10" },
+    { label: "عملية حجز", value: "50k+", icon: TrendingUp, color: "text-green-500", bg: "bg-green-500/10" },
+    { label: "عميل سعيد", value: "10k+", icon: Users2, color: "text-purple-500", bg: "bg-purple-500/10" },
+];
+
 const About = () => {
     return (
-        <div className="min-h-screen flex flex-col bg-background" dir="rtl">
+        <div className="min-h-screen flex flex-col bg-background selection:bg-primary/20" dir="rtl">
             <Header />
             <WhatsAppButton />
 
-            <main className="flex-1 pt-24 pb-16">
-                {/* Hero section with glassmorphism */}
-                <section className="relative py-20 overflow-hidden">
+            <main className="flex-1 pt-24 pb-0">
+                {/* Modern Hero Section */}
+                <section className="relative py-24 md:py-32 overflow-hidden">
+                    {/* Background Elements */}
                     <div className="absolute inset-0 z-0">
-                        <div className="absolute top-1/4 -right-20 w-96 h-96 bg-primary/10 rounded-full blur-3xl animate-pulse"></div>
-                        <div className="absolute bottom-1/4 -left-20 w-96 h-96 bg-secondary/10 rounded-full blur-3xl animate-pulse"></div>
+                        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[100px] opacity-70 animate-pulse"></div>
+                        <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-secondary/5 rounded-full blur-[100px] opacity-70"></div>
+                        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20"></div>
                     </div>
 
                     <div className="container mx-auto px-4 relative z-10">
                         <div className="max-w-4xl mx-auto text-center">
-                            <h1 className="text-4xl md:text-6xl font-extrabold text-foreground mb-6 leading-tight">
-                                نحن نسهر على <span className="text-transparent bg-clip-text gradient-primary">تطوير مستقبل النقل</span> في المنطقة
+                            <div className="inline-flex items-center gap-2 px-6 py-2 rounded-full bg-white/5 border border-white/10 shadow-sm backdrop-blur-sm mb-8 animate-in fade-in slide-in-from-bottom-5 duration-700">
+                                <span className="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
+                                <span className="text-sm font-medium text-muted-foreground">المنصة الرائدة للنقل الذكي</span>
+                            </div>
+
+                            <h1 className="text-5xl md:text-7xl font-black text-foreground mb-8 leading-tight tracking-tight animate-in fade-in slide-in-from-bottom-8 duration-700 delay-100">
+                                نعيد تعريف <br />
+                                <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-purple-500 to-secondary">تجربة السفر والنقل</span>
                             </h1>
-                            <p className="text-lg md:text-xl text-muted-foreground mb-10 leading-relaxed">
-                                بدأت رحلة "أحجزلي" برؤية طموحة لتحويل قطاع نقل الركاب إلى قطاع رقمي متكامل يسهل حياة الملايين ويوفر للشركات أدوات إدارة عالمية.
+
+                            <p className="text-xl md:text-2xl text-muted-foreground mb-12 leading-relaxed max-w-3xl mx-auto font-light animate-in fade-in slide-in-from-bottom-10 duration-700 delay-200">
+                                في "أحجزلي"، لا نقدم مجرد نظام حجز، بل نبني جسوراً ذكية تربط المدن ببعضها، وتجمع المسافرين بأحبتهم، عبر تقنيات تسبق عصرها.
                             </p>
+
+                            <div className="flex flex-wrap justify-center gap-6 animate-in fade-in slide-in-from-bottom-12 duration-700 delay-300">
+                                <Button size="xl" className="h-16 px-10 rounded-2xl text-lg font-bold bg-primary hover:bg-primary/90 hover:scale-105 transition-all shadow-xl shadow-primary/20" asChild>
+                                    <Link to="/apply">ابدأ رحلتك معنا</Link>
+                                </Button>
+                                <Button size="xl" variant="outline" className="h-16 px-10 rounded-2xl text-lg font-bold border-2 hover:bg-muted/50 transition-all" asChild>
+                                    <Link to="/contact">تواصل مع الفريق</Link>
+                                </Button>
+                            </div>
                         </div>
                     </div>
                 </section>
 
-                {/* Stats Section */}
-                <section className="py-12 bg-muted/30 border-y border-border">
+                {/* Stats Section with Glass Effect */}
+                <section className="py-12 relative z-20 -mt-10">
                     <div className="container mx-auto px-4">
-                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-8">
+                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 bg-card/50 backdrop-blur-xl border border-white/20 p-8 rounded-[2.5rem] shadow-2xl">
                             {stats.map((stat, index) => (
-                                <div key={index} className="text-center group">
-                                    <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
-                                        <stat.icon className="w-6 h-6 text-primary" />
+                                <div key={index} className="text-center group p-4 rounded-2xl hover:bg-white/50 transition-colors">
+                                    <div className={`w-14 h-14 rounded-2xl ${stat.bg} flex items-center justify-center mx-auto mb-4 group-hover:scale-110 group-hover:rotate-6 transition-all duration-300`}>
+                                        <stat.icon className={`w-7 h-7 ${stat.color}`} />
                                     </div>
-                                    <h3 className="text-2xl md:text-4xl font-bold text-foreground mb-1">{stat.value}</h3>
-                                    <p className="text-sm text-muted-foreground">{stat.label}</p>
+                                    <h3 className="text-3xl md:text-4xl font-black text-foreground mb-2 tabular-nums">{stat.value}</h3>
+                                    <p className="text-sm md:text-base text-muted-foreground font-medium">{stat.label}</p>
                                 </div>
                             ))}
                         </div>
                     </div>
                 </section>
 
-                {/* Mission & Vision */}
-                <section className="py-20">
+                {/* Story Section */}
+                <section className="py-24 bg-muted/20 relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-full h-px bg-gradient-to-l from-transparent via-border to-transparent"></div>
                     <div className="container mx-auto px-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-                            <div className="p-8 rounded-3xl bg-card border border-border shadow-elegant hover:border-primary/20 transition-all group">
-                                <div className="w-14 h-14 rounded-2xl gradient-primary flex items-center justify-center mb-6">
-                                    <Target className="w-8 h-8 text-white" />
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
+                            <div className="relative group">
+                                <div className="absolute inset-0 bg-gradient-to-tr from-primary to-secondary rounded-[2.5rem] rotate-3 opacity-20 group-hover:rotate-6 transition-transform duration-500"></div>
+                                <div className="relative rounded-[2.5rem] overflow-hidden shadow-2xl border border-white/20 h-[500px]">
+                                    <img
+                                        src="https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&q=80"
+                                        alt="فريق العمل"
+                                        className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-1000"
+                                    />
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex items-end p-10">
+                                        <div className="text-white">
+                                            <p className="text-sm font-bold uppercase tracking-wider mb-2 text-primary">قصتنا</p>
+                                            <h3 className="text-3xl font-bold">من فكرة طموحة إلى واقع ملموس</h3>
+                                        </div>
+                                    </div>
                                 </div>
-                                <h2 className="text-3xl font-bold text-foreground mb-4">رسالتنا</h2>
-                                <p className="text-muted-foreground text-lg leading-relaxed">
-                                    تمكين شركات النقل العربية من إدارة أعمالها بكفاءة عالية عبر تكنولوجيا متطورة، وتوفير تجربة حجز آمنة وسلسة للمسافرين تعتمد على الشفافية والراحة.
-                                </p>
                             </div>
 
-                            <div className="p-8 rounded-3xl bg-card border border-border shadow-elegant hover:border-secondary/20 transition-all group">
-                                <div className="w-14 h-14 rounded-2xl bg-secondary flex items-center justify-center mb-6">
-                                    <Eye className="w-8 h-8 text-white" />
-                                </div>
-                                <h2 className="text-3xl font-bold text-foreground mb-4">رؤيتنا</h2>
-                                <p className="text-muted-foreground text-lg leading-relaxed">
-                                    أن نكون المنصة الرقمية الأولى والخيار المفضل لربط المسافرين بشركات النقل في منطقة الشرق الأوسط، مع المساهمة بفعالية في النهضة التقنية لقطاع النقل.
+                            <div className="space-y-8">
+                                <div className="inline-block px-4 py-1.5 rounded-full bg-primary/10 text-primary font-bold text-sm">من نحن</div>
+                                <h2 className="text-4xl md:text-5xl font-bold leading-tight">
+                                    نحن نصنع <br /> <span className="text-primary">المستقبل</span> الذي نطمح إليه
+                                </h2>
+                                <p className="text-lg text-muted-foreground leading-relaxed">
+                                    بدأت "أحجزلي" برؤية بسيطة: لماذا يجب أن يكون حجز رحلة بالحافلة أمراً معقداً؟ من هنا انطلقنا في رحلة لتحويل هذا القطاع التقليدي إلى تجربة رقمية فائقة السلاسة.
                                 </p>
+                                <p className="text-lg text-muted-foreground leading-relaxed">
+                                    اليوم، نحن فخورون بخدمة الآلاف من المسافرين ومساعدة عشرات الشركات على النمو والازدهار في العصر الرقمي، مدفوعين بشغف لا يتوقف للإبتكار والتميز.
+                                </p>
+
+                                <div className="pt-4 border-t border-border">
+                                    <div className="grid grid-cols-2 gap-8">
+                                        <div>
+                                            <h4 className="font-bold text-xl mb-2 flex items-center gap-2">
+                                                <Target className="w-5 h-5 text-primary" />
+                                                المهمة
+                                            </h4>
+                                            <p className="text-sm text-muted-foreground">تمكين المجتمعات عبر حلول تنقل ذكية، آمنة، وموثوقة.</p>
+                                        </div>
+                                        <div>
+                                            <h4 className="font-bold text-xl mb-2 flex items-center gap-2">
+                                                <Eye className="w-5 h-5 text-secondary" />
+                                                الرؤية
+                                            </h4>
+                                            <p className="text-sm text-muted-foreground">أن نكون الخيار الأول للتنقل في الشرق الأوسط بحلول 2030.</p>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
+                    <div className="absolute bottom-0 left-0 w-full h-px bg-gradient-to-l from-transparent via-border to-transparent"></div>
                 </section>
 
-                {/* Value Cards */}
-                <section className="py-20 bg-muted/20">
+                {/* Values Section */}
+                <section className="py-24">
                     <div className="container mx-auto px-4">
-                        <div className="text-center mb-16">
-                            <h2 className="text-3xl font-bold text-foreground mb-4">قيمنا الجوهرية</h2>
-                            <div className="w-20 h-1.5 gradient-primary mx-auto rounded-full"></div>
+                        <div className="text-center mb-20">
+                            <h2 className="text-4xl font-bold mb-4">قيم نؤمن بها</h2>
+                            <p className="text-muted-foreground text-lg max-w-xl mx-auto">المبادئ التي توجه كل قرار نتخذه وكل سطر كود نكتبه.</p>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                             {[
-                                { title: "الابتكار المستمر", icon: Award, desc: "نبحث دائماً عن أحدث التقنيات لدمجها في منصتنا وتقديم حلول ذكية." },
-                                { title: "الأمان والخصوصية", icon: ShieldCheck, desc: "نضع حماية بيانات الشركات والمسافرين في قمة أولوياتنا كالتزام أخلاقي وتقني." },
-                                { title: "الشراكة الحقيقية", icon: Globe2, desc: "لا نعتبر أنفسنا مزودي خدمة، بل شركاء نجاح لكل شركة نقل تنضم إلينا." },
+                                { title: "الابتكار الجريء", icon: Lightbulb, desc: "لا ننتظر المستقبل، بل نصنعه اليوم بأفكار خارجة عن المألوف.", color: "bg-yellow-500/10 text-yellow-500" },
+                                { title: "الأمان أولاً", icon: ShieldCheck, desc: "سلامة بياناتكم وأمان رحلاتكم هو الأساس غير القابل للنقاش.", color: "bg-blue-500/10 text-blue-500" },
+                                { title: "التميز في الخدمة", icon: Award, desc: "نسعى للكمال في كل تفصيل، مهما كان صغيراً، لضمان رضاكم.", color: "bg-red-500/10 text-red-500" },
                             ].map((value, index) => (
-                                <div key={index} className="flex flex-col items-center text-center p-6 bg-background rounded-2xl border border-border shadow-sm group hover:bg-card transition-colors">
-                                    <div className="w-12 h-12 rounded-full bg-primary/5 flex items-center justify-center mb-4 text-primary group-hover:bg-primary group-hover:text-white transition-all">
-                                        <value.icon className="w-6 h-6" />
+                                <div key={index} className="group p-8 rounded-[2rem] border border-border bg-card hover:bg-card/50 hover:shadow-xl hover:-translate-y-2 transition-all duration-300">
+                                    <div className={`w-16 h-16 rounded-2xl ${value.color} flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300`}>
+                                        <value.icon className="w-8 h-8" />
                                     </div>
-                                    <h3 className="text-xl font-bold mb-3">{value.title}</h3>
-                                    <p className="text-muted-foreground leading-relaxed italic">"{value.desc}"</p>
+                                    <h3 className="text-2xl font-bold mb-4">{value.title}</h3>
+                                    <p className="text-muted-foreground text-lg leading-relaxed">{value.desc}</p>
                                 </div>
                             ))}
                         </div>
@@ -119,20 +194,23 @@ const About = () => {
                 </section>
 
                 {/* CTA Section */}
-                <section className="py-20">
-                    <div className="container mx-auto px-4">
-                        <div className="relative rounded-[3rem] overflow-hidden bg-foreground text-background p-12 md:p-20 text-center">
-                            <div className="absolute inset-0 opacity-20 bg-[url('https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&q=80')] bg-cover bg-center"></div>
-                            <div className="relative z-10">
-                                <h2 className="text-3xl md:text-5xl font-bold mb-8">كن جزءاً من قصة نجاحنا</h2>
-                                <p className="text-xl opacity-80 mb-10 max-w-2xl mx-auto">
-                                    انضم الآن إلى المستقبل وابدأ في رقمنة شركتك اليوم مع أفضل الأدوات المتاحة في السوق.
+                <section className="py-20 px-4">
+                    <div className="container mx-auto">
+                        <div className="relative rounded-[3rem] overflow-hidden bg-[#0A0A0A] text-white p-12 md:p-24 text-center group">
+                            {/* Animated Background */}
+                            <div className="absolute inset-0 opacity-30 bg-[url('https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&q=80')] bg-cover bg-center transition-transform duration-[10s] group-hover:scale-110"></div>
+                            <div className="absolute inset-0 bg-gradient-to-b from-black/0 via-black/50 to-black/90"></div>
+
+                            <div className="relative z-10 max-w-3xl mx-auto">
+                                <h2 className="text-4xl md:text-6xl font-black mb-8 leading-tight">جاهز للانطلاق نحو <br /><span className="text-primary">مستقبل أفضل؟</span></h2>
+                                <p className="text-xl opacity-90 mb-12 font-light">
+                                    انضم إلى مئات الشركات والمستخدمين الذين يثقون في "أحجزلي" لتسهيل حياتهم وأعمالهم يومياً.
                                 </p>
-                                <div className="flex flex-wrap justify-center gap-4">
-                                    <Button size="xl" className="bg-white text-black hover:bg-white/90" asChild>
-                                        <Link to="/apply">سجل شركتك الآن</Link>
+                                <div className="flex flex-col sm:flex-row justify-center gap-4">
+                                    <Button size="xl" className="h-16 px-12 rounded-full text-lg font-bold bg-white text-black hover:bg-white/90 hover:scale-105 transition-all w-full sm:w-auto" asChild>
+                                        <Link to="/apply">سجل شركتك مجاناً</Link>
                                     </Button>
-                                    <Button size="xl" variant="outline" className="border-white text-white hover:bg-white/10" asChild>
+                                    <Button size="xl" variant="outline" className="h-16 px-12 rounded-full text-lg font-bold border-white/20 text-white hover:bg-white/10 w-full sm:w-auto" asChild>
                                         <Link to="/contact">تواصل معنا</Link>
                                     </Button>
                                 </div>
