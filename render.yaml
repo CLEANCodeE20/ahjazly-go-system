@@ -1,37 +1,16 @@
-staticSites:
-  - name: ahjazly-admin-panel
+services:
+  - type: web
+    name: ahjazly-admin-panel
+    env: node
     buildCommand: npm install && npm run build
-    publishDir: dist
+    startCommand: npm start
     
-    # SPA Routing Configuration - CRITICAL for React Router
-    routes:
-      - type: rewrite
-        source: /*
-        destination: /index.html
-    
-    # Security Headers
-    headers:
-      - path: /*
-        name: X-Frame-Options
-        value: DENY
-      - path: /*
-        name: X-Content-Type-Options
-        value: nosniff
-      - path: /*
-        name: Referrer-Policy
-        value: strict-origin-when-cross-origin
-      - path: /*
-        name: Permissions-Policy
-        value: "camera=(), microphone=(), geolocation=(), payment=()"
-      - path: /assets/*
-        name: Cache-Control
-        value: public, max-age=31536000, immutable
-      - path: /index.html
-        name: Cache-Control
-        value: no-cache, no-store, must-revalidate
-      # CSP is handled in index.html meta tag, not here to avoid conflicts
-    
+    # Environment Variables
     envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
       - key: VITE_SUPABASE_URL
       - key: VITE_SUPABASE_PUBLISHABLE_KEY
       - key: VITE_FIREBASE_API_KEY
