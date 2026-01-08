@@ -18,6 +18,9 @@ export const TwoFactorGuard = ({ children }: TwoFactorGuardProps) => {
     useEffect(() => {
         const check2FARequirement = async () => {
             try {
+                // Normalize path to remove trailing slashes and generally be safer
+                const currentPath = location.pathname.replace(/\/$/, '') || '/';
+
                 // List of public routes that shouldn't trigger 2FA
                 const publicRoutes = [
                     '/',
@@ -32,12 +35,18 @@ export const TwoFactorGuard = ({ children }: TwoFactorGuardProps) => {
                     '/verify-email'
                 ];
 
-                if (location.pathname.includes('2fa-') || publicRoutes.includes(location.pathname)) {
+                const isPublicPath = currentPath.includes('2fa-') ||
+                    publicRoutes.some(route => currentPath === route || currentPath.startsWith(`${route}/`));
+
+                if (isPublicPath) {
                     setChecking(false);
                     return;
                 }
 
+                // If loading auth or no user/role, let downstream components (like ProtectedRoute) handle it
+                // We shouldn't block here if we can't determine 2FA status, effectively "passing through"
                 if (isLoading || !user || !userRole) {
+                    setChecking(false);
                     return;
                 }
 
@@ -45,23 +54,38 @@ export const TwoFactorGuard = ({ children }: TwoFactorGuardProps) => {
 
                 if (!requiresAuth) {
                     setRequires2FA(false);
+                    setChecking(false);
                     return;
                 }
 
                 const verified = sessionStorage.getItem('2fa_verified');
                 if (verified === 'true') {
                     setRequires2FA(false);
+                    setChecking(false);
                     return;
                 }
 
-                const { data: twoFactorData } = await supabase
+                // Check 2FA status from database
+                const { data: twoFactorData, error } = await supabase
                     .from('user_two_factor' as any)
                     .select('is_enabled')
                     .eq('auth_id', user.id)
                     .maybeSingle() as any;
 
+                if (error) {
+                    console.error('[TwoFactorGuard] Error fetching 2FA status:', error);
+                    // On error, we default to allowing access (fail open) to prevent lockout, 
+                    // or fail closed depending on security posture. Fulfilling "fail open" for UX for now 
+                    // if it's just a fetch error, but assuming no 2FA if we can't check.
+                    setChecking(false);
+                    return;
+                }
+
                 if (!twoFactorData?.is_enabled) {
                     if (location.pathname !== '/2fa-setup' && location.pathname !== '/onboarding') {
+                        // Redirect to setup if not enabled (and maybe strictly required?)
+                        // Currently logic directs everyone to setup? 
+                        // The original logic seemed to force setup if not enabled.
                         navigate('/2fa-setup?required=true', {
                             state: { from: location },
                             replace: true
@@ -78,9 +102,8 @@ export const TwoFactorGuard = ({ children }: TwoFactorGuardProps) => {
                     setRequires2FA(true);
                 }
             } catch (err) {
-                console.error('[2FA_GUARD] Critical error in guard:', err);
-                // Fallback: Don't block the user if there's a serious network error during checks
-                // but keep the requirement state as is.
+                console.error('[TwoFactorGuard] Critical error in guard:', err);
+                // Fallback: Don't block the user if there's a serious network error
             } finally {
                 setChecking(false);
             }
@@ -108,6 +131,7 @@ export const TwoFactorGuard = ({ children }: TwoFactorGuardProps) => {
 
     // Block access if 2FA is required but not verified
     if (requires2FA) {
+        // Technically we should have navigated away, but if we are here returning null is correct to prevent content flash
         return null;
     }
 

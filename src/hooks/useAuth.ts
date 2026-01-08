@@ -166,8 +166,10 @@ export const useAuth = () => {
 
   const signOut = async () => {
     try {
+      console.log('[Auth] Signing out user...');
       sessionStorage.removeItem('2fa_verified');
       await supabase.auth.signOut();
+      console.log('[Auth] Supabase signOut complete. Redirecting to /login');
       // Use window.location as a fallback if navigate is not available or to force a fresh state
       window.location.href = '/login';
     } catch (error) {
