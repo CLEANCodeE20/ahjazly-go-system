@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useFCM } from './useFCM';
+import { ErrorLogger } from '@/utils/ErrorLogger';
 
 export type AppRole = 'admin' | 'partner' | 'employee';
 
@@ -19,6 +22,9 @@ interface AuthState {
 }
 
 export const useAuth = () => {
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+
   const [authState, setAuthState] = useState<AuthState>({
     user: null,
     session: null,
@@ -166,16 +172,48 @@ export const useAuth = () => {
 
   const signOut = async () => {
     try {
-      console.log('[Auth] Signing out user...');
+      ErrorLogger.info('[Auth] Starting logout process...');
+
+      // Step 1: Clear session storage
       sessionStorage.removeItem('2fa_verified');
-      await supabase.auth.signOut();
-      console.log('[Auth] Supabase signOut complete. Redirecting to /login');
-      // Use window.location as a fallback if navigate is not available or to force a fresh state
-      window.location.href = '/login';
+      ErrorLogger.info('[Auth] Cleared session storage');
+
+      // Step 2: Clear React Query cache to prevent data leaks
+      queryClient.clear();
+      ErrorLogger.info('[Auth] Cleared query cache');
+
+      // Step 3: Sign out from Supabase
+      const { error } = await supabase.auth.signOut();
+
+      if (error) {
+        ErrorLogger.log(error, '[Auth] Supabase signOut error');
+        throw error;
+      }
+
+      ErrorLogger.info('[Auth] Supabase signOut successful');
+
+      // Step 4: Reset auth state immediately
+      setAuthState({
+        user: null,
+        session: null,
+        userRole: null,
+        userStatus: null,
+        isLoading: false,
+      });
+      ErrorLogger.info('[Auth] Reset auth state');
+
+      // Step 5: Navigate to login page (replace: true prevents back navigation)
+      ErrorLogger.info('[Auth] Redirecting to login page');
+      navigate('/login', { replace: true });
+
     } catch (error) {
-      console.error('Logout error:', error);
-      // Still redirect to be safe
-      window.location.href = '/login';
+      ErrorLogger.log(
+        error instanceof Error ? error : new Error('Unknown logout error'),
+        '[Auth] Critical logout error - forcing redirect'
+      );
+
+      // Force redirect even on error to ensure user is logged out
+      navigate('/login', { replace: true });
     }
   };
 

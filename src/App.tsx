@@ -6,6 +6,10 @@ import { BrowserRouter, Routes, Route, Outlet } from "react-router-dom";
 import { Suspense, lazy } from "react";
 import { LoadingSpinner } from "./components/ui/loading-spinner";
 
+// Monitoring Components
+import { PageLoadMonitor } from "./components/monitoring/PageLoadMonitor";
+import { NetworkMonitor } from "./components/monitoring/NetworkMonitor";
+
 // Non-lazy for critical path
 import Login from "./pages/Login";
 
@@ -97,6 +101,8 @@ const App = () => {
         <Toaster />
         <Sonner />
         <BrowserRouter>
+          <PageLoadMonitor />
+          <NetworkMonitor />
           <Suspense fallback={<LoadingSpinner />}>
             <Routes>
               {/* === PUBLIC PAGES (Unprotected) === */}

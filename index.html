@@ -5,8 +5,16 @@
   <meta charset="UTF-8" />
   <link rel="icon" type="image/svg+xml" href="/favicon.ico" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- Cache Control - Prevent stale content -->
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+
+  <!-- Improved Content Security Policy -->
   <meta http-equiv="Content-Security-Policy"
-    content="default-src 'self' *; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: *; worker-src 'self' blob: *; style-src 'self' 'unsafe-inline' *; font-src 'self' data: *; img-src 'self' data: *; connect-src 'self' *;">
+    content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://o4510671251177472.ingest.us.sentry.io blob:; worker-src 'self' blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' https://*.supabase.co https://o4510671251177472.ingest.us.sentry.io;">
+
   <title>Ahjazly - Smart Bus Booking System</title>
   <meta name="description"
     content="Ahjazly Bus Booking System - Comprehensive platform for bus reservations and fleet management" />

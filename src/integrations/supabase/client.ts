@@ -13,5 +13,36 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     storage: localStorage,
     persistSession: true,
     autoRefreshToken: true,
+    detectSessionInUrl: true,
+    flowType: 'pkce',
+  },
+  global: {
+    headers: {
+      'x-client-info': 'ahjazly-web-app',
+    },
+  },
+});
+
+// Monitor auth state changes for better session management
+supabase.auth.onAuthStateChange((event, session) => {
+  console.log('[Supabase] Auth event:', event);
+
+  if (event === 'SIGNED_OUT') {
+    // Clear all auth-related storage
+    try {
+      localStorage.removeItem('supabase.auth.token');
+      sessionStorage.clear();
+      console.log('[Supabase] Cleared storage on sign out');
+    } catch (error) {
+      console.error('[Supabase] Error clearing storage:', error);
+    }
+  }
+
+  if (event === 'TOKEN_REFRESHED') {
+    console.log('[Supabase] Token refreshed successfully');
+  }
+
+  if (event === 'SIGNED_IN') {
+    console.log('[Supabase] User signed in successfully');
   }
 });

@@ -7,6 +7,7 @@ import Header from "@/components/layout/Header";
 import { Bus, Mail, Lock, Eye, EyeOff, ArrowLeft } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import { ErrorLogger } from "@/utils/ErrorLogger";
 
 const Login = () => {
   console.log('[Login] Rendering Login Page');
@@ -20,6 +21,23 @@ const Login = () => {
     password: ""
   });
   const [hasNotified, setHasNotified] = useState(false);
+
+  // Detect blank page and force reload if necessary
+  useEffect(() => {
+    const checkContent = setTimeout(() => {
+      const container = document.getElementById('login-container');
+      if (!container || !container.innerHTML.trim()) {
+        ErrorLogger.log(
+          new Error('Login page rendered blank'),
+          'Container is empty or missing - forcing reload'
+        );
+        console.error('[Login] Blank page detected, forcing reload');
+        window.location.reload();
+      }
+    }, 2000);
+
+    return () => clearTimeout(checkContent);
+  }, []);
 
   // Redirect if already logged in
   useEffect(() => {
