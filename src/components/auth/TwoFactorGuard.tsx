@@ -12,6 +12,12 @@ export const TwoFactorGuard = ({ children }: TwoFactorGuardProps) => {
     const { user, userRole, isLoading } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
+
+    // CRITICAL OPTIMIZATION: Always render Login immediately without checks
+    if (location.pathname === '/login') {
+        return <>{children}</>;
+    }
+
     const [checking, setChecking] = useState(true);
     const [requires2FA, setRequires2FA] = useState(false);
 
@@ -130,12 +136,9 @@ export const TwoFactorGuard = ({ children }: TwoFactorGuardProps) => {
         );
     }
 
-    // Block access if 2FA is required but not verified
     if (requires2FA) {
-        console.warn('[TwoFactorGuard] Blocking access due to requires2FA=true');
-        return <div className="p-4 text-red-500 border border-red-500 m-4">DEBUG: Access Blocked by 2FA Guard</div>;
+        return null; // Block access
     }
 
-    console.log('[TwoFactorGuard] Allowing access to children');
     return <>{children}</>;
 };

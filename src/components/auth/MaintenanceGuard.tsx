@@ -14,6 +14,11 @@ export const MaintenanceGuard = ({ children }: MaintenanceGuardProps) => {
     const location = useLocation();
     const navigate = useNavigate();
 
+    // CRITICAL OPTIMIZATION: Always render Login immediately
+    if (location.pathname === '/login') {
+        return <>{children}</>;
+    }
+
     const isMaintenanceMode = siteSettings.find(s => s.setting_key === 'maintenance_mode')?.setting_value === 'true';
     const isPublicPage = ['/login', '/maintenance', '/auth'].some(path => location.pathname.startsWith(path));
 

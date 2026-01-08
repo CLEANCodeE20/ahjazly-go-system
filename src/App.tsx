@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Outlet } from "react-router-dom";
 import { Suspense, lazy } from "react";
 import { LoadingSpinner } from "./components/ui/loading-spinner";
 import { DashboardSkeleton } from "./components/ui/DashboardSkeleton";
@@ -81,9 +81,16 @@ const queryClient = new QueryClient({
   },
 });
 
+// Guard Wrapper Component
+const GuardedLayout = () => (
+  <TwoFactorGuard>
+    <MaintenanceGuard>
+      <Outlet />
+    </MaintenanceGuard>
+  </TwoFactorGuard>
+);
 
 const App = () => {
-  console.log('[App] Rendering Root Component');
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
@@ -91,195 +98,203 @@ const App = () => {
         <Sonner />
         <BrowserRouter>
           <Suspense fallback={<LoadingSpinner />}>
-            <TwoFactorGuard>
-              <MaintenanceGuard>
-                <Routes>
-                  <Route path="/" element={<Index />} />
-                  <Route path="/apply" element={<Apply />} />
-                  <Route path="/login" element={<Login />} />
-                  <Route path="/maintenance" element={<MaintenancePage />} />
-                  <Route path="/forgot-password" element={<ForgotPassword />} />
-                  <Route path="/reset-password" element={<ResetPassword />} />
-                  <Route path="/verify-email" element={<VerifyEmail />} />
-                  <Route path="/features" element={<Features />} />
-                  <Route path="/about" element={<About />} />
-                  <Route path="/contact" element={<Contact />} />
-                  <Route path="/setup-admin" element={<SetupAdmin />} />
-                  <Route path="/admin" element={
-                    <ProtectedRoute allowedRoles={['admin']}>
-                      <AdminDashboard />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/admin/commissions" element={
-                    <ProtectedRoute allowedRoles={['admin']}>
-                      <CommissionsManagement />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/admin/reports" element={
-                    <ProtectedRoute allowedRoles={['admin']}>
-                      <FinancialReports />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/admin/partners" element={
-                    <ProtectedRoute allowedRoles={['admin']}>
-                      <PartnersManagement />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/admin/users" element={
-                    <ProtectedRoute allowedRoles={['admin']}>
-                      <UsersManagement />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/admin/audit-logs" element={
-                    <ProtectedRoute allowedRoles={['admin']}>
-                      <AuditTrails />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/admin/settings" element={
-                    <ProtectedRoute allowedRoles={['admin']}>
-                      <PlatformSettings />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/admin/sdui" element={
-                    <ProtectedRoute allowedRoles={['admin']}>
-                      <SDUIManagement />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/admin/notifications" element={
-                    <ProtectedRoute allowedRoles={['admin']}>
-                      <AdminNotifications />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/admin/cities" element={
-                    <ProtectedRoute allowedRoles={['admin']}>
-                      <CityManagement />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/admin/policies" element={
-                    <ProtectedRoute allowedRoles={['admin']}>
-                      <PolicyManagement />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/admin/support" element={
-                    <ProtectedRoute allowedRoles={['admin']}>
-                      <SupportManager />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/admin/faqs" element={
-                    <ProtectedRoute allowedRoles={['admin']}>
-                      <FAQManager />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/admin/banners" element={
-                    <ProtectedRoute allowedRoles={['admin']}>
-                      <BannerManager />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/notifications" element={
-                    <ProtectedRoute allowedRoles={['admin', 'partner', 'employee']}>
-                      <NotificationsPage />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/dashboard" element={
-                    <ProtectedRoute allowedRoles={['partner', 'employee']}>
-                      <CompanyDashboard />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/dashboard/fleet" element={
-                    <ProtectedRoute allowedRoles={['partner', 'employee']}>
-                      <FleetManagement />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/dashboard/trips" element={
-                    <ProtectedRoute allowedRoles={['partner', 'employee']}>
-                      <TripsManagement />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/dashboard/bookings" element={
-                    <ProtectedRoute allowedRoles={['partner', 'employee']}>
-                      <BookingsManagement />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/dashboard/branches" element={
-                    <ProtectedRoute allowedRoles={['partner', 'employee']}>
-                      <BranchesManagement />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/dashboard/employees" element={
-                    <ProtectedRoute allowedRoles={['partner', 'employee']}>
-                      <EmployeesManagement />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/dashboard/routes" element={
-                    <ProtectedRoute allowedRoles={['partner', 'employee']}>
-                      <RoutesManagement />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/dashboard/payments" element={
-                    <ProtectedRoute allowedRoles={['partner', 'employee']}>
-                      <PaymentsManagement />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/dashboard/reports" element={
-                    <ProtectedRoute allowedRoles={['partner', 'employee']}>
-                      <ReportsManagement />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/dashboard/settings" element={
-                    <ProtectedRoute allowedRoles={['partner', 'employee']}>
-                      <SettingsPage />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/dashboard/permissions" element={
-                    <ProtectedRoute allowedRoles={['partner', 'employee']}>
-                      <PermissionsManagement />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/dashboard/refunds" element={
-                    <ProtectedRoute allowedRoles={['partner', 'employee']}>
-                      <RefundsManagement />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/dashboard/cancellation-policies" element={
-                    <ProtectedRoute allowedRoles={['partner', 'employee']}>
-                      <CancellationPolicies />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/driver" element={
-                    <ProtectedRoute allowedRoles={['partner', 'employee']}>
-                      <DriverDashboard />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/profile" element={
-                    <ProtectedRoute allowedRoles={['admin', 'partner', 'employee']}>
-                      <UserProfile />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/sessions" element={
-                    <ProtectedRoute allowedRoles={['admin', 'partner', 'employee']}>
-                      <SessionManager />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/2fa-setup" element={
-                    <ProtectedRoute allowedRoles={['admin', 'partner', 'employee']}>
-                      <TwoFactorSetup />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/2fa-verify" element={
-                    <ProtectedRoute allowedRoles={['admin', 'partner', 'employee']}>
-                      <TwoFactorVerify />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/onboarding" element={
-                    <ProtectedRoute allowedRoles={['admin', 'partner', 'employee']}>
-                      <OnboardingWizard />
-                    </ProtectedRoute>
-                  } />
-                  {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-              </MaintenanceGuard>
-            </TwoFactorGuard>
+            <Routes>
+              {/* === PUBLIC INFRASTRUCTURE ROUTES (No Guards) === */}
+              {/* These are isolated to prevent redirect loops or flicker on logout */}
+              <Route path="/login" element={<Login />} />
+              <Route path="/maintenance" element={<MaintenancePage />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
+              <Route path="/verify-email" element={<VerifyEmail />} />
+
+              {/* === GUARDED ROUTES === */}
+              {/* All other routes are wrapped in Maintenance and 2FA guards */}
+              <Route element={<GuardedLayout />}>
+                <Route path="/" element={<Index />} />
+                <Route path="/apply" element={<Apply />} />
+                <Route path="/features" element={<Features />} />
+                <Route path="/about" element={<About />} />
+                <Route path="/contact" element={<Contact />} />
+
+                {/* Admin Routes */}
+                <Route path="/setup-admin" element={<SetupAdmin />} />
+                <Route path="/admin" element={
+                  <ProtectedRoute allowedRoles={['admin']}>
+                    <AdminDashboard />
+                  </ProtectedRoute>
+                } />
+                <Route path="/admin/commissions" element={
+                  <ProtectedRoute allowedRoles={['admin']}>
+                    <CommissionsManagement />
+                  </ProtectedRoute>
+                } />
+                <Route path="/admin/reports" element={
+                  <ProtectedRoute allowedRoles={['admin']}>
+                    <FinancialReports />
+                  </ProtectedRoute>
+                } />
+                <Route path="/admin/partners" element={
+                  <ProtectedRoute allowedRoles={['admin']}>
+                    <PartnersManagement />
+                  </ProtectedRoute>
+                } />
+                <Route path="/admin/users" element={
+                  <ProtectedRoute allowedRoles={['admin']}>
+                    <UsersManagement />
+                  </ProtectedRoute>
+                } />
+                <Route path="/admin/audit-logs" element={
+                  <ProtectedRoute allowedRoles={['admin']}>
+                    <AuditTrails />
+                  </ProtectedRoute>
+                } />
+                <Route path="/admin/settings" element={
+                  <ProtectedRoute allowedRoles={['admin']}>
+                    <PlatformSettings />
+                  </ProtectedRoute>
+                } />
+                <Route path="/admin/sdui" element={
+                  <ProtectedRoute allowedRoles={['admin']}>
+                    <SDUIManagement />
+                  </ProtectedRoute>
+                } />
+                <Route path="/admin/notifications" element={
+                  <ProtectedRoute allowedRoles={['admin']}>
+                    <AdminNotifications />
+                  </ProtectedRoute>
+                } />
+                <Route path="/admin/cities" element={
+                  <ProtectedRoute allowedRoles={['admin']}>
+                    <CityManagement />
+                  </ProtectedRoute>
+                } />
+                <Route path="/admin/policies" element={
+                  <ProtectedRoute allowedRoles={['admin']}>
+                    <PolicyManagement />
+                  </ProtectedRoute>
+                } />
+                <Route path="/admin/support" element={
+                  <ProtectedRoute allowedRoles={['admin']}>
+                    <SupportManager />
+                  </ProtectedRoute>
+                } />
+                <Route path="/admin/faqs" element={
+                  <ProtectedRoute allowedRoles={['admin']}>
+                    <FAQManager />
+                  </ProtectedRoute>
+                } />
+                <Route path="/admin/banners" element={
+                  <ProtectedRoute allowedRoles={['admin']}>
+                    <BannerManager />
+                  </ProtectedRoute>
+                } />
+
+                {/* Dashboard & User Routes */}
+                <Route path="/notifications" element={
+                  <ProtectedRoute allowedRoles={['admin', 'partner', 'employee']}>
+                    <NotificationsPage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/dashboard" element={
+                  <ProtectedRoute allowedRoles={['partner', 'employee']}>
+                    <CompanyDashboard />
+                  </ProtectedRoute>
+                } />
+                <Route path="/dashboard/fleet" element={
+                  <ProtectedRoute allowedRoles={['partner', 'employee']}>
+                    <FleetManagement />
+                  </ProtectedRoute>
+                } />
+                <Route path="/dashboard/trips" element={
+                  <ProtectedRoute allowedRoles={['partner', 'employee']}>
+                    <TripsManagement />
+                  </ProtectedRoute>
+                } />
+                <Route path="/dashboard/bookings" element={
+                  <ProtectedRoute allowedRoles={['partner', 'employee']}>
+                    <BookingsManagement />
+                  </ProtectedRoute>
+                } />
+                <Route path="/dashboard/branches" element={
+                  <ProtectedRoute allowedRoles={['partner', 'employee']}>
+                    <BranchesManagement />
+                  </ProtectedRoute>
+                } />
+                <Route path="/dashboard/employees" element={
+                  <ProtectedRoute allowedRoles={['partner', 'employee']}>
+                    <EmployeesManagement />
+                  </ProtectedRoute>
+                } />
+                <Route path="/dashboard/routes" element={
+                  <ProtectedRoute allowedRoles={['partner', 'employee']}>
+                    <RoutesManagement />
+                  </ProtectedRoute>
+                } />
+                <Route path="/dashboard/payments" element={
+                  <ProtectedRoute allowedRoles={['partner', 'employee']}>
+                    <PaymentsManagement />
+                  </ProtectedRoute>
+                } />
+                <Route path="/dashboard/reports" element={
+                  <ProtectedRoute allowedRoles={['partner', 'employee']}>
+                    <ReportsManagement />
+                  </ProtectedRoute>
+                } />
+                <Route path="/dashboard/settings" element={
+                  <ProtectedRoute allowedRoles={['partner', 'employee']}>
+                    <SettingsPage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/dashboard/permissions" element={
+                  <ProtectedRoute allowedRoles={['partner', 'employee']}>
+                    <PermissionsManagement />
+                  </ProtectedRoute>
+                } />
+                <Route path="/dashboard/refunds" element={
+                  <ProtectedRoute allowedRoles={['partner', 'employee']}>
+                    <RefundsManagement />
+                  </ProtectedRoute>
+                } />
+                <Route path="/dashboard/cancellation-policies" element={
+                  <ProtectedRoute allowedRoles={['partner', 'employee']}>
+                    <CancellationPolicies />
+                  </ProtectedRoute>
+                } />
+                <Route path="/driver" element={
+                  <ProtectedRoute allowedRoles={['partner', 'employee']}>
+                    <DriverDashboard />
+                  </ProtectedRoute>
+                } />
+                <Route path="/profile" element={
+                  <ProtectedRoute allowedRoles={['admin', 'partner', 'employee']}>
+                    <UserProfile />
+                  </ProtectedRoute>
+                } />
+                <Route path="/sessions" element={
+                  <ProtectedRoute allowedRoles={['admin', 'partner', 'employee']}>
+                    <SessionManager />
+                  </ProtectedRoute>
+                } />
+                <Route path="/2fa-setup" element={
+                  <ProtectedRoute allowedRoles={['admin', 'partner', 'employee']}>
+                    <TwoFactorSetup />
+                  </ProtectedRoute>
+                } />
+                <Route path="/2fa-verify" element={
+                  <ProtectedRoute allowedRoles={['admin', 'partner', 'employee']}>
+                    <TwoFactorVerify />
+                  </ProtectedRoute>
+                } />
+                <Route path="/onboarding" element={
+                  <ProtectedRoute allowedRoles={['admin', 'partner', 'employee']}>
+                    <OnboardingWizard />
+                  </ProtectedRoute>
+                } />
+
+                {/* 404 Route */}
+                <Route path="*" element={<NotFound />} />
+              </Route>
+            </Routes>
           </Suspense>
         </BrowserRouter>
       </TooltipProvider>
