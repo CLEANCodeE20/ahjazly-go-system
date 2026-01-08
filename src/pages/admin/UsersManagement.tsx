@@ -96,7 +96,7 @@ const UsersManagement = () => {
         try {
             let query = supabase
                 .from('users')
-                .select('user_id, auth_id, full_name, email, created_at, account_status, user_roles!inner(role)', { count: 'exact' });
+                .select('user_id, auth_id, full_name, email, created_at, account_status, user_roles!user_roles_profile_fk!inner(role)', { count: 'exact' });
 
             // Only show CUSTOMERS and DRIVERS in this page
             query = query.in('user_roles.role', ['user', 'driver']);

@@ -110,10 +110,10 @@ const StaffManagement = () => {
                     email, 
                     created_at, 
                     account_status, 
-                    user_roles!inner(role, partner_id, partners(company_name))
+                    user_roles!user_roles_profile_fk!inner(role, partner_id),
+                    partners(company_name)
                 `)
-                .neq('user_roles.role', 'user')
-                .neq('user_roles.role', 'driver');
+                .in('user_roles.role', ['admin', 'partner', 'employee']);
 
             if (error) throw error;
 
@@ -126,7 +126,7 @@ const StaffManagement = () => {
                 account_status: u.account_status,
                 role: u.user_roles[0]?.role,
                 partner_id: u.user_roles[0]?.partner_id,
-                partner_name: u.user_roles[0]?.partners?.company_name
+                partner_name: u.partners?.company_name
             }));
 
             setStaff(mappedStaff);
