@@ -1,4 +1,5 @@
 import { createRoot } from "react-dom/client";
+console.log('[Main] Entry point reached');
 import App from "./App.tsx";
 import "./index.css";
 
