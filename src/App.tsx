@@ -5,6 +5,10 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Outlet } from "react-router-dom";
 import { Suspense, lazy } from "react";
 import { LoadingSpinner } from "./components/ui/loading-spinner";
+
+// Non-lazy for critical path
+import Login from "./pages/Login";
+
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import { MaintenanceGuard } from "./components/auth/MaintenanceGuard";
 import { TwoFactorGuard } from "./components/auth/TwoFactorGuard";
@@ -12,7 +16,6 @@ import { TwoFactorGuard } from "./components/auth/TwoFactorGuard";
 // Lazy Load Pages
 const Index = lazy(() => import("./pages/Index"));
 const Apply = lazy(() => import("./pages/Apply"));
-const Login = lazy(() => import("./pages/Login"));
 const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const VerifyEmail = lazy(() => import("./pages/VerifyEmail"));
@@ -85,6 +88,8 @@ const GuardedLayout = () => (
 );
 
 const App = () => {
+  console.log('[App] Rendering at:', window.location.pathname);
+
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
@@ -108,6 +113,7 @@ const App = () => {
 
               {/* === GUARDED ROUTES === */}
               <Route element={<GuardedLayout />}>
+                {/* Admin Routes */}
                 <Route path="/setup-admin" element={<SetupAdmin />} />
                 <Route path="/admin" element={
                   <ProtectedRoute allowedRoles={['admin']}>
@@ -180,6 +186,7 @@ const App = () => {
                   </ProtectedRoute>
                 } />
 
+                {/* Dashboard & User Routes */}
                 <Route path="/notifications" element={
                   <ProtectedRoute allowedRoles={['admin', 'partner', 'employee']}>
                     <NotificationsPage />
