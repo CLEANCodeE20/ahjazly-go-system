@@ -23,6 +23,7 @@ const Login = () => {
 
   // Redirect if already logged in
   useEffect(() => {
+    console.log('[Login] State Check:', { authLoading, user: !!user, userRole: !!userRole, userStatus });
     if (!authLoading && user && userRole && !hasNotified) {
       if (userStatus && userStatus !== 'active' && userRole.role !== 'admin') {
         setHasNotified(true);
