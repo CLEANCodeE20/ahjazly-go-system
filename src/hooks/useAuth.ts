@@ -112,20 +112,23 @@ export const useAuth = () => {
       if (userError) console.error('[Auth] users fetch error:', userError);
 
       // 3. Fallback logic: If user_roles is missing but users table has user_type
-      let finalRole: AppRole | null = (roleData?.role as AppRole) || null;
+      let finalRole: AppRole | null = (roleData && roleData.role) ? (roleData.role as AppRole) : null;
       let finalPartnerId = roleData?.partner_id || userData?.partner_id || null;
 
-      if (!finalRole && userData?.user_type) {
-        console.warn(`[Auth] Role missing in user_roles, falling back to user_type: ${userData.user_type}`);
+      if (!finalRole && userData && (userData as any).user_type) {
+        const userType = (userData as any).user_type;
+        console.warn(`[Auth] Role missing in user_roles, falling back to user_type: ${userType}`);
         // Map user_type to app_role
-        if (userData.user_type === 'admin') finalRole = 'admin';
-        else if (userData.user_type === 'partner') finalRole = 'partner';
+        if (userType === 'admin') finalRole = 'admin';
+        else if (userType === 'partner') finalRole = 'partner';
         else finalRole = 'employee';
       }
 
       // 4. Retry logic if nothing found yet
-      if (!finalRole && retries > 0) {
-        console.log(`[Auth] No role found, retrying in ${delay}ms... (${retries} left)`);
+      // Only retry if we found a user data record but no role info could be determined
+      // This prevents infinite loops if the user actually doesn't exist
+      if (!finalRole && retries > 0 && userData) {
+        console.log(`[Auth] Role undeterminable but user exists, retrying in ${delay}ms... (${retries} left)`);
         setTimeout(() => fetchUserRole(userId, retries - 1, delay * 1.5), delay);
         return;
       }
@@ -138,7 +141,7 @@ export const useAuth = () => {
       }));
 
       // Request FCM token and save it (only if supported)
-      if (isSupported && userData?.user_id) {
+      if (isSupported && userData && (userData as any).user_id) {
         requestPermission().then((granted) => {
           if (granted) {
             saveFCMToken(userData.user_id);
