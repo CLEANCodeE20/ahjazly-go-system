@@ -13,15 +13,16 @@ import ProtectedRoute from "./components/auth/ProtectedRoute";
 import { MaintenanceGuard } from "./components/auth/MaintenanceGuard";
 import { TwoFactorGuard } from "./components/auth/TwoFactorGuard";
 
-// Lazy Load Pages
-const Index = lazy(() => import("./pages/Index"));
-const Apply = lazy(() => import("./pages/Apply"));
-const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
-const ResetPassword = lazy(() => import("./pages/ResetPassword"));
-const VerifyEmail = lazy(() => import("./pages/VerifyEmail"));
-const Features = lazy(() => import("./pages/features"));
-const About = lazy(() => import("./pages/About"));
-const Contact = lazy(() => import("./pages/Contact"));
+// Eagerly Load Public Pages for SPA stability
+import Index from "./pages/Index";
+import Apply from "./pages/Apply";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
+import VerifyEmail from "./pages/VerifyEmail";
+import Features from "./pages/features";
+import About from "./pages/About";
+import Contact from "./pages/Contact";
+
 const NotFound = lazy(() => import("./pages/NotFound"));
 const MaintenancePage = lazy(() => import("./pages/MaintenancePage"));
 
