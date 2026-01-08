@@ -145,6 +145,25 @@ const UsersManagement = () => {
         }
     };
 
+    const handleReset2FA = async (authId: string, name: string) => {
+        if (!confirm(`هل أنت متأكد من إعادة تعيين التحقق بخطوتين للعضو: ${name}؟ سيتمكن من الدخول بكلمة المرور فقط.`)) return;
+
+        try {
+            const { data, error } = await supabase.rpc('reset_user_2fa' as any, { target_auth_id: authId });
+
+            if (error) throw error;
+
+            const result = data as any;
+            if (result.success) {
+                toast({ title: "تم بنجاح", description: result.message });
+            } else {
+                throw new Error(result.error);
+            }
+        } catch (error: any) {
+            toast({ title: "خطأ", description: error.message || "فشل إعادة تعيين 2FA", variant: "destructive" });
+        }
+    };
+
     const handleExport = (type: 'excel' | 'pdf') => {
         const dataToExport = users.map(u => ({
             'الاسم': u.full_name || 'غير معروف',
@@ -475,6 +494,12 @@ const UsersManagement = () => {
                                                                 })}>
                                                                     <UserCog className="w-4 h-4 ml-2" />
                                                                     {user.role === 'driver' ? 'تحويل لعميل' : 'تعيين كسائق'}
+                                                                </DropdownMenuItem>
+                                                                <DropdownMenuItem
+                                                                    className="text-amber-600"
+                                                                    onClick={() => handleReset2FA(user.auth_id, user.full_name || "")}
+                                                                >
+                                                                    <Shield className="w-4 h-4 ml-2" /> إعادة تعيين 2FA
                                                                 </DropdownMenuItem>
                                                                 <DropdownMenuItem onClick={() => {
                                                                     setNewUser({

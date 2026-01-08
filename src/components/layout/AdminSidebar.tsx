@@ -16,25 +16,29 @@ import {
     HelpCircle,
     Image as ImageIcon,
     X,
-    Shield
+    Shield,
+    History,
+    ScrollText,
+    ClipboardList,
+    LayoutDashboard
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { NotificationBell } from "../notifications/NotificationBell";
 
 const adminSidebarLinks = [
-    { href: "/admin", label: "طلبات الانضمام", icon: FileText },
-    { href: "/admin/cities", label: "المدن", icon: MapPin },
-    { href: "/admin/partners", label: "الشركاء", icon: Building2 },
+    { href: "/admin", label: "طلبات الانضمام", icon: ClipboardList },
+    { href: "/admin/partners", label: "إدارة الشركاء", icon: Building2 },
+    { href: "/admin/cities", label: "المدن والمناطق", icon: MapPin },
     { href: "/admin/staff", label: "طاقم العمل", icon: Shield },
-    { href: "/admin/users", label: "المستخدمين", icon: Users },
+    { href: "/admin/users", label: "إدارة العملاء", icon: Users },
     { href: "/admin/commissions", label: "العمولات", icon: DollarSign },
     { href: "/admin/reports", label: "التقارير المالية", icon: BarChart3 },
-    { href: "/admin/notifications", label: "الإشعارات", icon: Bell },
-    { href: "/admin/support", label: "مركز الدعم", icon: LifeBuoy },
-    { href: "/admin/faqs", label: "الأسئلة الشائعة", icon: HelpCircle },
+    { href: "/admin/notifications", label: "الإشعارات العامّة", icon: Bell },
     { href: "/admin/banners", label: "إدارة السلايدر", icon: ImageIcon },
-    { href: "/admin/audit-logs", label: "سجل العمليات", icon: FileText },
-    { href: "/admin/policies", label: "إدارة السياسات", icon: FileText },
+    { href: "/admin/faqs", label: "الأسئلة الشائعة", icon: HelpCircle },
+    { href: "/admin/support", label: "مركز الدعم", icon: LifeBuoy },
+    { href: "/admin/audit-logs", label: "سجل العمليات", icon: History },
+    { href: "/admin/policies", label: "الشروط والسياسات", icon: ScrollText },
     { href: "/admin/sdui", label: "إدارة الواجهة", icon: Palette },
     { href: "/admin/settings", label: "إعدادات المنصة", icon: Settings }
 ];
@@ -72,8 +76,8 @@ export const AdminSidebar = ({ isOpen = false, onClose }: AdminSidebarProps) => 
                         to={link.href}
                         onClick={onClose}
                         className={`flex items - center gap - 3 px - 3 py - 2.5 rounded - lg transition - colors ${location.pathname === link.href
-                                ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                                : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+                            ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                            : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
                             } `}
                     >
                         <link.icon className="w-5 h-5 shrink-0" />
