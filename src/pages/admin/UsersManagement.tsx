@@ -99,7 +99,7 @@ const UsersManagement = () => {
                 .select('user_id, auth_id, full_name, email, created_at, account_status, user_roles!user_roles_profile_fk!inner(role)', { count: 'exact' });
 
             // Only show CUSTOMERS and DRIVERS in this page
-            query = query.in('user_roles.role', ['user', 'driver']);
+            query = query.in('user_roles.role', ['customer', 'driver']);
 
             // Server-side Filtering
             if (searchQuery) {
@@ -118,11 +118,11 @@ const UsersManagement = () => {
 
             // Map joined data
             const mappedUsers = data.map((u: any) => {
-                let role = 'user';
+                let role = 'customer';
                 if (Array.isArray(u.user_roles)) {
-                    role = u.user_roles[0]?.role || 'user';
+                    role = u.user_roles[0]?.role || 'customer';
                 } else if (u.user_roles && typeof u.user_roles === 'object') {
-                    role = u.user_roles.role || 'user';
+                    role = (u.user_roles as any).role || 'customer';
                 }
                 return {
                     ...u,

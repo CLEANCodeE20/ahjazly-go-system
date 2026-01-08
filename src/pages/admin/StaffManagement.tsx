@@ -117,17 +117,30 @@ const StaffManagement = () => {
 
             if (error) throw error;
 
-            const mappedStaff = data.map((u: any) => ({
-                user_id: u.user_id,
-                auth_id: u.auth_id,
-                full_name: u.full_name,
-                email: u.email,
-                created_at: u.created_at,
-                account_status: u.account_status,
-                role: u.user_roles[0]?.role,
-                partner_id: u.user_roles[0]?.partner_id,
-                partner_name: u.partners?.company_name
-            }));
+            const mappedStaff = data.map((u: any) => {
+                let role = 'employee';
+                let partnerId = null;
+
+                if (Array.isArray(u.user_roles)) {
+                    role = u.user_roles[0]?.role || 'employee';
+                    partnerId = u.user_roles[0]?.partner_id;
+                } else if (u.user_roles && typeof u.user_roles === 'object') {
+                    role = (u.user_roles as any).role || 'employee';
+                    partnerId = (u.user_roles as any).partner_id;
+                }
+
+                return {
+                    user_id: u.user_id,
+                    auth_id: u.auth_id,
+                    full_name: u.full_name,
+                    email: u.email,
+                    created_at: u.created_at,
+                    account_status: u.account_status,
+                    role: role as any,
+                    partner_id: partnerId,
+                    partner_name: u.partners?.company_name
+                };
+            });
 
             setStaff(mappedStaff);
         } catch (error: any) {
