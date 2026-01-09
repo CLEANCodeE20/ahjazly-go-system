@@ -117,9 +117,9 @@ const Index = () => {
                   المنصة رقم #1 للنقل في المنطقة
                 </div>
 
-                <h1 className="text-4xl lg:text-6xl font-bold leading-tight text-foreground">
-                  الحل المتكامل من أجل <br />
-                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary h-[1.3em] inline-block">
+                <h1 className="text-4xl lg:text-6xl font-bold leading-tight text-foreground flex flex-col gap-2">
+                  <span>الحل المتكامل من أجل</span>
+                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary min-h-[1.4em] pb-2 inline-block">
                     <span ref={typedRef}></span>
                   </span>
                 </h1>
