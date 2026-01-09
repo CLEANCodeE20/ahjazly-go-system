@@ -96,10 +96,19 @@ const UsersManagement = () => {
         try {
             let query = supabase
                 .from('users')
-                .select('user_id, auth_id, full_name, email, created_at, account_status, user_roles!user_roles_profile_fk!inner(role)', { count: 'exact' });
+                .select(`
+                    user_id, 
+                    auth_id, 
+                    full_name, 
+                    email, 
+                    created_at, 
+                    account_status, 
+                    user_roles!user_roles_profile_fk!inner(role, partner_id),
+                    partners(company_name)
+                `, { count: 'exact' });
 
-            // Only show CUSTOMERS and DRIVERS in this page
-            query = query.in('user_roles.role', ['customer', 'driver']);
+            // Show all external users: customers, drivers, partners, and partner employees
+            query = query.in('user_roles.role', ['customer', 'driver', 'partner', 'employee']);
 
             // Server-side Filtering
             if (searchQuery) {
@@ -118,15 +127,12 @@ const UsersManagement = () => {
 
             // Map joined data
             const mappedUsers = data.map((u: any) => {
-                let role = 'customer';
-                if (Array.isArray(u.user_roles)) {
-                    role = u.user_roles[0]?.role || 'customer';
-                } else if (u.user_roles && typeof u.user_roles === 'object') {
-                    role = (u.user_roles as any).role || 'customer';
-                }
+                const roleData = Array.isArray(u.user_roles) ? u.user_roles[0] : u.user_roles;
+                const role = roleData?.role || 'customer';
                 return {
                     ...u,
-                    role
+                    role,
+                    company_name: u.partners?.company_name || (role === 'customer' ? 'عميل مباشر' : 'غير محدد')
                 };
             });
 
@@ -442,7 +448,8 @@ const UsersManagement = () => {
                                         <TableRow>
                                             <TableHead className="text-right">المستخدم</TableHead>
                                             <TableHead className="text-right">البريد الإلكتروني</TableHead>
-                                            <TableHead className="text-right">الصلاحية</TableHead>
+                                            <TableHead className="text-right">نوع الحساب</TableHead>
+                                            <TableHead className="text-right">الجهة / الشركة</TableHead>
                                             <TableHead className="text-right">الحالة</TableHead>
                                             <TableHead className="text-right">تاريخ التسجيل</TableHead>
                                             <TableHead className="text-right">الإجراءات</TableHead>
@@ -468,6 +475,11 @@ const UsersManagement = () => {
                                                     </TableCell>
                                                     <TableCell>{user.email}</TableCell>
                                                     <TableCell>{getRoleBadge(user.role)}</TableCell>
+                                                    <TableCell>
+                                                        <span className="text-sm text-muted-foreground">
+                                                            {user.company_name}
+                                                        </span>
+                                                    </TableCell>
                                                     <TableCell>
                                                         {user.account_status === 'suspended' ? (
                                                             <span className="text-xs bg-red-100 text-red-600 px-2 py-1 rounded-full">موقوف</span>

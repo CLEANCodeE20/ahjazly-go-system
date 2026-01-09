@@ -26,8 +26,8 @@ const adminSidebarLinks = [
     { href: "/admin", label: "طلبات الانضمام", icon: ClipboardList },
     { href: "/admin/partners", label: "إدارة الشركاء", icon: Building2 },
     { href: "/admin/cities", label: "المدن والمناطق", icon: MapPin },
-    { href: "/admin/staff", label: "طاقم العمل", icon: Shield },
-    { href: "/admin/users", label: "إدارة العملاء", icon: Users },
+    { href: "/admin/staff", label: "طاقم المنصة", icon: Shield },
+    { href: "/admin/users", label: "دليل المستخدمين", icon: Users },
     { href: "/admin/commissions", label: "العمولات", icon: DollarSign },
     { href: "/admin/reports", label: "التقارير المالية", icon: BarChart3 },
     { href: "/admin/notifications", label: "الإشعارات العامّة", icon: Bell },
@@ -78,8 +78,8 @@ export const AdminSidebar = ({ isOpen = false, onClose }: AdminSidebarProps) => 
                             to={link.href}
                             onClick={onClose}
                             className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${isActive
-                                    ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+                                ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                                : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
                                 }`}
                         >
                             <Icon className="w-5 h-5 shrink-0" />

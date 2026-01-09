@@ -110,24 +110,15 @@ const StaffManagement = () => {
                     email, 
                     created_at, 
                     account_status, 
-                    user_roles!user_roles_profile_fk!inner(role, partner_id),
-                    partners(company_name)
+                    user_roles!user_roles_profile_fk!inner(role)
                 `)
-                .in('user_roles.role', ['admin', 'partner', 'employee']);
+                .eq('user_roles.role', 'admin');
 
             if (error) throw error;
 
             const mappedStaff = data.map((u: any) => {
-                let role = 'employee';
-                let partnerId = null;
-
-                if (Array.isArray(u.user_roles)) {
-                    role = u.user_roles[0]?.role || 'employee';
-                    partnerId = u.user_roles[0]?.partner_id;
-                } else if (u.user_roles && typeof u.user_roles === 'object') {
-                    role = (u.user_roles as any).role || 'employee';
-                    partnerId = (u.user_roles as any).partner_id;
-                }
+                const roleData = Array.isArray(u.user_roles) ? u.user_roles[0] : u.user_roles;
+                const role = roleData?.role;
 
                 return {
                     user_id: u.user_id,
@@ -137,10 +128,10 @@ const StaffManagement = () => {
                     created_at: u.created_at,
                     account_status: u.account_status,
                     role: role as any,
-                    partner_id: partnerId,
-                    partner_name: u.partners?.company_name
+                    partner_id: null,
+                    partner_name: 'إدارة المنصة'
                 };
-            });
+            }).filter(s => s.role === 'admin');
 
             setStaff(mappedStaff);
         } catch (error: any) {
