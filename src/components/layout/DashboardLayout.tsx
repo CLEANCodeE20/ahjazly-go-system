@@ -73,7 +73,7 @@ export const DashboardLayout = ({ children, title, subtitle, actions }: Dashboar
                         {partner?.logo_url ? (
                             <img src={partner.logo_url} alt="Logo" className="w-full h-full object-cover" />
                         ) : (
-                            <Bus className="w-6 h-6 text-sidebar-primary-foreground" />
+                            <img src="/photo_2026-01-09_15-11-39-removebg-preview.png" alt="Logo" className="w-8 h-8 object-contain" />
                         )}
                     </div>
                     <div className="flex-1 min-w-0">
