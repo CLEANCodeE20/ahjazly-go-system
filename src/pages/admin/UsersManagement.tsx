@@ -103,12 +103,15 @@ const UsersManagement = () => {
                     email, 
                     created_at, 
                     account_status, 
-                    user_roles!user_roles_profile_fk!inner(role, partner_id),
-                    partners(company_name)
+                    user_type,
+                    user_roles!user_roles_profile_fk(
+                        partner_id,
+                        partners!user_roles_partner_id_fkey(company_name)
+                    )
                 `, { count: 'exact' });
 
-            // Show all external users: customers, drivers, partners, and partner employees
-            query = query.in('user_roles.role', ['customer', 'driver', 'partner', 'employee']);
+            // Show all external users using user_type (safe enum)
+            query = query.in('user_type', ['customer', 'driver', 'partner', 'employee']);
 
             // Server-side Filtering
             if (searchQuery) {
@@ -125,14 +128,14 @@ const UsersManagement = () => {
 
             if (error) throw error;
 
-            // Map joined data
+            // Map data
             const mappedUsers = data.map((u: any) => {
                 const roleData = Array.isArray(u.user_roles) ? u.user_roles[0] : u.user_roles;
-                const role = roleData?.role || 'customer';
+                const role = u.user_type || 'customer';
                 return {
                     ...u,
                     role,
-                    company_name: u.partners?.company_name || (role === 'customer' ? 'عميل مباشر' : 'غير محدد')
+                    company_name: roleData?.partners?.company_name || (role === 'customer' ? 'عميل مباشر' : 'غير محدد')
                 };
             });
 
@@ -205,17 +208,27 @@ const UsersManagement = () => {
         }
 
         try {
-            const { error } = await supabase
-                .from('user_roles')
-                .upsert({ user_id: authId, role: newRole as any }, { onConflict: 'user_id' });
+            // Map 'user' to 'customer' if that's the internal enum name
+            const internalRole = newRole === 'user' ? 'customer' : 'driver';
 
-            if (error) throw error;
+            // Update user_type in users table (Primary role storage)
+            const { error: userErr } = await supabase
+                .from('users')
+                .update({ user_type: internalRole as any })
+                .eq('auth_id', authId);
+
+            if (userErr) throw userErr;
+
+            // Optional: If we want to ensure they don't have dashboard roles
+            // We can delete their entry in user_roles if they are set to driver/customer
+            // as these roles are not in the app_role enum.
+            await supabase.from('user_roles').delete().eq('user_id', authId);
 
             toast({
                 title: "تم التحديث",
                 description: "تم تغيير صلاحيات المستخدم بنجاح",
             });
-            fetchUsers(); // Refresh list to show updated role
+            fetchUsers();
             setConfirmDialog({ open: false, userId: null, userName: "", newRole: "user" });
         } catch (error: any) {
             toast({
