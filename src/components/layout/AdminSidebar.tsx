@@ -54,7 +54,7 @@ export const AdminSidebar = ({ isOpen = false, onClose }: AdminSidebarProps) => 
                 } lg:translate-x-0`}
         >
             <div className="flex items-center gap-3 p-4 border-b border-sidebar-border shrink-0">
-                <div className="w-10 h-10 rounded-xl bg-sidebar-primary flex items-center justify-center overflow-hidden">
+                <div className="w-10 h-10 rounded-xl bg-white shadow-sm flex items-center justify-center overflow-hidden">
                     <img src="/photo_2026-01-09_15-11-39-removebg-preview.png" alt="احجزلي" className="w-8 h-8 object-contain" />
                 </div>
                 <div className="flex-1">

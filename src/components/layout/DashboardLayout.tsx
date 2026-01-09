@@ -69,7 +69,7 @@ export const DashboardLayout = ({ children, title, subtitle, actions }: Dashboar
             {/* Sidebar */}
             <aside className={`fixed top-0 right-0 bottom-0 w-64 bg-sidebar text-sidebar-foreground transition-transform duration-300 z-50 flex flex-col ${isSidebarOpen ? "translate-x-0" : "translate-x-full"} lg:translate-x-0 border-l border-sidebar-border`}>
                 <div className="flex items-center gap-3 p-4 border-b border-sidebar-border shrink-0">
-                    <div className="w-10 h-10 rounded-xl bg-sidebar-primary flex items-center justify-center overflow-hidden">
+                    <div className="w-10 h-10 rounded-xl bg-white shadow-sm flex items-center justify-center overflow-hidden">
                         {partner?.logo_url ? (
                             <img src={partner.logo_url} alt="Logo" className="w-full h-full object-cover" />
                         ) : (

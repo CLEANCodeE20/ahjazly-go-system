@@ -12,7 +12,7 @@ const Header = () => {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center overflow-hidden">
+            <div className="w-10 h-10 rounded-xl bg-white shadow-sm flex items-center justify-center overflow-hidden">
               <img src="/photo_2026-01-09_15-11-39-removebg-preview.png" alt="Logo" className="w-8 h-8 object-contain" />
             </div>
             <span className="text-xl font-bold text-foreground">احجزلي</span>
