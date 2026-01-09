@@ -62,9 +62,15 @@ interface UserRecord {
     role: "admin" | "partner" | "employee" | "driver" | "user";
 }
 
+interface Partner {
+    partner_id: number;
+    company_name: string;
+}
+
 const UsersManagement = () => {
     // Pagination & Search State
     const [users, setUsers] = useState<UserRecord[]>([]);
+    const [partners, setPartners] = useState<Partner[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
@@ -82,6 +88,17 @@ const UsersManagement = () => {
     const [showHistory, setShowHistory] = useState(false);
     const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
     const { exportToExcel, exportToPDF } = useExport();
+
+    // Initial Load
+    useEffect(() => {
+        fetchUsers();
+        fetchPartners();
+    }, []);
+
+    const fetchPartners = async () => {
+        const { data } = await supabase.from('partners').select('partner_id, company_name').eq('status', 'approved');
+        setPartners(data || []);
+    };
 
     // Debounce Search
     useEffect(() => {
@@ -270,6 +287,9 @@ const UsersManagement = () => {
                 return <span className="px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700">موظف</span>;
             case 'driver':
                 return <span className="px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-700">سائق</span>;
+            case 'customer':
+            case 'user':
+                return <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">عميل</span>;
             default:
                 return <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">مستخدم</span>;
         }
@@ -281,6 +301,8 @@ const UsersManagement = () => {
             case 'partner': return 'شريك';
             case 'employee': return 'موظف';
             case 'driver': return 'سائق';
+            case 'customer':
+            case 'user': return 'عميل';
             default: return 'مستخدم';
         }
     }
@@ -291,7 +313,8 @@ const UsersManagement = () => {
         email: "",
         password: "",
         fullName: "",
-        role: "user"
+        role: "user",
+        partner_id: ""
     });
     const [editingUserId, setEditingUserId] = useState<string | null>(null);
     const [isCreating, setIsCreating] = useState(false);
@@ -310,6 +333,7 @@ const UsersManagement = () => {
         try {
             const payload = {
                 ...newUser,
+                partnerId: newUser.partner_id ? parseInt(newUser.partner_id) : null,
                 userId: editingUserId // Include ID if editing
             };
 
@@ -531,7 +555,8 @@ const UsersManagement = () => {
                                                                         email: user.email || "",
                                                                         password: "",
                                                                         fullName: user.full_name || "",
-                                                                        role: user.role || "user"
+                                                                        role: user.role === 'customer' ? 'user' : (user.role || 'user'),
+                                                                        partner_id: user.user_roles?.partner_id?.toString() || ""
                                                                     });
                                                                     setEditingUserId(user.auth_id);
                                                                     setIsCreateDialogOpen(true);
@@ -650,9 +675,32 @@ const UsersManagement = () => {
                                 <SelectContent>
                                     <SelectItem value="user">عميل (مسافر)</SelectItem>
                                     <SelectItem value="driver">سائق</SelectItem>
+                                    <SelectItem value="partner">مدير شركة (Partner)</SelectItem>
+                                    <SelectItem value="employee">موظف شركة (Employee)</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
+
+                        {newUser.role !== 'user' && (
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium">الجهة / الشركة</label>
+                                <Select
+                                    value={newUser.partner_id}
+                                    onValueChange={(val) => setNewUser({ ...newUser, partner_id: val })}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="اختر الشركة التابع لها" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {partners.map((p) => (
+                                            <SelectItem key={p.partner_id} value={p.partner_id.toString()}>
+                                                {p.company_name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        )}
                     </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>إلغاء</Button>
