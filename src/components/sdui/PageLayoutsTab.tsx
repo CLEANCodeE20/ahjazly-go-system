@@ -11,8 +11,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Loader2, Settings, Eye } from "lucide-react";
+import { Loader2, Settings, Eye, LayoutTemplate } from "lucide-react";
 import { useUIPageLayouts, useUpdatePageLayout, type UIPageLayout } from "@/hooks/useSDUI";
+import { PageEditor } from "./PageEditor";
 
 const pageLabels: Record<string, string> = {
   home: "الصفحة الرئيسية",
@@ -26,6 +27,7 @@ const pageLabels: Record<string, string> = {
 export const PageLayoutsTab = () => {
   const { data: layouts, isLoading } = useUIPageLayouts();
   const updateLayout = useUpdatePageLayout();
+  const [selectedLayout, setSelectedLayout] = useState<UIPageLayout | null>(null);
 
   const toggleActive = async (layout: UIPageLayout) => {
     await updateLayout.mutateAsync({
@@ -39,6 +41,15 @@ export const PageLayoutsTab = () => {
       <div className="flex items-center justify-center h-64">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
+    );
+  }
+
+  if (selectedLayout) {
+    return (
+      <PageEditor
+        layout={selectedLayout}
+        onBack={() => setSelectedLayout(null)}
+      />
     );
   }
 
@@ -84,6 +95,16 @@ export const PageLayoutsTab = () => {
                           <Loader2 className="w-4 h-4 animate-spin" />
                         )}
                       </div>
+
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => setSelectedLayout(layout)}
+                      >
+                        <LayoutTemplate className="w-4 h-4 ml-1" />
+                        تخطيط
+                      </Button>
+
                       <Button
                         size="sm"
                         variant="outline"
@@ -111,13 +132,13 @@ export const PageLayoutsTab = () => {
               <strong>المكونات:</strong> أنشئ مكونات مثل البانرات والأقسام
             </li>
             <li>
+              <strong>التخطيط:</strong> استخدم زر "تخطيط" لسحب وإفلات المكونات وترتيبها في الصفحة.
+            </li>
+            <li>
               <strong>الإعلانات:</strong> أضف إعلانات في مواقع مختلفة
             </li>
             <li>
               <strong>العروض:</strong> أنشئ أكواد خصم وعروض ترويجية
-            </li>
-            <li>
-              <strong>الإعدادات:</strong> خصص مظهر الموقع ومعلومات التواصل
             </li>
           </ol>
           <p className="mt-4 text-sm">

@@ -563,3 +563,61 @@ export const useUpdatePageLayout = () => {
     },
   });
 };
+
+// Hook for fetching placements for a specific layout (Admin view)
+export const usePagePlacements = (layoutId: number | null) => {
+  return useQuery({
+    queryKey: ["page-placements", layoutId],
+    queryFn: async () => {
+      if (!layoutId) return [];
+
+      const { data, error } = await supabase
+        .from("ui_component_placements")
+        .select(`
+          *,
+          component:ui_components (*)
+        `)
+        .eq("layout_id", layoutId)
+        .order("display_order");
+
+      if (error) throw error;
+      return data as unknown as UIComponentPlacement[];
+    },
+    enabled: !!layoutId,
+  });
+};
+
+// Mutation to update placement order
+export const useUpdatePlacementOrder = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (updates: { placement_id: number; display_order: number }[]) => {
+      // Supabase doesn't support bulk update easily with different values, 
+      // so we'll do it in a loop or use an RPC if performance becomes an issue.
+      // For a small number of components per page, a loop is acceptable.
+
+      const promises = updates.map(({ placement_id, display_order }) =>
+        supabase
+          .from("ui_component_placements")
+          .update({ display_order })
+          .eq("placement_id", placement_id)
+      );
+
+      const results = await Promise.all(promises);
+      const error = results.find(r => r.error)?.error;
+
+      if (error) throw error;
+      return true;
+    },
+    onSuccess: (_, variables) => {
+      // Invalidate queries to refresh the list
+      queryClient.invalidateQueries({ queryKey: ["page-placements"] });
+      queryClient.invalidateQueries({ queryKey: ["page-components"] });
+      toast({ title: "تم الحفظ", description: "تم تحديث ترتيب المكونات بنجاح" });
+    },
+    onError: (error: any) => {
+      toast({ title: "خطأ", description: error.message || "فشل في تحديث الترتيب", variant: "destructive" });
+    },
+  });
+};
