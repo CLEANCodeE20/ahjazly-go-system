@@ -142,7 +142,7 @@ export default function TripSeatManager({ isOpen, onClose, tripId, busId, routeI
                                             "w-10 h-10 rounded-md flex items-center justify-center text-xs font-bold border cursor-pointer transition-colors relative",
                                             isBooked ? "bg-blue-100 text-blue-700 border-blue-300 cursor-not-allowed" :
                                                 isBlocked ? "bg-red-100 text-red-700 border-red-300 hover:bg-red-200" :
-                                                    "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+                                                    "bg-background text-foreground border-border hover:bg-muted"
                                         )}
                                     >
                                         {label}
@@ -174,7 +174,7 @@ export default function TripSeatManager({ isOpen, onClose, tripId, busId, routeI
                                             "w-10 h-10 rounded-md flex items-center justify-center text-xs font-bold border cursor-pointer transition-colors relative",
                                             isBooked ? "bg-blue-100 text-blue-700 border-blue-300 cursor-not-allowed" :
                                                 isBlocked ? "bg-red-100 text-red-700 border-red-300 hover:bg-red-200" :
-                                                    "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+                                                    "bg-background text-foreground border-border hover:bg-muted"
                                         )}
                                     >
                                         {label}
@@ -217,7 +217,7 @@ export default function TripSeatManager({ isOpen, onClose, tripId, busId, routeI
                         <div className="flex flex-col items-center">
                             <div className="flex gap-4 mb-6">
                                 <div className="flex items-center gap-2">
-                                    <div className="w-4 h-4 bg-white border border-gray-300 rounded" />
+                                    <div className="w-4 h-4 bg-background border border-border rounded" />
                                     <span className="text-sm">متاح</span>
                                 </div>
                                 <div className="flex items-center gap-2">
