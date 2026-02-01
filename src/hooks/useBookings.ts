@@ -8,7 +8,7 @@ export interface Booking {
     booking_status: string;
     payment_status: string;
     total_price: number;
-    user_id: number;
+    auth_id: string;
     trip_id: number;
     payment_method?: string;
     cancel_policy_id?: number | null;
@@ -66,7 +66,7 @@ export const useBookings = ({ page, pageSize, searchQuery, statusFilter }: UseBo
         queryKey: ["bookings", page, pageSize, searchQuery, statusFilter],
         queryFn: async () => {
             try {
-                const { data, error } = await supabase.rpc('search_bookings' as any, {
+                const { data, error } = await supabase.rpc('search_bookingsv2' as any, {
                     p_search_query: searchQuery || null,
                     p_status_filter: statusFilter && statusFilter !== 'all' ? statusFilter : null,
                     p_page: page,
@@ -77,8 +77,6 @@ export const useBookings = ({ page, pageSize, searchQuery, statusFilter }: UseBo
 
                 if (!data) return { bookings: [], totalCount: 0 };
 
-                // Get extra details for these bookings if needed (like passengers/seats)
-                // In a real optimized system, the RPC would return everything
                 const bookingIds = data.map(b => b.booking_id);
 
                 const { data: passengers } = await supabase
@@ -103,7 +101,7 @@ export const useBookings = ({ page, pageSize, searchQuery, statusFilter }: UseBo
                     partner_revenue: row.partner_revenue,
                     gateway_transaction_id: row.gateway_transaction_id,
                     payment_timestamp: row.payment_timestamp,
-                    user_id: row.user_id,
+                    auth_id: row.auth_id, // Updated from user_id to auth_id
                     trip_id: row.trip_id,
                     user: row.user_full_name ? {
                         full_name: row.user_full_name,
@@ -222,7 +220,7 @@ export const useConfirmPayment = () => {
 
     return useMutation({
         mutationFn: async ({ id, method, status, txId }: { id: number; method: string; status: string; txId?: string }) => {
-            const { data, error } = await supabase.rpc('update_payment_v2' as any, {
+            const { data, error } = await supabase.rpc('update_payment_v3' as any, {
                 p_booking_id: id,
                 p_payment_status: status,
                 p_payment_method: method,

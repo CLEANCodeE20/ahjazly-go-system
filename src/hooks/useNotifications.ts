@@ -5,7 +5,7 @@ import { toast } from "sonner";
 
 export interface Notification {
     notification_id: number;
-    user_id: number | null;
+    auth_id: string | null;
     partner_id: number | null;
     type: 'booking' | 'payment' | 'trip' | 'system' | 'promotion';
     title: string | null;

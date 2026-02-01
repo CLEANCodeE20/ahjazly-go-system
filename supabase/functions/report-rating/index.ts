@@ -46,18 +46,8 @@ serve(async (req) => {
             throw new Error("Unauthorized");
         }
 
-        // Get user_id from users table
-        const { data: userData, error: userDataError } = await supabaseClient
-            .from("users")
-            .select("user_id")
-            .eq("auth_id", user.id)
-            .single();
-
-        if (userDataError || !userData) {
-            throw new Error("User not found");
-        }
-
-        const userId = userData.user_id;
+        // User is authenticated, use user.id (auth_id)
+        const userId = user.id;
 
         // Parse request body
         const body: ReportRatingRequest = await req.json();
@@ -97,7 +87,7 @@ serve(async (req) => {
             .from("rating_reports")
             .select("report_id")
             .eq("rating_id", body.rating_id)
-            .eq("reporter_user_id", userId)
+            .eq("auth_id", user.id) // Updated to auth_id
             .single();
 
         if (existing) {
@@ -109,7 +99,7 @@ serve(async (req) => {
             .from("rating_reports")
             .insert({
                 rating_id: body.rating_id,
-                reporter_user_id: userId,
+                auth_id: user.id, // Updated to auth_id
                 reason: body.reason,
                 description: body.description || null,
                 status: "pending",

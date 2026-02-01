@@ -56,9 +56,12 @@ export const TwoFactorGuard = ({ children }: TwoFactorGuardProps) => {
                     return;
                 }
 
-                const requiresAuth = userRole.role === 'admin' || userRole.role === 'partner';
+                const needs2FA = userRole && (
+                    userRole.role === 'SUPERUSER' ||
+                    userRole.role === 'PARTNER_ADMIN'
+                );
 
-                if (!requiresAuth) {
+                if (!needs2FA) {
                     setRequires2FA(false);
                     setChecking(false);
                     return;

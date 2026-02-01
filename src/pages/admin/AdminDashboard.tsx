@@ -52,6 +52,13 @@ interface PartnerApplication {
   rejection_reason: string | null;
   created_at: string;
   auth_user_id: string | null;
+  tax_number: string | null;
+  website: string | null;
+  bank_name: string | null;
+  iban: string | null;
+  account_number: string | null;
+  swift_code: string | null;
+  commercial_registration: string | null;
 }
 
 const AdminDashboard = () => {
@@ -86,7 +93,7 @@ const AdminDashboard = () => {
         variant: "destructive"
       });
     } else {
-      setApplications(data || []);
+      setApplications(data as any[] || []);
     }
     setLoading(false);
   };
@@ -104,7 +111,17 @@ const AdminDashboard = () => {
             ? `${application.company_address}, ${application.company_city}`
             : application.company_city,
           status: 'approved',
-          commission_percentage: 10
+          commission_percentage: 10,
+          manager_auth_id: application.auth_user_id || null,
+          commercial_registration: application.commercial_registration,
+          tax_number: application.tax_number,
+          website: application.website,
+          bank_name: application.bank_name,
+          iban: application.iban,
+          account_number: application.account_number,
+          swift_code: application.swift_code,
+          commercial_register_url: application.commercial_register_url,
+          tax_certificate_url: application.tax_certificate_url
         })
         .select()
         .single();
@@ -116,7 +133,7 @@ const AdminDashboard = () => {
         const { error: roleError } = await supabase
           .from('user_roles')
           .insert({
-            user_id: application.auth_user_id,
+            auth_id: application.auth_user_id,
             role: 'partner',
             partner_id: partner.partner_id
           });
@@ -133,6 +150,19 @@ const AdminDashboard = () => {
 
         if (statusError) {
           console.error('Error activating user account:', statusError);
+        }
+
+        // 2.2 Update documents to verified and link to partner_id
+        const { error: docError } = await supabase
+          .from('documents')
+          .update({
+            partner_id: partner.partner_id,
+            verification_status: 'approved'
+          } as any)
+          .eq('auth_id', application.auth_user_id);
+
+        if (docError) {
+          console.error('Error updating documents status:', docError);
         }
       }
 

@@ -16,7 +16,8 @@ import {
   Activity,
   Loader2,
   FileSpreadsheet,
-  FileText
+  FileText,
+  ClipboardList
 } from "lucide-react";
 import {
   Select,
@@ -250,6 +251,10 @@ const ReportsManagement = () => {
       subtitle="نظرة شاملة على أداء الشركة"
       actions={
         <div className="flex items-center gap-3">
+          <Button variant="outline" onClick={() => window.location.href = '/dashboard/advanced-reports'}>
+            <ClipboardList className="w-4 h-4 ml-2" />
+            التقارير التفصيلية
+          </Button>
           <Select value={period} onValueChange={setPeriod}>
             <SelectTrigger className="w-40">
               <SelectValue />

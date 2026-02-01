@@ -1,0 +1,574 @@
+/**
+ * CSS أساسي للتقارير العربية
+ * يوفر دعم RTL كامل، خطوط عربية، وتنسيق احترافي
+ */
+
+/* ==================== المتغيرات ==================== */
+:root {
+    /* الخطوط */
+    --font-arabic: 'Cairo', 'Noto Sans Arabic', 'Segoe UI', Arial, sans-serif;
+    --font-numbers: 'Roboto', 'Segoe UI', monospace;
+
+    /* الألوان */
+    --primary-color: #2563eb;
+    --secondary-color: #64748b;
+    --success-color: #10b981;
+    --warning-color: #f59e0b;
+    --danger-color: #ef4444;
+    --text-color: #1e293b;
+    --text-muted: #64748b;
+    --border-color: #e2e8f0;
+    --bg-light: #f8fafc;
+    --bg-white: #ffffff;
+
+    /* المسافات */
+    --spacing-xs: 4px;
+    --spacing-sm: 8px;
+    --spacing-md: 16px;
+    --spacing-lg: 24px;
+    --spacing-xl: 32px;
+
+    /* الحدود */
+    --border-radius: 8px;
+    --border-width: 1px;
+
+    /* الظلال */
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+}
+
+/* ==================== الإعدادات الأساسية ==================== */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html {
+    direction: rtl;
+    font-size: 16px;
+}
+
+body {
+    font-family: var(--font-arabic);
+    color: var(--text-color);
+    line-height: 1.6;
+    background: var(--bg-white);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* ==================== حاوية التقرير ==================== */
+.report-container {
+    max-width: 210mm;
+    /* A4 width */
+    margin: 0 auto;
+    padding: var(--spacing-xl);
+    background: var(--bg-white);
+    direction: rtl;
+    text-align: right;
+}
+
+/* استجابة للشاشات الصغيرة */
+@media (max-width: 768px) {
+    .report-container {
+        max-width: 100%;
+        padding: var(--spacing-md);
+        overflow-x: auto;
+    }
+    
+    /* تقليل حجم الخطوط في الشاشات الصغيرة */
+    h1 { font-size: 1.5rem; }
+    h2 { font-size: 1.25rem; }
+    h3 { font-size: 1.1rem; }
+    
+    /* تعديل الجداول للتناسب مع الشاشات الصغيرة */
+    table {
+        font-size: 0.75rem;
+    }
+    
+    th, td {
+        padding: var(--spacing-sm);
+    }
+    
+    /* تعديل تخطيط الشبكة */
+    .grid-2,
+    .grid-3,
+    .grid-4 {
+        grid-template-columns: 1fr;
+    }
+    
+    /* تعديل عرض الأعمدة */
+    .detail-box {
+        min-width: unset;
+    }
+}
+
+/* ==================== العناوين ==================== */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    font-weight: 700;
+    line-height: 1.2;
+    margin-bottom: var(--spacing-md);
+    color: var(--text-color);
+}
+
+h1 {
+    font-size: 2rem;
+}
+
+h2 {
+    font-size: 1.5rem;
+}
+
+h3 {
+    font-size: 1.25rem;
+}
+
+h4 {
+    font-size: 1.125rem;
+}
+
+h5 {
+    font-size: 1rem;
+}
+
+h6 {
+    font-size: 0.875rem;
+}
+
+/* ==================== النصوص ==================== */
+p {
+    margin-bottom: var(--spacing-md);
+}
+
+.text-muted {
+    color: var(--text-muted);
+}
+
+.text-small {
+    font-size: 0.875rem;
+}
+
+.text-large {
+    font-size: 1.125rem;
+}
+
+.text-bold {
+    font-weight: 700;
+}
+
+/* ==================== الأرقام والعملات ==================== */
+.number,
+.currency,
+.amount,
+.date-numeric {
+    font-family: var(--font-numbers);
+    direction: ltr;
+    display: inline-block;
+    unicode-bidi: embed;
+    font-variant-numeric: tabular-nums;
+}
+
+.currency::before {
+    content: '';
+    margin-left: 4px;
+}
+
+/* ==================== الجداول ==================== */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: var(--spacing-lg);
+    direction: rtl;
+    font-size: 0.875rem;
+}
+
+thead {
+    background: var(--primary-color);
+    color: var(--bg-white);
+}
+
+th {
+    padding: var(--spacing-md);
+    text-align: right;
+    font-weight: 700;
+    border: var(--border-width) solid var(--primary-color);
+}
+
+td {
+    padding: var(--spacing-md);
+    text-align: right;
+    border: var(--border-width) solid var(--border-color);
+}
+
+tbody tr:nth-child(even) {
+    background: var(--bg-light);
+}
+
+tbody tr:hover {
+    background: #f1f5f9;
+}
+
+/* محاذاة الأرقام في الجداول */
+td.number,
+td.currency,
+td.amount {
+    text-align: center;
+    font-family: var(--font-numbers);
+}
+
+/* ==================== القوائم ==================== */
+ul,
+ol {
+    padding-right: var(--spacing-lg);
+    padding-left: 0;
+    margin-bottom: var(--spacing-md);
+}
+
+li {
+    margin-bottom: var(--spacing-sm);
+}
+
+/* ==================== الحدود والفواصل ==================== */
+.divider {
+    height: var(--border-width);
+    background: var(--border-color);
+    margin: var(--spacing-lg) 0;
+    border: none;
+}
+
+.border {
+    border: var(--border-width) solid var(--border-color);
+}
+
+.border-top {
+    border-top: var(--border-width) solid var(--border-color);
+}
+
+.border-bottom {
+    border-bottom: var(--border-width) solid var(--border-color);
+}
+
+.border-primary {
+    border-color: var(--primary-color);
+}
+
+/* ==================== الخلفيات ==================== */
+.bg-light {
+    background: var(--bg-light);
+}
+
+.bg-primary {
+    background: var(--primary-color);
+    color: var(--bg-white);
+}
+
+.bg-success {
+    background: var(--success-color);
+    color: var(--bg-white);
+}
+
+.bg-warning {
+    background: var(--warning-color);
+    color: var(--bg-white);
+}
+
+.bg-danger {
+    background: var(--danger-color);
+    color: var(--bg-white);
+}
+
+/* ==================== المسافات ==================== */
+.p-xs {
+    padding: var(--spacing-xs);
+}
+
+.p-sm {
+    padding: var(--spacing-sm);
+}
+
+.p-md {
+    padding: var(--spacing-md);
+}
+
+.p-lg {
+    padding: var(--spacing-lg);
+}
+
+.p-xl {
+    padding: var(--spacing-xl);
+}
+
+.m-xs {
+    margin: var(--spacing-xs);
+}
+
+.m-sm {
+    margin: var(--spacing-sm);
+}
+
+.m-md {
+    margin: var(--spacing-md);
+}
+
+.m-lg {
+    margin: var(--spacing-lg);
+}
+
+.m-xl {
+    margin: var(--spacing-xl);
+}
+
+.mb-xs {
+    margin-bottom: var(--spacing-xs);
+}
+
+.mb-sm {
+    margin-bottom: var(--spacing-sm);
+}
+
+.mb-md {
+    margin-bottom: var(--spacing-md);
+}
+
+.mb-lg {
+    margin-bottom: var(--spacing-lg);
+}
+
+.mb-xl {
+    margin-bottom: var(--spacing-xl);
+}
+
+.mt-xs {
+    margin-top: var(--spacing-xs);
+}
+
+.mt-sm {
+    margin-top: var(--spacing-sm);
+}
+
+.mt-md {
+    margin-top: var(--spacing-md);
+}
+
+.mt-lg {
+    margin-top: var(--spacing-lg);
+}
+
+.mt-xl {
+    margin-top: var(--spacing-xl);
+}
+
+/* ==================== Flexbox RTL ==================== */
+.flex {
+    display: flex;
+}
+
+.flex-rtl {
+    display: flex;
+    flex-direction: row-reverse;
+}
+
+.flex-column {
+    flex-direction: column;
+}
+
+.flex-wrap {
+    flex-wrap: wrap;
+}
+
+.justify-start {
+    justify-content: flex-start;
+}
+
+.justify-end {
+    justify-content: flex-end;
+}
+
+.justify-center {
+    justify-content: center;
+}
+
+.justify-between {
+    justify-content: space-between;
+}
+
+.align-start {
+    align-items: flex-start;
+}
+
+.align-end {
+    align-items: flex-end;
+}
+
+.align-center {
+    align-items: center;
+}
+
+.gap-sm {
+    gap: var(--spacing-sm);
+}
+
+.gap-md {
+    gap: var(--spacing-md);
+}
+
+.gap-lg {
+    gap: var(--spacing-lg);
+}
+
+/* ==================== Grid RTL ==================== */
+.grid {
+    display: grid;
+    direction: rtl;
+}
+
+.grid-2 {
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--spacing-md);
+}
+
+.grid-3 {
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--spacing-md);
+}
+
+.grid-4 {
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--spacing-md);
+}
+
+/* تحسينات للشاشات المتوسطة */
+@media (max-width: 1024px) {
+    .grid-4 {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .grid-3,
+    .grid-2 {
+        grid-template-columns: 1fr;
+    }
+    
+    .report-container {
+        padding: var(--spacing-md);
+    }
+    
+    /* تحسين عرض الجداول */
+    table {
+        display: block;
+        overflow-x: auto;
+        white-space: nowrap;
+    }
+}
+
+/* ==================== الظلال ==================== */
+.shadow-sm {
+    box-shadow: var(--shadow-sm);
+}
+
+.shadow-md {
+    box-shadow: var(--shadow-md);
+}
+
+.shadow-lg {
+    box-shadow: var(--shadow-lg);
+}
+
+/* ==================== الحدود المستديرة ==================== */
+.rounded {
+    border-radius: var(--border-radius);
+}
+
+.rounded-sm {
+    border-radius: calc(var(--border-radius) / 2);
+}
+
+.rounded-lg {
+    border-radius: calc(var(--border-radius) * 1.5);
+}
+
+/* ==================== المحتوى المختلط ==================== */
+.mixed-content {
+    unicode-bidi: plaintext;
+}
+
+/* ==================== الصور ==================== */
+img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+}
+
+.logo {
+    max-width: 150px;
+    height: auto;
+}
+
+/* ==================== الأزرار (للمعاينة فقط) ==================== */
+.btn {
+    padding: var(--spacing-sm) var(--spacing-md);
+    border: none;
+    border-radius: var(--border-radius);
+    font-family: var(--font-arabic);
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-primary {
+    background: var(--primary-color);
+    color: var(--bg-white);
+}
+
+.btn-primary:hover {
+    background: #1d4ed8;
+}
+
+/* ==================== الحالات ==================== */
+.status-badge {
+    display: inline-block;
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-radius: calc(var(--border-radius) / 2);
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.status-success {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.status-warning {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.status-danger {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.status-info {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+/* ==================== إخفاء عناصر الطباعة ==================== */
+.no-print {
+    /* سيتم إخفاؤها عند الطباعة */
+}
+
+@media screen {
+    .print-only {
+        display: none;
+    }
+}

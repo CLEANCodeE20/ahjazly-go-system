@@ -43,20 +43,13 @@ serve(async (req) => {
 
             // 2. Role Sync
             if (role) {
-                const roleData: any = { user_id: userId, role: role }
+                const roleData: any = { auth_id: userId, role: role }
                 if (partnerId) roleData.partner_id = partnerId
 
                 const { error: roleErr } = await supabaseClient
                     .from('user_roles')
-                    .upsert(roleData, { onConflict: 'user_id' })
+                    .upsert(roleData, { onConflict: 'auth_id' })
                 if (roleErr) throw new Error(`Role Error: ${roleErr.message}`)
-
-                const userTypeMap: Record<string, string> = {
-                    'user': 'customer', 'admin': 'admin', 'partner': 'partner', 'driver': 'driver', 'employee': 'employee'
-                };
-                await supabaseClient.from('users').update({
-                    user_type: (userTypeMap[role] || 'customer') as any
-                }).eq('auth_id', userId)
             }
 
             // 3. Profile Sync
@@ -90,19 +83,15 @@ serve(async (req) => {
             })
             if (createError) throw new Error(`Auth Create Error: ${createError.message}`)
 
-            const roleData: any = { user_id: user.user.id, role: role }
+            const roleData: any = { auth_id: user.user.id, role: role }
             if (partnerId) roleData.partner_id = partnerId
             await supabaseClient.from('user_roles').insert(roleData)
 
-            const userTypeMap: Record<string, string> = {
-                'user': 'customer', 'admin': 'admin', 'partner': 'partner', 'driver': 'driver', 'employee': 'employee'
-            };
             await supabaseClient.from('users').insert({
                 auth_id: user.user.id,
                 email: email,
                 full_name: fullName,
-                account_status: 'active',
-                user_type: (userTypeMap[role] || 'customer') as any
+                account_status: 'active'
             })
 
             return new Response(JSON.stringify({ success: true, user: user.user }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })

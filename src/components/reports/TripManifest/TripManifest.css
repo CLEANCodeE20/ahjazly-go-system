@@ -1,0 +1,327 @@
+/**
+ * CSS لكشف ركاب الرحلة
+ */
+
+.trip-manifest-wrapper {
+    min-height: 100vh;
+    background: #f5f5f5;
+    padding: 20px;
+}
+
+.trip-manifest {
+    background: white;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+}
+
+/* الرأس */
+.manifest-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 3px solid var(--primary-color);
+}
+
+.manifest-title {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--primary-color);
+}
+
+.trip-number {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-muted);
+    margin-top: 5px;
+}
+
+/* معلومات الرحلة */
+.trip-info-section {
+    margin-bottom: 30px;
+}
+
+.trip-route {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 30px;
+    padding: 30px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: var(--border-radius);
+    margin-bottom: 20px;
+    color: white;
+}
+
+.route-point {
+    text-align: center;
+    flex: 1;
+}
+
+.route-label {
+    font-size: 12px;
+    opacity: 0.9;
+    margin-bottom: 5px;
+}
+
+.route-city {
+    font-size: 24px;
+    font-weight: 700;
+    margin-bottom: 5px;
+}
+
+.route-time {
+    font-size: 16px;
+    opacity: 0.9;
+}
+
+.route-arrow {
+    font-size: 32px;
+    font-weight: 700;
+}
+
+.trip-details {
+    gap: 15px;
+}
+
+.detail-card {
+    background: var(--bg-light);
+    padding: 20px;
+    border-radius: var(--border-radius);
+    text-align: center;
+    border: 2px solid var(--border-color);
+    transition: all 0.3s;
+}
+
+.detail-card:hover {
+    border-color: var(--primary-color);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.detail-icon {
+    font-size: 32px;
+    margin-bottom: 10px;
+}
+
+.detail-label {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-bottom: 5px;
+}
+
+.detail-value {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-color);
+}
+
+.detail-sub {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-top: 5px;
+}
+
+/* الإحصائيات */
+.stats-section {
+    margin-bottom: 30px;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 15px;
+}
+
+.stat-box {
+    background: var(--bg-light);
+    padding: 20px;
+    border-radius: var(--border-radius);
+    text-align: center;
+    border: 2px solid var(--border-color);
+}
+
+.stat-box.booked {
+    background: #dcfce7;
+    border-color: var(--success-color);
+}
+
+.stat-box.available {
+    background: #dbeafe;
+    border-color: var(--primary-color);
+}
+
+.stat-box.occupancy {
+    background: #fef3c7;
+    border-color: var(--warning-color);
+}
+
+.stat-box.revenue {
+    background: #f3e8ff;
+    border-color: #9333ea;
+}
+
+.stat-value {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--text-color);
+    margin-bottom: 5px;
+}
+
+.stat-label {
+    font-size: 13px;
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+/* جدول الركاب */
+.passengers-section {
+    margin-bottom: 30px;
+}
+
+.manifest-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.manifest-table thead {
+    background: var(--primary-color);
+    color: white;
+}
+
+.manifest-table th {
+    padding: 12px 10px;
+    text-align: right;
+    font-weight: 700;
+    font-size: 12px;
+}
+
+.manifest-table td {
+    padding: 12px 10px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.manifest-table tbody tr:hover {
+    background: var(--bg-light);
+}
+
+.seat-cell {
+    text-align: center;
+}
+
+.seat-number {
+    display: inline-block;
+    width: 40px;
+    height: 40px;
+    line-height: 40px;
+    background: var(--primary-color);
+    color: white;
+    border-radius: 6px;
+    font-weight: 700;
+    font-size: 16px;
+}
+
+.passenger-name {
+    font-weight: 600;
+    color: var(--text-color);
+}
+
+.signature-cell {
+    border-bottom: 1px solid #ccc;
+}
+
+/* التذييل */
+.manifest-footer {
+    margin-top: 40px;
+    padding-top: 20px;
+    border-top: 2px solid var(--border-color);
+}
+
+.footer-signatures {
+    display: flex;
+    justify-content: space-around;
+    margin-bottom: 30px;
+}
+
+.signature-box {
+    text-align: center;
+    min-width: 200px;
+}
+
+.signature-line {
+    height: 60px;
+    border-bottom: 2px solid #333;
+    margin-bottom: 10px;
+}
+
+.signature-label {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-muted);
+}
+
+/* الطباعة */
+@media print {
+    .trip-manifest-wrapper {
+        background: white;
+        padding: 0;
+    }
+
+    .trip-manifest {
+        box-shadow: none;
+    }
+
+    .trip-route {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    .stat-box {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    .seat-number {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    .manifest-table {
+        page-break-inside: auto;
+    }
+
+    .manifest-table tr {
+        page-break-inside: avoid;
+        page-break-after: auto;
+    }
+
+    .manifest-table thead {
+        display: table-header-group;
+    }
+}
+
+/* الاستجابة */
+@media screen and (max-width: 768px) {
+    .trip-route {
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    .route-arrow {
+        transform: rotate(90deg);
+    }
+
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .manifest-table {
+        font-size: 11px;
+    }
+
+    .manifest-table th,
+    .manifest-table td {
+        padding: 8px 6px;
+    }
+}

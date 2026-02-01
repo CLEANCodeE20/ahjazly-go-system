@@ -26,7 +26,7 @@ import { DashboardLayout } from "@/components/layout/DashboardLayout";
 interface PaymentRecord {
   payment_id: number;
   booking_id: number | null;
-  user_id: number | null;
+  auth_id: string | null; // Gold Standard: UUID
   amount: number;
   currency: string | null;
   payment_method: string | null;
@@ -39,12 +39,12 @@ interface PaymentRecord {
 interface BookingRecord {
   booking_id: number;
   trip_id: number | null;
-  user_id: number | null;
+  auth_id: string | null; // Gold Standard: UUID
   total_price: number;
 }
 
 interface UserRecord {
-  user_id: number;
+  auth_id: string; // Gold Standard: UUID
   full_name: string;
 }
 
@@ -57,7 +57,7 @@ const PaymentsManagement = () => {
 
   const { data: users } = useSupabaseCRUD<UserRecord>({
     tableName: 'users',
-    primaryKey: 'user_id',
+    primaryKey: 'auth_id', // Gold Standard: UUID primary key
     initialFetch: true
   });
 
@@ -81,7 +81,7 @@ const PaymentsManagement = () => {
   ];
 
   const filteredPayments = payments.filter(payment => {
-    const user = users.find(u => u.user_id === payment.user_id);
+    const user = users.find(u => u.auth_id === payment.auth_id);
     const matchesSearch = user?.full_name?.includes(searchTerm) ||
       payment.payment_id.toString().includes(searchTerm) ||
       payment.gateway_ref?.includes(searchTerm) || false;
@@ -90,7 +90,7 @@ const PaymentsManagement = () => {
     return matchesSearch && matchesStatus && matchesMethod;
   });
 
-  const getUserName = (userId: number | null) => users.find(u => u.user_id === userId)?.full_name || "-";
+  const getUserName = (authId: string | null) => users.find(u => u.auth_id === authId)?.full_name || "-";
 
   const getStatusBadge = (status: string | null) => {
     switch (status) {
@@ -228,7 +228,7 @@ const PaymentsManagement = () => {
                           </span>
                         </td>
                         <td className="py-4 px-4">
-                          <span className="font-medium text-foreground">{getUserName(payment.user_id)}</span>
+                          <span className="font-medium text-foreground">{getUserName(payment.auth_id)}</span>
                         </td>
                         <td className="py-4 px-4">
                           <span className="font-bold text-foreground">{payment.amount} {payment.currency || "ر.س"}</span>

@@ -46,6 +46,7 @@ import { useSupabaseCRUD } from "@/hooks/useSupabaseCRUD";
 import { usePartner } from "@/hooks/usePartner";
 import { toast } from "@/hooks/use-toast";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
+import { usePermissions } from "@/hooks/usePermissions";
 
 interface BusRecord {
   bus_id: number;
@@ -56,7 +57,6 @@ interface BusRecord {
   bus_class_id: number | null;
   capacity: number | null;
   status: string | null;
-  owner_user_id: number | null;
   seat_layout: SeatLayout | null;
   template_id: number | null;
   created_at: string;
@@ -64,6 +64,7 @@ interface BusRecord {
 
 const FleetManagement = () => {
   const { partner } = usePartner();
+  const { can } = usePermissions();
   const {
     data: buses,
     loading,
@@ -245,120 +246,122 @@ const FleetManagement = () => {
       subtitle="إضافة وتعديل حافلات الشركة"
       actions={
         <>
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="w-4 h-4 ml-2" />
-                إضافة حافلة
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px]">
-              <DialogHeader>
-                <DialogTitle>إضافة حافلة جديدة</DialogTitle>
-                <DialogDescription>
-                  أدخل بيانات الحافلة الجديدة لإضافتها إلى الأسطول
-                </DialogDescription>
-              </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="license_plate">رقم اللوحة *</Label>
-                    <Input
-                      id="license_plate"
-                      value={newBus.license_plate}
-                      onChange={(e) => setNewBus({ ...newBus, license_plate: e.target.value })}
-                      placeholder="ABC-1234"
-                    />
+          {can('fleet.manage') && (
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger asChild>
+                <Button>
+                  <Plus className="w-4 h-4 ml-2" />
+                  إضافة حافلة
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[500px]">
+                <DialogHeader>
+                  <DialogTitle>إضافة حافلة جديدة</DialogTitle>
+                  <DialogDescription>
+                    أدخل بيانات الحافلة الجديدة لإضافتها إلى الأسطول
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="license_plate">رقم اللوحة *</Label>
+                      <Input
+                        id="license_plate"
+                        value={newBus.license_plate}
+                        onChange={(e) => setNewBus({ ...newBus, license_plate: e.target.value })}
+                        placeholder="ABC-1234"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="model">الموديل *</Label>
+                      <Input
+                        id="model"
+                        value={newBus.model}
+                        onChange={(e) => setNewBus({ ...newBus, model: e.target.value })}
+                        placeholder="Mercedes-Benz"
+                      />
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="model">الموديل *</Label>
-                    <Input
-                      id="model"
-                      value={newBus.model}
-                      onChange={(e) => setNewBus({ ...newBus, model: e.target.value })}
-                      placeholder="Mercedes-Benz"
-                    />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="capacity">عدد المقاعد</Label>
+                      <Input
+                        id="capacity"
+                        type="number"
+                        value={newBus.capacity}
+                        onChange={(e) => setNewBus({ ...newBus, capacity: e.target.value })}
+                        placeholder="45"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>نوع الحافلة</Label>
+                      <Select value={newBus.bus_type} onValueChange={(v) => setNewBus({ ...newBus, bus_type: v })}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="standard">عادية</SelectItem>
+                          <SelectItem value="vip">VIP</SelectItem>
+                          <SelectItem value="sleeper">نوم</SelectItem>
+                          <SelectItem value="double_decker">طابقين</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="capacity">عدد المقاعد</Label>
-                    <Input
-                      id="capacity"
-                      type="number"
-                      value={newBus.capacity}
-                      onChange={(e) => setNewBus({ ...newBus, capacity: e.target.value })}
-                      placeholder="45"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>نوع الحافلة</Label>
-                    <Select value={newBus.bus_type} onValueChange={(v) => setNewBus({ ...newBus, bus_type: v })}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="standard">عادية</SelectItem>
-                        <SelectItem value="vip">VIP</SelectItem>
-                        <SelectItem value="sleeper">نوم</SelectItem>
-                        <SelectItem value="double_decker">طابقين</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
 
-                {templates.length > 0 && (
-                  <div className="space-y-2">
-                    <Label>تحميل من قالب جاهز</Label>
-                    <Select onValueChange={(id) => {
-                      const t = templates.find(t => t.template_id.toString() === id);
-                      if (t) loadTemplate(t);
-                    }}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="اختر قالباً..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {templates.map(t => (
-                          <SelectItem key={t.template_id} value={t.template_id.toString()}>
-                            {t.template_name} ({t.capacity} مقعد)
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-
-                <div className="pt-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full h-12 border-dashed border-primary/40 hover:border-primary hover:bg-primary/5 group"
-                    onClick={() => {
-                      setDesignTarget('new');
-                      setIsDesignerOpen(true);
-                    }}
-                  >
-                    <LayoutGrid className="w-4 h-4 ml-2 text-primary group-hover:scale-110 transition-transform" />
-                    {newBus.seat_layout ? 'تعديل مخطط المقاعد المخصص' : 'تصميم مخطط مقاعد مخصص'}
-                  </Button>
-                  {newBus.seat_layout && (
-                    <p className="text-[10px] text-center mt-1 text-secondary font-bold">
-                      تم تحديد المخطط المنسق ({newBus.capacity} مقعد)
-                    </p>
+                  {templates.length > 0 && (
+                    <div className="space-y-2">
+                      <Label>تحميل من قالب جاهز</Label>
+                      <Select onValueChange={(id) => {
+                        const t = templates.find(t => t.template_id.toString() === id);
+                        if (t) loadTemplate(t);
+                      }}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="اختر قالباً..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {templates.map(t => (
+                            <SelectItem key={t.template_id} value={t.template_id.toString()}>
+                              {t.template_name} ({t.capacity} مقعد)
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   )}
+
+                  <div className="pt-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full h-12 border-dashed border-primary/40 hover:border-primary hover:bg-primary/5 group"
+                      onClick={() => {
+                        setDesignTarget('new');
+                        setIsDesignerOpen(true);
+                      }}
+                    >
+                      <LayoutGrid className="w-4 h-4 ml-2 text-primary group-hover:scale-110 transition-transform" />
+                      {newBus.seat_layout ? 'تعديل مخطط المقاعد المخصص' : 'تصميم مخطط مقاعد مخصص'}
+                    </Button>
+                    {newBus.seat_layout && (
+                      <p className="text-[10px] text-center mt-1 text-secondary font-bold">
+                        تم تحديد المخطط المنسق ({newBus.capacity} مقعد)
+                      </p>
+                    )}
+                  </div>
                 </div>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
-                  إلغاء
-                </Button>
-                <Button onClick={handleAddBus} disabled={isSubmitting}>
-                  {isSubmitting && <Loader2 className="w-4 h-4 ml-2 animate-spin" />}
-                  إضافة الحافلة
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+                    إلغاء
+                  </Button>
+                  <Button onClick={handleAddBus} disabled={isSubmitting}>
+                    {isSubmitting && <Loader2 className="w-4 h-4 ml-2 animate-spin" />}
+                    إضافة الحافلة
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          )}
 
           {/* Seat Map Designer Dialog */}
           <Dialog open={isDesignerOpen} onOpenChange={setIsDesignerOpen}>
@@ -489,17 +492,21 @@ const FleetManagement = () => {
                   <Bus className="w-6 h-6 text-primary-foreground" />
                 </div>
                 <div className="flex items-center gap-1">
-                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditDialog(bus)}>
-                    <Edit className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-destructive"
-                    onClick={() => setDeleteId(bus.bus_id)}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
+                  {can('fleet.manage') && (
+                    <>
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditDialog(bus)}>
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-destructive"
+                        onClick={() => setDeleteId(bus.bus_id)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </>
+                  )}
                 </div>
               </div>
 
@@ -519,16 +526,18 @@ const FleetManagement = () => {
 
               <div className="flex items-center justify-between">
                 {getStatusBadge(bus.status)}
-                <Select value={bus.status || "active"} onValueChange={(v) => handleStatusChange(bus.bus_id, v)}>
-                  <SelectTrigger className="w-28 h-8 text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="active">نشطة</SelectItem>
-                    <SelectItem value="maintenance">صيانة</SelectItem>
-                    <SelectItem value="inactive">غير نشطة</SelectItem>
-                  </SelectContent>
-                </Select>
+                {can('fleet.manage') && (
+                  <Select value={bus.status || "active"} onValueChange={(v) => handleStatusChange(bus.bus_id, v)}>
+                    <SelectTrigger className="w-28 h-8 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="active">نشطة</SelectItem>
+                      <SelectItem value="maintenance">صيانة</SelectItem>
+                      <SelectItem value="inactive">غير نشطة</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
             </div>
           ))}

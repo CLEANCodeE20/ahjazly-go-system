@@ -174,7 +174,6 @@ const TripsManagement = () => {
           booking_id,
           booking_status,
           payment_status,
-          user_id,
           passengers (
             full_name,
             phone_number,
@@ -239,7 +238,7 @@ const TripsManagement = () => {
       departure_time: formData.departure_time,
       arrival_time: formData.arrival_time || null,
       base_price: parseFloat(formData.base_price),
-      cancel_policy_id: formData.cancel_policy_id && formData.cancel_policy_id !== "none" ? parseInt(formData.cancel_policy_id) : null,
+      cancel_policy_id: formData.cancel_policy_id && formData.cancel_policy_id !== "none" ? parseInt(formData.cancel_policy_id) : (policies.find(p => p.is_default)?.cancel_policy_id || null),
       linked_trip_id: formData.linked_trip_id && formData.linked_trip_id !== "none" ? parseInt(formData.linked_trip_id) : null,
       partner_id: partnerId,
       status: 'scheduled' as const
@@ -321,7 +320,7 @@ const TripsManagement = () => {
       departure_time: "",
       arrival_time: "",
       base_price: "",
-      cancel_policy_id: "",
+      cancel_policy_id: policies.find(p => p.is_default)?.cancel_policy_id?.toString() || "",
       linked_trip_id: ""
     });
     setEditingTrip(null);

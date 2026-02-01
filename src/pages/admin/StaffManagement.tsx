@@ -54,13 +54,12 @@ import {
 import { Badge } from "@/components/ui/badge";
 
 interface StaffRecord {
-    user_id: number;
     auth_id: string;
     full_name: string | null;
     email: string | null;
     created_at: string;
     account_status: 'active' | 'suspended' | 'inactive' | 'pending' | null;
-    role: "admin" | "partner" | "employee";
+    role: "SUPERUSER" | "manager" | "accountant" | "support" | "supervisor";
     partner_id?: number | null;
     partner_name?: string | null;
 }
@@ -104,34 +103,31 @@ const StaffManagement = () => {
             const { data, error } = await supabase
                 .from('users')
                 .select(`
-                    user_id, 
-                    auth_id, 
-                    full_name, 
-                    email, 
-                    created_at, 
-                    account_status, 
-                    user_roles!user_roles_profile_fk!inner(role)
+                    *,
+                    user_roles!user_roles_auth_id_public_fkey!inner(role, partner_id, partners(company_name))
                 `)
-                .eq('user_roles.role', 'admin');
+                .filter('user_roles.role', 'in', '("SUPERUSER","manager","accountant","support","supervisor")')
+                .is('user_roles.partner_id', null);
 
             if (error) throw error;
 
-            const mappedStaff = data.map((u: any) => {
+            const mappedStaff = (data as any[]).map((u: any) => {
                 const roleData = Array.isArray(u.user_roles) ? u.user_roles[0] : u.user_roles;
                 const role = roleData?.role;
+                const partnerId = roleData?.partner_id;
+                const partnerName = roleData?.partners?.company_name;
 
                 return {
-                    user_id: u.user_id,
                     auth_id: u.auth_id,
                     full_name: u.full_name,
                     email: u.email,
                     created_at: u.created_at,
                     account_status: u.account_status,
                     role: role as any,
-                    partner_id: null,
-                    partner_name: 'إدارة المنصة'
+                    partner_id: partnerId,
+                    partner_name: partnerName || (role === 'admin' ? 'إدارة المنصة' : 'غير محدد')
                 };
-            }).filter(s => s.role === 'admin');
+            });
 
             setStaff(mappedStaff);
         } catch (error: any) {
@@ -210,13 +206,25 @@ const StaffManagement = () => {
         s.email?.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
+    const getRoleBadge = (role: string) => {
+        const roleMap: Record<string, { label: string, color: string }> = {
+            'SUPERUSER': { label: 'مدير نظام', color: 'bg-red-100 text-red-700' },
+            'manager': { label: 'مدير فرع', color: 'bg-indigo-100 text-indigo-700' },
+            'accountant': { label: 'محاسب', color: 'bg-green-100 text-green-700' },
+            'support': { label: 'دعم فني', color: 'bg-blue-100 text-blue-700' },
+            'supervisor': { label: 'مشرف', color: 'bg-orange-100 text-orange-700' }
+        };
+        const config = roleMap[role] || { label: 'عضو طاقم', color: 'bg-gray-100 text-gray-700' };
+        return <span className={`px-2 py-1 rounded-full text-xs font-medium ${config.color}`}>{config.label}</span>;
+    };
+
     return (
         <AdminLayout
-            title="إدارة طاقم العمل"
-            subtitle="إدارة المدراء، الشركاء، والموظفين الإداريين"
+            title="طاقم المنصة"
+            subtitle="إدارة مدراء النظام وصلاحيات الوصول الأساسية"
             actions={
                 <Button onClick={() => {
-                    setCurrentStaff({ auth_id: "", email: "", password: "", fullName: "", role: "employee", partner_id: "" });
+                    setCurrentStaff({ auth_id: "", email: "", password: "", fullName: "", role: "manager", partner_id: "" });
                     setIsDialogOpen(true);
                 }}>
                     <Shield className="w-4 h-4 ml-2" />
@@ -250,26 +258,22 @@ const StaffManagement = () => {
                             {loading ? (
                                 <TableRow><TableCell colSpan={5} className="text-center py-10"><Loader2 className="w-6 h-6 animate-spin mx-auto text-primary" /></TableCell></TableRow>
                             ) : filteredStaff.map((member) => (
-                                <TableRow key={member.user_id}>
+                                <TableRow key={member.auth_id}>
                                     <TableCell>
                                         <div className="flex flex-col">
                                             <span className="font-medium">{member.full_name}</span>
                                             <span className="text-xs text-muted-foreground">{member.email}</span>
                                         </div>
                                     </TableCell>
+                                    <TableCell>{getRoleBadge(member.role)}</TableCell>
                                     <TableCell>
-                                        <Badge variant={member.role === 'admin' ? "destructive" : member.role === 'partner' ? "default" : "secondary"}>
-                                            {member.role === 'admin' ? "مدير نظام" : member.role === 'partner' ? "شريك" : "موظف"}
-                                        </Badge>
-                                    </TableCell>
-                                    <TableCell>
-                                        {member.role === 'admin' ? (
+                                        {member.role === 'SUPERUSER' ? (
                                             <span className="text-sm text-primary font-medium flex items-center gap-1">
                                                 <Shield className="w-3 h-3" /> إدارة المنصة
                                             </span>
                                         ) : (
                                             <span className="text-sm flex items-center gap-1">
-                                                <Building2 className="w-3 h-3 text-muted-foreground" /> {member.partner_name || "غير محدد"}
+                                                <Building2 className="w-3 h-3 text-muted-foreground" /> {member.partner_name || "إدارة المنصة"}
                                             </span>
                                         )}
                                     </TableCell>
@@ -362,28 +366,12 @@ const StaffManagement = () => {
                                 >
                                     <SelectTrigger><SelectValue /></SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="admin">مدير نظام</SelectItem>
-                                        <SelectItem value="partner">شريك (مالك شركة)</SelectItem>
-                                        <SelectItem value="employee">موظف إداري</SelectItem>
+                                        <SelectItem value="admin">مدير نظام (Platform Admin)</SelectItem>
+                                        <SelectItem value="employee">موظف منصة (Platform Employee)</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
-                            {currentStaff.role !== 'admin' && (
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium">الشركة التابع لها</label>
-                                    <Select
-                                        value={currentStaff.partner_id}
-                                        onValueChange={(val) => setCurrentStaff({ ...currentStaff, partner_id: val })}
-                                    >
-                                        <SelectTrigger><SelectValue placeholder="اختر الشركة" /></SelectTrigger>
-                                        <SelectContent>
-                                            {partners.map(p => (
-                                                <SelectItem key={p.partner_id} value={p.partner_id.toString()}>{p.company_name}</SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                            )}
+                            {/* Role-specific fields removed to focus on Platform Admins */}
                         </div>
                     </div>
                     <DialogFooter>

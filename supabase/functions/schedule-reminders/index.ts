@@ -22,7 +22,7 @@ Deno.serve(async (req) => {
             .from("bookings")
             .select(`
         booking_id,
-        user_id,
+        auth_id,
         booking_status,
         trips!inner (
           trip_id,
@@ -63,7 +63,7 @@ Deno.serve(async (req) => {
                 const { error: notifyError } = await supabase
                     .from("notifications")
                     .insert({
-                        user_id: booking.user_id,
+                        auth_id: booking.auth_id, // Updated to auth_id
                         title: "تذكير بموعد الرحلة",
                         message: `مرحباً ${userName}، نذكرك بأن موعد رحلتك إلى ${route.destination_city} هو غداً ${dateStr} الساعة ${timeStr}. نتمنى لك رحلة آمنة!`,
                         type: "trip_reminder",

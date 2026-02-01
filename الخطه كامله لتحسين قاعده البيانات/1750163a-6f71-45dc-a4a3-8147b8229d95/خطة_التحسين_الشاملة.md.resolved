@@ -1,0 +1,1231 @@
+# خطة التحسين الشاملة لنظام حجز الحافلات
+## خارطة طريق متكاملة لتطوير النظام
+
+**تاريخ الإعداد:** 2026-01-26  
+**الإصدار:** 1.0  
+**المدة الإجمالية:** 16 أسبوع (4 أشهر)  
+**الميزانية المقدرة:** حسب الموارد المتاحة
+
+---
+
+## 📋 جدول المحتويات
+
+1. [نظرة عامة](#نظرة-عامة)
+2. [المرحلة 0: التحضير والإعداد](#المرحلة-0-التحضير-والإعداد)
+3. [المرحلة 1: أساس سلامة البيانات](#المرحلة-1-أساس-سلامة-البيانات)
+4. [المرحلة 2: تحسين الأداء](#المرحلة-2-تحسين-الأداء)
+5. [المرحلة 3: تعزيز الأمان](#المرحلة-3-تعزيز-الأمان)
+6. [المرحلة 4: الميزات المتقدمة](#المرحلة-4-الميزات-المتقدمة)
+7. [المرحلة 5: التحضير لقابلية التوسع](#المرحلة-5-التحضير-لقابلية-التوسع)
+8. [المرحلة 6: التحسين والتوثيق](#المرحلة-6-التحسين-والتوثيق)
+9. [معايير النجاح](#معايير-النجاح)
+10. [إدارة المخاطر](#إدارة-المخاطر)
+
+---
+
+## نظرة عامة
+
+### الهدف الرئيسي
+تحويل نظام حجز الحافلات إلى منصة **متكاملة، آمنة، وقابلة للتوسع** تجمع بين:
+- ✅ أمان PostgreSQL المتقدم (RLS)
+- ✅ ميزات MySQL المتطورة (تخطيط الحافلات، RBAC، الجداول الزمنية)
+- ✅ أفضل الممارسات في تصميم قواعد البيانات
+- ✅ أداء عالي وقابلية توسع
+
+### المشاكل الحرجة المحددة
+| المشكلة | التأثير | الأولوية |
+|---------|---------|----------|
+| عدم وجود Foreign Keys | فساد البيانات | 🔴 حرج |
+| عدم وجود Indexes | أداء سيء | 🔴 حرج |
+| عيب تصميم توفر المقاعد | منطق عمل معطل | 🔴 حرج |
+| نظام RBAC محدود | أمان ضعيف | 🟠 عالي |
+| عدم وجود نظام تخطيط | تجربة مستخدم سيئة | 🟠 عالي |
+
+---
+
+## المرحلة 0: التحضير والإعداد
+**المدة:** أسبوع واحد  
+**الهدف:** تجهيز البيئة وإعداد الفريق
+
+### 0.1 إعداد البيئة
+
+#### ✅ المهام:
+```bash
+# 1. إنشاء نسخة احتياطية كاملة
+pg_dump -h [host] -U [user] -d [database] > backup_pre_migration_$(date +%Y%m%d).sql
+
+# 2. إعداد بيئة تطوير منفصلة
+# - استنساخ قاعدة البيانات الإنتاجية
+# - إعداد بيئة staging
+
+# 3. إعداد أدوات المراقبة
+# - تفعيل pg_stat_statements
+# - إعداد monitoring dashboard
+```
+
+#### 📦 الأدوات المطلوبة:
+- PostgreSQL 14+ (أو الإصدار الحالي)
+- pgAdmin أو DBeaver للإدارة
+- Git لإدارة الإصدارات
+- أداة migration (مثل Flyway أو Liquibase)
+
+### 0.2 تحليل البيانات الحالية
+
+```sql
+-- فحص حجم البيانات
+SELECT 
+  schemaname,
+  tablename,
+  pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) AS size,
+  n_live_tup AS row_count
+FROM pg_stat_user_tables
+ORDER BY pg_total_relation_size(schemaname||'.'||tablename) DESC;
+
+-- فحص البيانات اليتيمة المحتملة
+SELECT 
+  COUNT(*) as orphaned_passengers
+FROM passengers p
+LEFT JOIN bookings b ON p.booking_id = b.booking_id
+WHERE b.booking_id IS NULL;
+```
+
+### 0.3 إعداد خطة الرجوع (Rollback Plan)
+
+```markdown
+## خطة الرجوع لكل مرحلة:
+
+1. **قبل كل مرحلة:**
+   - نسخة احتياطية كاملة
+   - توثيق الحالة الحالية
+   - اختبار خطة الرجوع
+
+2. **عند الفشل:**
+   - إيقاف جميع العمليات
+   - استعادة النسخة الاحتياطية
+   - تحليل السبب
+   - إعادة التخطيط
+```
+
+---
+
+## المرحلة 1: أساس سلامة البيانات
+**المدة:** أسبوعان (الأسبوع 2-3)  
+**الأولوية:** 🔴 حرجة
+
+### 1.1 إضافة قيود المفاتيح الأجنبية
+
+#### الأسبوع 2: الجداول الأساسية
+
+```sql
+-- ملف: migrations/001_add_core_foreign_keys.sql
+
+-- 1. user_roles
+ALTER TABLE user_roles 
+  ADD CONSTRAINT fk_user_roles_user 
+  FOREIGN KEY (user_id) REFERENCES auth.users(id) 
+  ON DELETE CASCADE;
+
+ALTER TABLE user_roles 
+  ADD CONSTRAINT fk_user_roles_partner 
+  FOREIGN KEY (partner_id) REFERENCES partners(partner_id) 
+  ON DELETE SET NULL;
+
+-- 2. partners
+ALTER TABLE partners 
+  ADD CONSTRAINT fk_partners_user 
+  FOREIGN KEY (user_id) REFERENCES users(user_id) 
+  ON DELETE RESTRICT;
+
+-- 3. drivers
+ALTER TABLE drivers 
+  ADD CONSTRAINT fk_drivers_partner 
+  FOREIGN KEY (partner_id) REFERENCES partners(partner_id) 
+  ON DELETE CASCADE;
+
+ALTER TABLE drivers 
+  ADD CONSTRAINT fk_drivers_user 
+  FOREIGN KEY (user_id) REFERENCES users(user_id) 
+  ON DELETE CASCADE;
+
+-- 4. buses
+ALTER TABLE buses 
+  ADD CONSTRAINT fk_buses_partner 
+  FOREIGN KEY (partner_id) REFERENCES partners(partner_id) 
+  ON DELETE CASCADE;
+
+-- 5. routes
+ALTER TABLE routes 
+  ADD CONSTRAINT fk_routes_partner 
+  FOREIGN KEY (partner_id) REFERENCES partners(partner_id) 
+  ON DELETE CASCADE;
+
+-- 6. trips
+ALTER TABLE trips 
+  ADD CONSTRAINT fk_trips_route 
+  FOREIGN KEY (route_id) REFERENCES routes(route_id) 
+  ON DELETE RESTRICT;
+
+ALTER TABLE trips 
+  ADD CONSTRAINT fk_trips_bus 
+  FOREIGN KEY (bus_id) REFERENCES buses(bus_id) 
+  ON DELETE SET NULL;
+
+ALTER TABLE trips 
+  ADD CONSTRAINT fk_trips_driver 
+  FOREIGN KEY (driver_id) REFERENCES drivers(driver_id) 
+  ON DELETE SET NULL;
+```
+
+#### الأسبوع 3: الجداول المالية والحجوزات
+
+```sql
+-- ملف: migrations/002_add_booking_financial_fks.sql
+
+-- 1. bookings
+ALTER TABLE bookings 
+  ADD CONSTRAINT fk_bookings_user 
+  FOREIGN KEY (user_id) REFERENCES users(user_id) 
+  ON DELETE RESTRICT;
+
+ALTER TABLE bookings 
+  ADD CONSTRAINT fk_bookings_trip 
+  FOREIGN KEY (trip_id) REFERENCES trips(trip_id) 
+  ON DELETE RESTRICT;
+
+-- 2. passengers
+ALTER TABLE passengers 
+  ADD CONSTRAINT fk_passengers_booking 
+  FOREIGN KEY (booking_id) REFERENCES bookings(booking_id) 
+  ON DELETE CASCADE;
+
+ALTER TABLE passengers 
+  ADD CONSTRAINT fk_passengers_seat 
+  FOREIGN KEY (seat_id) REFERENCES seats(seat_id) 
+  ON DELETE RESTRICT;
+
+-- 3. payment_transactions
+ALTER TABLE payment_transactions 
+  ADD CONSTRAINT fk_payment_transactions_booking 
+  FOREIGN KEY (booking_id) REFERENCES bookings(booking_id) 
+  ON DELETE RESTRICT;
+
+ALTER TABLE payment_transactions 
+  ADD CONSTRAINT fk_payment_transactions_user 
+  FOREIGN KEY (user_id) REFERENCES users(user_id) 
+  ON DELETE RESTRICT;
+
+-- 4. commissions
+ALTER TABLE commissions 
+  ADD CONSTRAINT fk_commissions_booking 
+  FOREIGN KEY (booking_id) REFERENCES bookings(booking_id) 
+  ON DELETE CASCADE;
+
+ALTER TABLE commissions 
+  ADD CONSTRAINT fk_commissions_partner 
+  FOREIGN KEY (partner_id) REFERENCES partners(partner_id) 
+  ON DELETE CASCADE;
+
+-- 5. refunds
+ALTER TABLE refunds 
+  ADD CONSTRAINT fk_refunds_booking 
+  FOREIGN KEY (booking_id) REFERENCES bookings(booking_id) 
+  ON DELETE RESTRICT;
+
+-- 6. notifications
+ALTER TABLE notifications 
+  ADD CONSTRAINT fk_notifications_user 
+  FOREIGN KEY (user_id) REFERENCES users(user_id) 
+  ON DELETE CASCADE;
+```
+
+### 1.2 إضافة القيود الفريدة
+
+```sql
+-- ملف: migrations/003_add_unique_constraints.sql
+
+-- 1. منع تكرار رخص السائقين
+ALTER TABLE drivers 
+  ADD CONSTRAINT uk_drivers_license_number 
+  UNIQUE (license_number);
+
+-- 2. منع تكرار لوحات الحافلات
+ALTER TABLE buses 
+  ADD CONSTRAINT uk_buses_license_plate 
+  UNIQUE (license_plate);
+
+-- 3. منع تكرار أرقام المقاعد لكل حافلة
+ALTER TABLE seats 
+  ADD CONSTRAINT uk_seats_bus_seat 
+  UNIQUE (bus_id, seat_number);
+
+-- 4. منع تكرار المسارات لكل شريك
+ALTER TABLE routes 
+  ADD CONSTRAINT uk_routes_partner_cities 
+  UNIQUE (partner_id, origin_city, destination_city);
+
+-- 5. منع تكرار أرقام الفواتير
+ALTER TABLE partner_invoices 
+  ADD CONSTRAINT uk_partner_invoices_number 
+  UNIQUE (invoice_number);
+
+-- 6. منع تكرار auth_id في users
+ALTER TABLE users 
+  ADD CONSTRAINT uk_users_auth_id 
+  UNIQUE (auth_id);
+```
+
+### 1.3 إضافة قيود CHECK
+
+```sql
+-- ملف: migrations/004_add_check_constraints.sql
+
+-- 1. التحقق من الأسعار الموجبة
+ALTER TABLE bookings 
+  ADD CONSTRAINT chk_bookings_total_price 
+  CHECK (total_price > 0);
+
+-- 2. التحقق من أوقات الرحلة المنطقية
+ALTER TABLE trips 
+  ADD CONSTRAINT chk_trips_times 
+  CHECK (arrival_time > departure_time);
+
+-- 3. التحقق من سعة الحافلة
+ALTER TABLE buses 
+  ADD CONSTRAINT chk_buses_capacity 
+  CHECK (capacity > 0 AND capacity <= 100);
+
+-- 4. التحقق من نطاق التقييمات
+ALTER TABLE ratings 
+  ADD CONSTRAINT chk_ratings_stars 
+  CHECK (stars >= 1 AND stars <= 5);
+
+-- 5. التحقق من نسب الاسترداد
+ALTER TABLE cancel_policies 
+  ADD CONSTRAINT chk_cancel_policies_refund 
+  CHECK (refund_percentage >= 0 AND refund_percentage <= 100);
+
+-- 6. التحقق من نسب العمولة
+ALTER TABLE partners 
+  ADD CONSTRAINT chk_partners_commission 
+  CHECK (commission_percentage >= 0 AND commission_percentage <= 100);
+
+-- 7. التحقق من مبالغ الاسترداد
+ALTER TABLE refunds 
+  ADD CONSTRAINT chk_refunds_amount 
+  CHECK (refund_amount > 0);
+```
+
+### 1.4 اختبار السلامة
+
+```sql
+-- ملف: tests/001_integrity_tests.sql
+
+-- اختبار 1: التحقق من عدم وجود بيانات يتيمة
+DO $$
+DECLARE
+  orphan_count INTEGER;
+BEGIN
+  -- فحص الركاب اليتامى
+  SELECT COUNT(*) INTO orphan_count
+  FROM passengers p
+  LEFT JOIN bookings b ON p.booking_id = b.booking_id
+  WHERE b.booking_id IS NULL;
+  
+  IF orphan_count > 0 THEN
+    RAISE EXCEPTION 'Found % orphaned passengers', orphan_count;
+  END IF;
+  
+  RAISE NOTICE 'All integrity tests passed!';
+END $$;
+```
+
+---
+
+## المرحلة 2: تحسين الأداء
+**المدة:** أسبوعان (الأسبوع 4-5)  
+**الأولوية:** 🔴 حرجة
+
+### 2.1 إنشاء الفهارس الحرجة
+
+#### الأسبوع 4: فهارس الاستعلامات الأساسية
+
+```sql
+-- ملف: migrations/005_create_core_indexes.sql
+
+-- 1. فهارس الحجوزات (استعلامات متكررة جدًا)
+CREATE INDEX idx_bookings_user_id 
+  ON bookings(user_id) 
+  WHERE booking_status != 'completed';
+
+CREATE INDEX idx_bookings_trip_id 
+  ON bookings(trip_id);
+
+CREATE INDEX idx_bookings_status_date 
+  ON bookings(booking_status, booking_date DESC);
+
+CREATE INDEX idx_bookings_reference 
+  ON bookings(booking_reference);
+
+-- 2. فهارس الرحلات (بحث وتصفية)
+CREATE INDEX idx_trips_departure_time 
+  ON trips(departure_time) 
+  WHERE status = 'scheduled';
+
+CREATE INDEX idx_trips_partner_status 
+  ON trips(partner_id, status);
+
+CREATE INDEX idx_trips_route_date 
+  ON trips(route_id, departure_time);
+
+-- 3. فهارس الركاب
+CREATE INDEX idx_passengers_booking_id 
+  ON passengers(booking_id);
+
+CREATE INDEX idx_passengers_trip_id 
+  ON passengers(trip_id);
+
+CREATE INDEX idx_passengers_status 
+  ON passengers(passenger_status) 
+  WHERE passenger_status = 'active';
+
+-- 4. فهارس المستخدمين والمصادقة
+CREATE INDEX idx_users_auth_id 
+  ON users(auth_id);
+
+CREATE INDEX idx_user_roles_user_id 
+  ON user_roles(user_id);
+
+CREATE INDEX idx_user_roles_partner_id 
+  ON user_roles(partner_id) 
+  WHERE partner_id IS NOT NULL;
+```
+
+#### الأسبوع 5: فهارس التقارير والتحليلات
+
+```sql
+-- ملف: migrations/006_create_analytics_indexes.sql
+
+-- 1. فهارس المعاملات المالية
+CREATE INDEX idx_payment_transactions_booking 
+  ON payment_transactions(booking_id);
+
+CREATE INDEX idx_payment_transactions_user_date 
+  ON payment_transactions(user_id, created_at DESC);
+
+CREATE INDEX idx_payment_transactions_status 
+  ON payment_transactions(payment_status, created_at DESC);
+
+-- 2. فهارس العمولات (تقارير الشركاء)
+CREATE INDEX idx_commissions_partner_date 
+  ON commissions(partner_id, created_at DESC);
+
+CREATE INDEX idx_commissions_booking 
+  ON commissions(booking_id);
+
+CREATE INDEX idx_commissions_status 
+  ON commissions(commission_status);
+
+-- 3. فهارس التقييمات
+CREATE INDEX idx_ratings_partner_id 
+  ON ratings(partner_id, created_at DESC);
+
+CREATE INDEX idx_ratings_driver_id 
+  ON ratings(driver_id, created_at DESC);
+
+CREATE INDEX idx_ratings_trip_id 
+  ON ratings(trip_id);
+
+-- 4. فهارس الإشعارات
+CREATE INDEX idx_notifications_user_unread 
+  ON notifications(user_id, is_read, created_at DESC) 
+  WHERE is_read = FALSE;
+
+-- 5. فهارس المسارات
+CREATE INDEX idx_routes_cities 
+  ON routes(origin_city, destination_city);
+
+CREATE INDEX idx_routes_partner_active 
+  ON routes(partner_id) 
+  WHERE is_active = TRUE;
+```
+
+### 2.2 تحسين سياسات RLS
+
+```sql
+-- ملف: migrations/007_optimize_rls_policies.sql
+
+-- إنشاء دالة مخبأة للحصول على user_id الحالي
+CREATE OR REPLACE FUNCTION get_current_user_id()
+RETURNS BIGINT
+LANGUAGE SQL
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT user_id 
+  FROM users 
+  WHERE auth_id = auth.uid() 
+  LIMIT 1;
+$$;
+
+-- تحديث سياسات RLS لاستخدام الدالة المحسنة
+DROP POLICY IF EXISTS "Users can view their own bookings" ON bookings;
+CREATE POLICY "Users can view their own bookings" ON bookings
+  FOR SELECT 
+  USING (user_id = get_current_user_id());
+
+DROP POLICY IF EXISTS "Users can view their own passengers" ON passengers;
+CREATE POLICY "Users can view their own passengers" ON passengers
+  FOR SELECT 
+  USING (
+    booking_id IN (
+      SELECT booking_id 
+      FROM bookings 
+      WHERE user_id = get_current_user_id()
+    )
+  );
+```
+
+### 2.3 قياس الأداء
+
+```sql
+-- ملف: tests/002_performance_tests.sql
+
+-- تفعيل تتبع الاستعلامات
+CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
+
+-- استعلام الحجوزات الأكثر شيوعًا
+EXPLAIN ANALYZE
+SELECT b.*, u.full_name, t.departure_time
+FROM bookings b
+JOIN users u ON b.user_id = u.user_id
+JOIN trips t ON b.trip_id = t.trip_id
+WHERE b.user_id = 123
+ORDER BY b.booking_date DESC
+LIMIT 20;
+
+-- يجب أن يكون وقت التنفيذ < 10ms
+```
+
+---
+
+## المرحلة 3: تعزيز الأمان
+**المدة:** أسبوع واحد (الأسبوع 6)  
+**الأولوية:** 🔴 حرجة
+
+### 3.1 إكمال تغطية RLS
+
+```sql
+-- ملف: migrations/008_complete_rls_coverage.sql
+
+-- 1. تفعيل RLS على الجداول المفقودة
+ALTER TABLE buses ENABLE ROW LEVEL SECURITY;
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE payment_transactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE refunds ENABLE ROW LEVEL SECURITY;
+ALTER TABLE conversations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
+
+-- 2. إضافة سياسات للحافلات
+CREATE POLICY "Partners can view their own buses" ON buses
+  FOR SELECT 
+  USING (
+    partner_id IN (
+      SELECT partner_id 
+      FROM user_roles 
+      WHERE user_id = get_current_user_id()
+    )
+  );
+
+CREATE POLICY "Partners can manage their own buses" ON buses
+  FOR ALL 
+  USING (
+    partner_id IN (
+      SELECT partner_id 
+      FROM user_roles 
+      WHERE user_id = get_current_user_id() 
+      AND role = 'partner'
+    )
+  );
+
+-- 3. إضافة سياسات للمستخدمين
+CREATE POLICY "Users can view own profile" ON users
+  FOR SELECT 
+  USING (auth_id = auth.uid());
+
+CREATE POLICY "Users can update own profile" ON users
+  FOR UPDATE 
+  USING (auth_id = auth.uid());
+
+-- 4. إضافة سياسات للمعاملات المالية
+CREATE POLICY "Users can view own payments" ON payment_transactions
+  FOR SELECT 
+  USING (user_id = get_current_user_id());
+
+CREATE POLICY "Admins can view all payments" ON payment_transactions
+  FOR SELECT 
+  USING (
+    EXISTS (
+      SELECT 1 FROM user_roles 
+      WHERE user_id = get_current_user_id() 
+      AND role = 'admin'
+    )
+  );
+
+-- 5. إضافة سياسات للمحادثات
+CREATE POLICY "Users can view own conversations" ON conversations
+  FOR SELECT 
+  USING (
+    user_id = get_current_user_id() 
+    OR partner_id IN (
+      SELECT partner_id 
+      FROM user_roles 
+      WHERE user_id = get_current_user_id()
+    )
+  );
+```
+
+### 3.2 تدقيق الأمان
+
+```sql
+-- ملف: tests/003_security_audit.sql
+
+-- فحص الجداول بدون RLS
+SELECT 
+  schemaname,
+  tablename,
+  rowsecurity
+FROM pg_tables
+WHERE schemaname = 'public'
+  AND rowsecurity = FALSE;
+
+-- يجب أن تكون النتيجة فارغة أو جداول lookup فقط
+```
+
+---
+
+## المرحلة 4: الميزات المتقدمة
+**المدة:** 4 أسابيع (الأسبوع 7-10)  
+**الأولوية:** 🟠 عالية
+
+### 4.1 نظام تخطيط الحافلات (الأسبوع 7-8)
+
+#### الأسبوع 7: إنشاء الجداول
+
+```sql
+-- ملف: migrations/009_bus_layout_system.sql
+
+-- 1. جدول فئات الحافلات
+CREATE TABLE bus_classes (
+  class_id SERIAL PRIMARY KEY,
+  name VARCHAR(50) UNIQUE NOT NULL,
+  description TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+INSERT INTO bus_classes (name, description) VALUES
+  ('VIP', 'مقاعد فاخرة مع مساحة إضافية'),
+  ('Standard', 'مقاعد قياسية مريحة'),
+  ('Economy', 'مقاعد اقتصادية');
+
+-- 2. جدول تخطيطات الحافلات
+CREATE TABLE bus_layouts (
+  layout_id SERIAL PRIMARY KEY,
+  partner_id BIGINT NOT NULL REFERENCES partners(partner_id) ON DELETE CASCADE,
+  name VARCHAR(100) NOT NULL,
+  description TEXT,
+  total_seats INTEGER NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  CONSTRAINT chk_bus_layouts_total_seats CHECK (total_seats > 0 AND total_seats <= 100)
+);
+
+CREATE INDEX idx_bus_layouts_partner ON bus_layouts(partner_id);
+
+-- 3. جدول مقاعد التخطيط
+CREATE TABLE bus_layout_seats (
+  layout_seat_id SERIAL PRIMARY KEY,
+  layout_id INTEGER NOT NULL REFERENCES bus_layouts(layout_id) ON DELETE CASCADE,
+  class_id INTEGER NOT NULL REFERENCES bus_classes(class_id),
+  seat_number VARCHAR(10) NOT NULL,
+  row_num INTEGER,
+  col_num INTEGER,
+  deck INTEGER NOT NULL DEFAULT 1,
+  is_window BOOLEAN DEFAULT FALSE,
+  is_aisle BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  CONSTRAINT uk_bus_layout_seats_layout_seat UNIQUE (layout_id, seat_number),
+  CONSTRAINT chk_bus_layout_seats_deck CHECK (deck >= 1 AND deck <= 3),
+  CONSTRAINT chk_bus_layout_seats_position CHECK (row_num > 0 AND col_num > 0)
+);
+
+CREATE INDEX idx_bus_layout_seats_layout ON bus_layout_seats(layout_id);
+CREATE INDEX idx_bus_layout_seats_class ON bus_layout_seats(class_id);
+
+-- 4. تعديل جدول الحافلات لربطه بالتخطيط
+ALTER TABLE buses 
+  ADD COLUMN layout_id INTEGER REFERENCES bus_layouts(layout_id);
+
+CREATE INDEX idx_buses_layout ON buses(layout_id);
+
+-- 5. حذف العمود is_available من seats (عيب التصميم)
+ALTER TABLE seats DROP COLUMN IF EXISTS is_available;
+
+-- 6. إضافة عمود layout_seat_id إلى seats
+ALTER TABLE seats 
+  ADD COLUMN layout_seat_id INTEGER REFERENCES bus_layout_seats(layout_seat_id);
+
+CREATE INDEX idx_seats_layout_seat ON seats(layout_seat_id);
+```
+
+#### الأسبوع 8: دوال مساعدة
+
+```sql
+-- ملف: migrations/010_bus_layout_functions.sql
+
+-- دالة لإنشاء مقاعد الرحلة من التخطيط
+CREATE OR REPLACE FUNCTION create_trip_seats_from_layout(
+  p_trip_id BIGINT,
+  p_bus_id BIGINT
+)
+RETURNS INTEGER
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  v_layout_id INTEGER;
+  v_seats_created INTEGER := 0;
+BEGIN
+  -- الحصول على layout_id من الحافلة
+  SELECT layout_id INTO v_layout_id
+  FROM buses
+  WHERE bus_id = p_bus_id;
+  
+  IF v_layout_id IS NULL THEN
+    RAISE EXCEPTION 'Bus % does not have a layout assigned', p_bus_id;
+  END IF;
+  
+  -- إنشاء المقاعد من التخطيط
+  INSERT INTO seats (bus_id, seat_number, layout_seat_id)
+  SELECT 
+    p_bus_id,
+    bls.seat_number,
+    bls.layout_seat_id
+  FROM bus_layout_seats bls
+  WHERE bls.layout_id = v_layout_id;
+  
+  GET DIAGNOSTICS v_seats_created = ROW_COUNT;
+  
+  RETURN v_seats_created;
+END;
+$$;
+
+-- دالة للحصول على المقاعد المتاحة لرحلة
+CREATE OR REPLACE FUNCTION get_available_seats_for_trip(p_trip_id BIGINT)
+RETURNS TABLE (
+  seat_id BIGINT,
+  seat_number VARCHAR,
+  class_name VARCHAR,
+  row_num INTEGER,
+  col_num INTEGER,
+  deck INTEGER,
+  is_window BOOLEAN,
+  is_aisle BOOLEAN
+)
+LANGUAGE SQL
+STABLE
+AS $$
+  SELECT 
+    s.seat_id,
+    s.seat_number,
+    bc.name AS class_name,
+    bls.row_num,
+    bls.col_num,
+    bls.deck,
+    bls.is_window,
+    bls.is_aisle
+  FROM seats s
+  JOIN bus_layout_seats bls ON s.layout_seat_id = bls.layout_seat_id
+  JOIN bus_classes bc ON bls.class_id = bc.class_id
+  JOIN trips t ON s.bus_id = t.bus_id
+  LEFT JOIN passengers p ON s.seat_id = p.seat_id 
+    AND p.trip_id = p_trip_id 
+    AND p.passenger_status = 'active'
+  WHERE t.trip_id = p_trip_id
+    AND p.passenger_id IS NULL;
+$$;
+```
+
+### 4.2 نظام الأسعار المرن (الأسبوع 9)
+
+```sql
+-- ملف: migrations/011_flexible_pricing_system.sql
+
+-- 1. جدول الأسعار
+CREATE TABLE fares (
+  fare_id BIGSERIAL PRIMARY KEY,
+  trip_id BIGINT NOT NULL REFERENCES trips(trip_id) ON DELETE CASCADE,
+  class_id INTEGER NOT NULL REFERENCES bus_classes(class_id),
+  price NUMERIC NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  CONSTRAINT uk_fares_trip_class UNIQUE (trip_id, class_id),
+  CONSTRAINT chk_fares_price CHECK (price > 0)
+);
+
+CREATE INDEX idx_fares_trip ON fares(trip_id);
+CREATE INDEX idx_fares_class ON fares(class_id);
+
+-- 2. إضافة price_at_booking إلى passengers
+ALTER TABLE passengers 
+  ADD COLUMN price_at_booking NUMERIC;
+
+-- 3. دالة لحساب سعر الحجز
+CREATE OR REPLACE FUNCTION calculate_booking_price(
+  p_trip_id BIGINT,
+  p_seat_ids BIGINT[]
+)
+RETURNS NUMERIC
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  v_total_price NUMERIC := 0;
+  v_seat_id BIGINT;
+  v_class_id INTEGER;
+  v_fare_price NUMERIC;
+BEGIN
+  FOREACH v_seat_id IN ARRAY p_seat_ids
+  LOOP
+    -- الحصول على فئة المقعد
+    SELECT bls.class_id INTO v_class_id
+    FROM seats s
+    JOIN bus_layout_seats bls ON s.layout_seat_id = bls.layout_seat_id
+    WHERE s.seat_id = v_seat_id;
+    
+    -- الحصول على السعر
+    SELECT price INTO v_fare_price
+    FROM fares
+    WHERE trip_id = p_trip_id AND class_id = v_class_id;
+    
+    IF v_fare_price IS NULL THEN
+      RAISE EXCEPTION 'No fare found for trip % and class %', p_trip_id, v_class_id;
+    END IF;
+    
+    v_total_price := v_total_price + v_fare_price;
+  END LOOP;
+  
+  RETURN v_total_price;
+END;
+$$;
+```
+
+### 4.3 نظام RBAC المتقدم (الأسبوع 10)
+
+```sql
+-- ملف: migrations/012_advanced_rbac_system.sql
+
+-- 1. جدول الصلاحيات
+CREATE TABLE permissions (
+  permission_id SERIAL PRIMARY KEY,
+  name VARCHAR(100) UNIQUE NOT NULL,
+  module VARCHAR(50) NOT NULL,
+  description_ar TEXT,
+  description_en TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 2. جدول ربط الأدوار بالصلاحيات
+CREATE TABLE role_permissions (
+  role_id BIGINT REFERENCES user_roles(id) ON DELETE CASCADE,
+  permission_id INTEGER REFERENCES permissions(permission_id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  PRIMARY KEY (role_id, permission_id)
+);
+
+-- 3. إدراج الصلاحيات الأساسية
+INSERT INTO permissions (name, module, description_ar, description_en) VALUES
+  -- صلاحيات الرحلات
+  ('trip:create', 'trip', 'إنشاء رحلات جديدة', 'Create new trips'),
+  ('trip:read_all', 'trip', 'عرض جميع الرحلات', 'View all trips'),
+  ('trip:read_own', 'trip', 'عرض الرحلات الخاصة', 'View own trips'),
+  ('trip:update', 'trip', 'تعديل الرحلات', 'Update trips'),
+  ('trip:cancel', 'trip', 'إلغاء الرحلات', 'Cancel trips'),
+  
+  -- صلاحيات الحجوزات
+  ('booking:create', 'booking', 'إنشاء حجز جديد', 'Create booking'),
+  ('booking:read_own', 'booking', 'عرض الحجوزات الخاصة', 'View own bookings'),
+  ('booking:read_all', 'booking', 'عرض جميع الحجوزات', 'View all bookings'),
+  ('booking:cancel', 'booking', 'إلغاء الحجوزات', 'Cancel bookings'),
+  
+  -- صلاحيات المستخدمين
+  ('user:read_all', 'user', 'عرض جميع المستخدمين', 'View all users'),
+  ('user:update_role', 'user', 'تعديل أدوار المستخدمين', 'Update user roles'),
+  
+  -- صلاحيات الإدارة
+  ('admin:full_access', 'admin', 'وصول كامل للنظام', 'Full system access'),
+  ('partners:review', 'partners', 'مراجعة طلبات الشركاء', 'Review partner applications'),
+  ('partners:manage', 'partners', 'إدارة الشركاء', 'Manage partners'),
+  
+  -- صلاحيات الشركاء
+  ('bus:create', 'partner_fleet', 'إضافة حافلة جديدة', 'Add new bus'),
+  ('bus:read_own', 'partner_fleet', 'عرض الحافلات الخاصة', 'View own buses'),
+  ('bus:update_own', 'partner_fleet', 'تعديل الحافلات الخاصة', 'Update own buses'),
+  ('driver:create', 'partner_team', 'إضافة سائق جديد', 'Add new driver'),
+  ('driver:read_own', 'partner_team', 'عرض السائقين', 'View drivers'),
+  
+  -- صلاحيات التقارير
+  ('analytics:view_own', 'partner_reports', 'عرض التحليلات الخاصة', 'View own analytics'),
+  ('settlements:read_own', 'partner_reports', 'عرض التسويات المالية', 'View settlements');
+
+-- 4. دالة للتحقق من الصلاحيات
+CREATE OR REPLACE FUNCTION has_permission(
+  p_user_id BIGINT,
+  p_permission_name VARCHAR
+)
+RETURNS BOOLEAN
+LANGUAGE SQL
+STABLE
+AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM user_roles ur
+    JOIN role_permissions rp ON ur.id = rp.role_id
+    JOIN permissions p ON rp.permission_id = p.permission_id
+    WHERE ur.user_id = p_user_id
+      AND p.name = p_permission_name
+  );
+$$;
+```
+
+---
+
+## المرحلة 5: التحضير لقابلية التوسع
+**المدة:** أسبوعان (الأسبوع 11-12)  
+**الأولوية:** 🟡 متوسطة
+
+### 5.1 تقسيم الجداول الكبيرة
+
+```sql
+-- ملف: migrations/013_table_partitioning.sql
+
+-- 1. تقسيم جدول الحجوزات حسب الشهر
+CREATE TABLE bookings_partitioned (
+  LIKE bookings INCLUDING ALL
+) PARTITION BY RANGE (booking_date);
+
+-- إنشاء أقسام للأشهر القادمة
+CREATE TABLE bookings_2026_01 PARTITION OF bookings_partitioned
+  FOR VALUES FROM ('2026-01-01') TO ('2026-02-01');
+
+CREATE TABLE bookings_2026_02 PARTITION OF bookings_partitioned
+  FOR VALUES FROM ('2026-02-01') TO ('2026-03-01');
+
+-- ... إنشاء أقسام للأشهر المتبقية
+
+-- 2. ترحيل البيانات الموجودة
+-- (يتم تنفيذها في وقت الصيانة)
+
+-- 3. تقسيم جدول الإشعارات
+CREATE TABLE notifications_partitioned (
+  LIKE notifications INCLUDING ALL
+) PARTITION BY RANGE (created_at);
+```
+
+### 5.2 استراتيجية الأرشفة
+
+```sql
+-- ملف: migrations/014_archiving_strategy.sql
+
+-- 1. جدول أرشيف الحجوزات القديمة
+CREATE TABLE bookings_archive (
+  LIKE bookings INCLUDING ALL
+);
+
+-- 2. دالة الأرشفة التلقائية
+CREATE OR REPLACE FUNCTION archive_old_bookings()
+RETURNS INTEGER
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  v_archived_count INTEGER;
+BEGIN
+  -- نقل الحجوزات الأقدم من سنة إلى الأرشيف
+  WITH archived AS (
+    DELETE FROM bookings
+    WHERE booking_date < CURRENT_DATE - INTERVAL '1 year'
+      AND booking_status IN ('completed', 'cancelled')
+    RETURNING *
+  )
+  INSERT INTO bookings_archive
+  SELECT * FROM archived;
+  
+  GET DIAGNOSTICS v_archived_count = ROW_COUNT;
+  
+  RETURN v_archived_count;
+END;
+$$;
+
+-- 3. جدولة الأرشفة الشهرية
+-- (يتم تنفيذها عبر pg_cron أو cron job خارجي)
+```
+
+---
+
+## المرحلة 6: التحسين والتوثيق
+**المدة:** 4 أسابيع (الأسبوع 13-16)  
+**الأولوية:** 🟢 منخفضة
+
+### 6.1 الميزات الإضافية (الأسبوع 13-14)
+
+```sql
+-- ملف: migrations/015_additional_features.sql
+
+-- 1. نظام المدن والدول
+CREATE TABLE countries (
+  country_id SMALLSERIAL PRIMARY KEY,
+  name VARCHAR(100) NOT NULL,
+  code VARCHAR(10) NOT NULL UNIQUE,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE cities (
+  city_id SERIAL PRIMARY KEY,
+  country_id SMALLINT REFERENCES countries(country_id),
+  name VARCHAR(100) NOT NULL,
+  name_ar VARCHAR(100),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- إدراج البيانات الأساسية
+INSERT INTO countries (name, code) VALUES
+  ('Saudi Arabia', 'SA'),
+  ('Yemen', 'YE');
+
+INSERT INTO cities (country_id, name, name_ar) VALUES
+  (1, 'Riyadh', 'الرياض'),
+  (1, 'Jeddah', 'جدة'),
+  (1, 'Dammam', 'الدمام'),
+  (2, 'Sana''a', 'صنعاء'),
+  (2, 'Aden', 'عدن'),
+  (2, 'Taiz', 'تعز');
+
+-- 2. نظام الركاب المحفوظين
+CREATE TABLE saved_passengers (
+  saved_passenger_id BIGSERIAL PRIMARY KEY,
+  user_id BIGINT NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  full_name VARCHAR(100) NOT NULL,
+  gender VARCHAR(20),
+  nationality VARCHAR(50),
+  document_type VARCHAR(50),
+  document_number VARCHAR(50),
+  date_of_birth DATE,
+  relationship VARCHAR(50),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_saved_passengers_user ON saved_passengers(user_id);
+
+-- 3. نظام الجداول الزمنية
+CREATE TABLE schedules (
+  schedule_id SERIAL PRIMARY KEY,
+  partner_id BIGINT NOT NULL REFERENCES partners(partner_id) ON DELETE CASCADE,
+  route_id BIGINT NOT NULL REFERENCES routes(route_id),
+  schedule_name VARCHAR(150) NOT NULL,
+  departure_time TIME NOT NULL,
+  duration_minutes INTEGER NOT NULL,
+  is_active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE schedule_recurrence_rules (
+  rule_id SERIAL PRIMARY KEY,
+  schedule_id INTEGER NOT NULL REFERENCES schedules(schedule_id) ON DELETE CASCADE,
+  recurrence_type VARCHAR(20) CHECK (recurrence_type IN ('Daily', 'Weekly')),
+  day_of_week SMALLINT CHECK (day_of_week BETWEEN 0 AND 6),
+  start_date DATE NOT NULL,
+  end_date DATE,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 4. نظام التسويات المالية
+CREATE TABLE partner_settlements (
+  settlement_id BIGSERIAL PRIMARY KEY,
+  partner_id BIGINT NOT NULL REFERENCES partners(partner_id) ON DELETE CASCADE,
+  amount NUMERIC NOT NULL,
+  status VARCHAR(20) CHECK (status IN ('Pending', 'Paid', 'Failed')),
+  period_start_date DATE NOT NULL,
+  period_end_date DATE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  paid_at TIMESTAMPTZ,
+  CONSTRAINT chk_partner_settlements_amount CHECK (amount >= 0)
+);
+
+CREATE INDEX idx_partner_settlements_partner ON partner_settlements(partner_id);
+CREATE INDEX idx_partner_settlements_status ON partner_settlements(status);
+```
+
+### 6.2 التوثيق الشامل (الأسبوع 15)
+
+```markdown
+## ملف: docs/DATABASE_DOCUMENTATION.md
+
+# توثيق قاعدة البيانات - نظام حجز الحافلات
+
+## نظرة عامة
+هذا التوثيق يغطي جميع جداول قاعدة البيانات، العلاقات، القيود، والدوال.
+
+## الجداول الرئيسية
+
+### 1. users
+**الوصف:** معلومات المستخدمين الأساسية
+
+| العمود | النوع | الوصف | القيود |
+|--------|------|-------|--------|
+| user_id | BIGINT | المعرف الفريد | PK, AUTO |
+| auth_id | UUID | معرف المصادقة | FK → auth.users, UNIQUE |
+| full_name | VARCHAR | الاسم الكامل | NOT NULL |
+| email | VARCHAR | البريد الإلكتروني | UNIQUE |
+| phone | VARCHAR | رقم الهاتف | |
+
+**العلاقات:**
+- ← user_roles (one-to-many)
+- ← bookings (one-to-many)
+- ← saved_passengers (one-to-many)
+
+### 2. bookings
+**الوصف:** حجوزات المستخدمين
+
+[... توثيق تفصيلي لكل جدول ...]
+
+## الدوال المساعدة
+
+### get_current_user_id()
+**الوصف:** الحصول على user_id للمستخدم الحالي
+**الاستخدام:**
+```sql
+SELECT * FROM bookings WHERE user_id = get_current_user_id();
+```
+
+[... توثيق جميع الدوال ...]
+```
+
+### 6.3 الاختبار الشامل (الأسبوع 16)
+
+```sql
+-- ملف: tests/004_comprehensive_tests.sql
+
+-- 1. اختبار السلامة الشاملة
+DO $$
+BEGIN
+  -- فحص جميع Foreign Keys
+  PERFORM 1 FROM information_schema.table_constraints
+  WHERE constraint_type = 'FOREIGN KEY'
+  HAVING COUNT(*) >= 40;
+  
+  -- فحص جميع Indexes
+  PERFORM 1 FROM pg_indexes
+  WHERE schemaname = 'public'
+  HAVING COUNT(*) >= 50;
+  
+  RAISE NOTICE 'All comprehensive tests passed!';
+END $$;
+
+-- 2. اختبار الأداء
+-- (يجب تنفيذها على بيانات حقيقية)
+
+-- 3. اختبار الأمان
+-- (فحص جميع سياسات RLS)
+```
+
+---
+
+## معايير النجاح
+
+### مؤشرات الأداء الرئيسية (KPIs)
+
+| المؤشر | الهدف | الطريقة |
+|--------|-------|---------|
+| **سلامة البيانات** | 100% (لا بيانات يتيمة) | استعلامات فحص يومية |
+| **وقت استجابة الاستعلامات** | < 100ms للاستعلامات الأساسية | pg_stat_statements |
+| **تغطية RLS** | 100% للجداول الحساسة | فحص pg_policies |
+| **توفر النظام** | 99.9% | مراقبة uptime |
+| **رضا المستخدمين** | > 4.5/5 | استطلاعات دورية |
+
+### معايير القبول لكل مرحلة
+
+#### المرحلة 1: سلامة البيانات
+- ✅ جميع Foreign Keys مضافة
+- ✅ جميع Unique Constraints مضافة
+- ✅ لا بيانات يتيمة
+- ✅ جميع الاختبارات تمر بنجاح
+
+#### المرحلة 2: الأداء
+- ✅ جميع الفهارس الحرجة مضافة
+- ✅ وقت استجابة < 100ms
+- ✅ تحسين سياسات RLS
+- ✅ قياسات الأداء موثقة
+
+#### المرحلة 3: الأمان
+- ✅ RLS مفعل على جميع الجداول
+- ✅ جميع السياسات مختبرة
+- ✅ لا ثغرات أمنية
+- ✅ تدقيق أمني كامل
+
+---
+
+## إدارة المخاطر
+
+### المخاطر المحتملة
+
+| المخاطرة | الاحتمالية | التأثير | خطة التخفيف |
+|----------|------------|---------|--------------|
+| **فقدان البيانات** | منخفض | حرج | نسخ احتياطية يومية + اختبار الاستعادة |
+| **توقف الخدمة** | متوسط | عالي | تنفيذ في وقت الصيانة + خطة رجوع |
+| **مشاكل الأداء** | متوسط | متوسط | اختبار على بيئة staging أولاً |
+| **تعارض البيانات** | منخفض | عالي | قفل الجداول أثناء الترحيل |
+| **نقص الموارد** | متوسط | متوسط | تخطيط مسبق + فريق احتياطي |
+
+### خطة الطوارئ
+
+```markdown
+## في حالة الفشل:
+
+1. **إيقاف فوري** لجميع العمليات
+2. **تقييم الضرر** والتأثير
+3. **استعادة من النسخة الاحتياطية** إذا لزم الأمر
+4. **تحليل السبب الجذري**
+5. **تعديل الخطة** وإعادة المحاولة
+6. **توثيق الدروس المستفادة**
+```
+
+---
+
+## الخلاصة
+
+هذه الخطة الشاملة تحول نظام حجز الحافلات إلى منصة **متكاملة، آمنة، وقابلة للتوسع** خلال **16 أسبوع**.
+
+### الجدول الزمني الملخص:
+
+| المرحلة | المدة | الأولوية | النتائج الرئيسية |
+|---------|-------|----------|-------------------|
+| 0 | 1 أسبوع | تحضيري | بيئة جاهزة + نسخ احتياطية |
+| 1 | 2 أسبوع | 🔴 حرج | سلامة بيانات كاملة |
+| 2 | 2 أسبوع | 🔴 حرج | أداء محسّن |
+| 3 | 1 أسبوع | 🔴 حرج | أمان معزز |
+| 4 | 4 أسبوع | 🟠 عالي | ميزات متقدمة |
+| 5 | 2 أسبوع | 🟡 متوسط | قابلية توسع |
+| 6 | 4 أسبوع | 🟢 منخفض | توثيق + اختبار |
+
+### الخطوات التالية:
+
+1. ✅ مراجعة الخطة مع الفريق
+2. ✅ الموافقة على الميزانية والموارد
+3. ✅ البدء بالمرحلة 0 (التحضير)
+4. ✅ تنفيذ المراحل بالترتيب
+5. ✅ مراقبة مستمرة وتعديل حسب الحاجة
+
+**🎯 الهدف النهائي:** نظام حجز حافلات عالمي المستوى يجمع بين الأمان والأداء والميزات المتقدمة!
+
+---
+
+**نهاية خطة التحسين الشاملة**

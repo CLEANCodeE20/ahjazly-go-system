@@ -26,7 +26,7 @@ const ProtectedRoute = ({
       }
 
       // Check account status
-      if (userStatus && userStatus !== 'active' && userRole?.role !== 'admin') {
+      if (userStatus && userStatus !== 'active' && userRole?.role !== 'SUPERUSER') {
         console.log("ProtectedRoute: Inactive user", userStatus);
         navigate('/login');
         return;
@@ -39,9 +39,9 @@ const ProtectedRoute = ({
         if (!userRole || !allowedRoles.includes(userRole.role)) {
           console.log("ProtectedRoute: Role mismatch or missing");
           // Redirect based on user's actual role
-          if (userRole?.role === 'admin') {
+          if (userRole?.role === 'SUPERUSER') {
             navigate('/admin');
-          } else if (userRole?.role === 'partner' || userRole?.role === 'employee') {
+          } else if (userRole?.role === 'PARTNER_ADMIN' || ['manager', 'accountant', 'support', 'supervisor', 'driver', 'assistant'].includes(userRole?.role || '')) {
             navigate('/dashboard');
           } else {
             navigate('/login');
@@ -72,7 +72,7 @@ const ProtectedRoute = ({
     }
   }
 
-  if (userStatus && userStatus !== 'active' && userRole?.role !== 'admin' && !window.location.pathname.includes('2fa-')) {
+  if (userStatus && userStatus !== 'active' && userRole?.role !== 'SUPERUSER' && !window.location.pathname.includes('2fa-')) {
     return null;
   }
 

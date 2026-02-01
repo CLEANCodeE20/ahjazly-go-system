@@ -26,7 +26,8 @@ import {
   DollarSign,
   Info,
   ShieldCheck,
-  History
+  History,
+  Plus
 } from "lucide-react";
 import { useExport } from "@/hooks/useExport";
 import {
@@ -57,6 +58,7 @@ import TicketPrint from "@/components/TicketPrint";
 import { useReactToPrint } from "react-to-print";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { usePartner } from "@/hooks/usePartner";
+import { usePermissions } from "@/hooks/usePermissions";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -64,10 +66,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/hooks/useAuth";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useWallet } from "@/hooks/useWallet";
 
 const BookingsManagement = () => {
   const { partner } = usePartner();
   const { isAdmin } = useAuth();
+  const { can } = usePermissions();
+  const { wallet } = useWallet();
 
   // State
   const [page, setPage] = useState(1);
@@ -200,6 +205,10 @@ const BookingsManagement = () => {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => window.location.href = '/dashboard/advanced-reports?type=bookings'}>
+              <FileText className="w-4 h-4 ml-2 text-blue-600" />
+              تقرير تفصيلي
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={() => { }}>
               <FileSpreadsheet className="w-4 h-4 ml-2 text-green-600" />
               Excel
@@ -397,7 +406,7 @@ const BookingsManagement = () => {
                             <Eye className="w-4 h-4 text-blue-600" />
                           </Button>
                           {/* Pending Actions: Approve / Reject */}
-                          {booking.booking_status === 'pending' && (
+                          {booking.booking_status === 'pending' && can('bookings.manage') && (
                             <>
                               <Button
                                 size="icon"
@@ -425,7 +434,7 @@ const BookingsManagement = () => {
                           )}
 
                           {/* Confirmed but Unpaid: Payment Action */}
-                          {booking.booking_status === 'confirmed' && booking.payment_status === 'pending' && (
+                          {booking.booking_status === 'confirmed' && booking.payment_status === 'pending' && can('bookings.manage') && (
                             <Button
                               size="icon"
                               variant="ghost"
@@ -440,7 +449,7 @@ const BookingsManagement = () => {
                           )}
 
                           {/* Paid/Confirmed: Cancellation/Refund Action */}
-                          {booking.booking_status === 'confirmed' && booking.payment_status === 'paid' && (
+                          {booking.booking_status === 'confirmed' && booking.payment_status === 'paid' && can('bookings.manage') && (
                             <Button
                               size="icon"
                               variant="ghost"
@@ -718,12 +727,21 @@ const BookingsManagement = () => {
                   <SelectItem value="cash">نقداً</SelectItem>
                   <SelectItem value="bank_transfer">تحويل بنكي</SelectItem>
                   <SelectItem value="kareemi">الكريمي (أصيل)</SelectItem>
-                  <SelectItem value="wallet">محفظة إلكترونية</SelectItem>
+                  <SelectItem value="wallet">محفظة إلكترونية (رصيد المكتب)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
-            {paymentMethod !== 'cash' && (
+            {paymentMethod === 'wallet' && (
+              <div className="p-3 bg-primary/5 border border-primary/20 rounded-lg flex justify-between items-center">
+                <span className="text-xs">رصيد المحفظة الحالي:</span>
+                <span className="font-bold text-primary">
+                  {wallet?.balance?.toLocaleString() || '0'} {wallet?.currency || 'ر.س'}
+                </span>
+              </div>
+            )}
+
+            {paymentMethod !== 'cash' && paymentMethod !== 'wallet' && (
               <div className="space-y-2">
                 <Label>رقم الإيصال / المرجع</Label>
                 <Input
@@ -865,4 +883,3 @@ const BookingsManagement = () => {
 };
 
 export default BookingsManagement;
-

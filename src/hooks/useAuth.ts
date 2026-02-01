@@ -6,11 +6,24 @@ import { supabase } from '@/integrations/supabase/client';
 import { useFCM } from './useFCM';
 import { ErrorLogger } from '@/utils/ErrorLogger';
 
-export type AppRole = 'admin' | 'partner' | 'employee';
+export type AppRole =
+  | 'SUPERUSER'
+  | 'PARTNER_ADMIN'
+  | 'manager'
+  | 'accountant'
+  | 'support'
+  | 'supervisor'
+  | 'driver'
+  | 'assistant'
+  | 'TRAVELER'
+  | 'DRIVER'
+  | 'AGENT'
+  | 'CUSTOMER_SUPPORT';
 
 interface UserRole {
   role: AppRole;
   partner_id: number | null;
+  auth_id: string | null;
 }
 
 interface AuthState {
@@ -84,65 +97,60 @@ export const useAuth = () => {
   }, []);
 
   const fetchUserRole = async (userId: string, retries = 5, delay = 200) => {
-    // Optimization: Skip redundant calls if we already have the role for this user
-    if (authState.userRole && authState.user?.id === userId && !authState.isLoading) {
-      console.log('[Auth] Already resolved role for this user, skipping.');
-      return;
-    }
-
     try {
-      console.log(`[Auth] Fetching role for ${userId}...`);
+      console.log(`[Auth] Resolving identity for ${userId}...`);
 
-      // 1. Fetch role from user_roles
-      const { data: roleData, error: roleError } = await supabase
-        .from('user_roles')
-        .select('role, partner_id')
-        .eq('user_id', userId)
-        .maybeSingle();
+      // 1. JWT Claims Check (The Gold Standard - Instant)
+      const { data: { session } } = await supabase.auth.getSession();
+      const jwtRole = session?.user?.app_metadata?.role as AppRole | undefined;
 
-      if (roleError) console.error('[Auth] user_roles fetch error:', roleError);
-
-      // 2. Fetch profile from users (for status and fallback role)
+      // 2. Database Fetch (Parallel fallback & Extra data)
       const { data: userData, error: userError } = await supabase
         .from('users')
-        .select('user_id, user_type, account_status, partner_id')
+        .select('account_status, partner_id') // Removed user_id and user_type
         .eq('auth_id', userId)
         .maybeSingle();
 
-      if (userError) console.error('[Auth] users fetch error:', userError);
+      if (userError) console.error('[Auth] Profile fetch error:', userError);
 
-      // 3. Fallback logic: If user_roles is missing but users table has user_type
-      let finalRole: AppRole | null = (roleData && roleData.role) ? (roleData.role as AppRole) : null;
-      let finalPartnerId = roleData?.partner_id || userData?.partner_id || null;
+      // 3. Fallback/Supplement from user_roles
+      let finalRole: AppRole | null = jwtRole || null;
+      let rolePartnerId: number | null = null;
 
-      if (!finalRole && userData && (userData as any).user_type) {
-        const userType = (userData as any).user_type;
-        console.warn(`[Auth] Role missing in user_roles, falling back to user_type: ${userType}`);
-        // Map user_type to app_role
-        if (userType === 'admin') finalRole = 'admin';
-        else if (userType === 'partner') finalRole = 'partner';
-        else finalRole = 'employee';
+      // Always fetch from user_roles to get partner_id even if role is in JWT
+      const { data: roleData } = await supabase
+        .from('user_roles')
+        .select('role, partner_id')
+        .eq('auth_id', userId) // Changed from user_id to auth_id
+        .maybeSingle();
+
+      if (roleData) {
+        if (!finalRole) finalRole = roleData.role as AppRole;
+        rolePartnerId = roleData.partner_id;
       }
 
-      // 4. Retry logic if nothing found yet
-      // Only retry if we found a user data record but no role info could be determined
-      // This prevents infinite loops if the user actually doesn't exist
-      if (!finalRole && retries > 0 && userData) {
-        console.log(`[Auth] Role undeterminable but user exists, retrying in ${delay}ms... (${retries} left)`);
+      // 4. Identification logic
+      // Priority: users table (profile) -> user_roles table -> null
+      let finalPartnerId = userData?.partner_id || rolePartnerId || null;
+
+      // 5. Retry logic if essential data is missing (only if no role found at all)
+      if (!finalRole && !userData && retries > 0) {
+        console.log(`[Auth] Profile not found yet, retrying... (${retries} left)`);
         setTimeout(() => fetchUserRole(userId, retries - 1, delay * 1.5), delay);
         return;
       }
 
       setAuthState(prev => ({
         ...prev,
-        userRole: finalRole ? { role: finalRole, partner_id: finalPartnerId } : null,
+        userRole: finalRole ? {
+          role: finalRole,
+          partner_id: finalPartnerId,
+          auth_id: userId // Renamed from user_id to auth_id
+        } : null,
         userStatus: userData?.account_status || 'active',
         isLoading: false,
       }));
 
-      // NOTE: We do NOT request permission automatically here anymore.
-      // Browsers block programmatic permission requests.
-      // It must be triggered by a user gesture (e.g. clicking a button).
     } catch (err) {
       console.error('[Auth] Critical error in fetchUserRole:', err);
       setAuthState(prev => ({ ...prev, isLoading: false }));
@@ -219,9 +227,9 @@ export const useAuth = () => {
     return authState.userRole?.role === role;
   };
 
-  const isAdmin = (): boolean => hasRole('admin');
-  const isPartner = (): boolean => hasRole('partner');
-  const isEmployee = (): boolean => hasRole('employee');
+  const isAdmin = () => authState.userRole?.role === 'SUPERUSER';
+  const isPartner = () => authState.userRole?.role === 'PARTNER_ADMIN';
+  const isEmployee = () => ['manager', 'accountant', 'support', 'supervisor', 'driver', 'assistant'].includes(authState.userRole?.role || '');
 
   return {
     ...authState,

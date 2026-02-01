@@ -45,10 +45,10 @@ serve(async (req) => {
             throw new Error("Unauthorized");
         }
 
-        // Get user_id and partner_id from users table
+        // Get partner_id from users table
         const { data: userData, error: userDataError } = await supabaseClient
             .from("users")
-            .select("user_id, partner_id, user_type")
+            .select("partner_id, user_type")
             .eq("auth_id", user.id)
             .single();
 
@@ -61,7 +61,7 @@ serve(async (req) => {
             throw new Error("Only partners and employees can respond to ratings");
         }
 
-        const userId = userData.user_id;
+        const userId = user.id; // Use auth_id
         const partnerId = userData.partner_id;
 
         // Parse request body
@@ -113,7 +113,7 @@ serve(async (req) => {
             .insert({
                 rating_id: body.rating_id,
                 partner_id: partnerId,
-                responder_user_id: userId,
+                auth_id: userId, // Updated to auth_id
                 response_text: body.response_text.trim(),
             })
             .select()

@@ -1,0 +1,1403 @@
+# Database Schema Audit Report
+## Bus Booking System - Comprehensive Analysis
+
+**Audit Date:** 2026-01-26  
+**Database System:** PostgreSQL (Supabase)  
+**Auditor Role:** Senior Database Architect & Data Integrity Specialist
+
+---
+
+## Executive Summary
+
+This audit evaluates the database schema for a multi-tenant bus booking platform. The schema demonstrates **moderate maturity** with several strengths in security (RLS policies) and business logic (cancellation policies, commission tracking). However, **critical structural issues** exist that compromise data integrity, create performance risks, and violate normalization principles.
+
+**Overall Assessment:** ⚠️ **REQUIRES IMMEDIATE ATTENTION**
+
+---
+
+## 1. Table Linking and Operational Integrity
+
+### 1.1 Missing Foreign Key Constraints
+
+> [!CAUTION]
+> **CRITICAL ISSUE:** The schema defines NO explicit foreign key constraints despite having numerous relational dependencies. This is a severe violation of relational database best practices.
+
+#### Identified Missing Foreign Keys:
+
+| Child Table | Column | Should Reference | Impact |
+|------------|--------|------------------|--------|
+| `user_roles` | `user_id` | `auth.users(id)` | Orphaned role records possible |
+| `user_roles` | `partner_id` | `partners(partner_id)` | Invalid partner references |
+| `partners` | No FK | N/A | Isolated table (acceptable) |
+| `partner_applications` | `auth_user_id` | `auth.users(id)` | Orphaned applications |
+| `partner_applications` | `partner_id` | `partners(partner_id)` | Invalid partner links |
+| `partner_applications` | `reviewed_by` | `auth.users(id)` | Invalid reviewer references |
+| `branches` | `partner_id` | `partners(partner_id)` | Orphaned branches |
+| `users` | `auth_id` | `auth.users(id)` | Profile/auth mismatch |
+| `employees` | `user_id` | `users(user_id)` | Invalid user references |
+| `employees` | `partner_id` | `partners(partner_id)` | Invalid partner references |
+| `employees` | `branch_id` | `branches(branch_id)` | Invalid branch references |
+| `drivers` | `partner_id` | `partners(partner_id)` | Orphaned drivers |
+| `buses` | `bus_class_id` | `bus_classes(bus_class_id)` | Invalid class references |
+| `buses` | `partner_id` | `partners(partner_id)` | Orphaned buses |
+| `buses` | `owner_user_id` | `users(user_id)` | Invalid owner references |
+| `seats` | `bus_id` | `buses(bus_id)` | Orphaned seats |
+| `routes` | `partner_id` | `partners(partner_id)` | Invalid route ownership |
+| `route_stops` | `route_id` | `routes(route_id)` | Orphaned stops |
+| `trips` | `route_id` | `routes(route_id)` | Invalid route references |
+| `trips` | `bus_id` | `buses(bus_id)` | Invalid bus assignments |
+| `trips` | `driver_id` | `drivers(driver_id)` | Invalid driver assignments |
+| `trips` | `partner_id` | `partners(partner_id)` | Invalid partner ownership |
+| `cancel_policies` | `partner_id` | `partners(partner_id)` | Invalid policy ownership |
+| `cancel_policy_rules` | `cancel_policy_id` | `cancel_policies(cancel_policy_id)` | Orphaned rules |
+| `bookings` | `user_id` | `users(user_id)` | Invalid user bookings |
+| `bookings` | `trip_id` | `trips(trip_id)` | Invalid trip bookings |
+| `bookings` | `cancel_policy_id` | `cancel_policies(cancel_policy_id)` | Invalid policy references |
+| `passengers` | `booking_id` | `bookings(booking_id)` | Orphaned passengers |
+| `passengers` | `trip_id` | `trips(trip_id)` | Invalid trip references |
+| `passengers` | `seat_id` | `seats(seat_id)` | Invalid seat assignments |
+| `passengers` | `cancellation_id` | `booking_cancellations(cancellation_id)` | Invalid cancellation links |
+| `booking_boarding_stop` | `booking_id` | `bookings(booking_id)` | Orphaned boarding stops |
+| `booking_boarding_stop` | `stop_id` | `route_stops(stop_id)` | Invalid stop references |
+| `booking_cancellations` | `booking_id` | `bookings(booking_id)` | Orphaned cancellations |
+| `booking_cancellations` | `cancel_policy_id` | `cancel_policies(cancel_policy_id)` | Invalid policy references |
+| `booking_cancellations` | `rule_id` | `cancel_policy_rules(rule_id)` | Invalid rule references |
+| `booking_cancellations` | `cancelled_by_user_id` | `users(user_id)` | Invalid user references |
+| `booking_approvals` | `booking_id` | `bookings(booking_id)` | Orphaned approvals |
+| `booking_approvals` | `employee_id` | `employees(employee_id)` | Invalid employee references |
+| `commissions` | `booking_id` | `bookings(booking_id)` | Orphaned commissions |
+| `commissions` | `partner_id` | `partners(partner_id)` | Invalid partner references |
+| `commissions` | `trip_id` | `trips(trip_id)` | Invalid trip references |
+| `commissions` | `calculated_by` | `users(user_id)` | Invalid user references |
+| `booking_ledger` | `booking_id` | `bookings(booking_id)` | Orphaned ledger entries |
+| `booking_ledger` | `partner_id` | `partners(partner_id)` | Invalid partner references |
+| `payment_transactions` | `booking_id` | `bookings(booking_id)` | Orphaned payments |
+| `payment_transactions` | `user_id` | `users(user_id)` | Invalid user references |
+| `refunds` | `booking_id` | `bookings(booking_id)` | Orphaned refunds |
+| `refunds` | `user_id` | `users(user_id)` | Invalid user references |
+| `refund_transactions` | `booking_id` | `bookings(booking_id)` | Orphaned refund transactions |
+| `refund_transactions` | `initiated_by` | `users(user_id)` | Invalid user references |
+| `refund_transactions` | `processed_by` | `users(user_id)` | Invalid user references |
+| `refund_transactions` | `completed_by` | `users(user_id)` | Invalid user references |
+| `partner_invoices` | `partner_id` | `partners(partner_id)` | Orphaned invoices |
+| `partner_invoice_items` | `invoice_id` | `partner_invoices(invoice_id)` | Orphaned invoice items |
+| `partner_invoice_items` | `booking_id` | `bookings(booking_id)` | Invalid booking references |
+| `partner_payments` | `partner_id` | `partners(partner_id)` | Invalid partner references |
+| `partner_payments` | `invoice_id` | `partner_invoices(invoice_id)` | Invalid invoice references |
+| `documents` | `user_id` | `users(user_id)` | Invalid user references |
+| `documents` | `partner_id` | `partners(partner_id)` | Invalid partner references |
+| `documents` | `reviewed_by` | `users(user_id)` | Invalid reviewer references |
+| `notifications` | `user_id` | `users(user_id)` | Orphaned notifications |
+| `notifications` | `related_booking_id` | `bookings(booking_id)` | Invalid booking references |
+| `ratings` | `user_id` | `users(user_id)` | Invalid user references |
+| `ratings` | `trip_id` | `trips(trip_id)` | Invalid trip references |
+| `ratings` | `partner_id` | `partners(partner_id)` | Invalid partner references |
+| `ratings` | `driver_id` | `drivers(driver_id)` | Invalid driver references |
+| `support_tickets` | `user_id` | `users(user_id)` | Invalid user references |
+| `user_device_tokens` | `user_id` | `users(user_id)` | Orphaned device tokens |
+| `messages` | `conversation_id` | `conversations(id)` | Orphaned messages |
+
+**Consequences:**
+- **Data Orphaning:** Child records can exist without valid parent records
+- **Referential Integrity Violations:** No database-level enforcement of relationships
+- **Cascade Issues:** Manual deletion management required, error-prone
+- **Query Performance:** Cannot leverage FK indexes for joins
+- **Data Corruption Risk:** Application-level bugs can create inconsistent data
+
+#### Recommendations:
+
+```sql
+-- Example FK additions (apply pattern to all tables):
+
+-- user_roles
+ALTER TABLE public.user_roles 
+  ADD CONSTRAINT fk_user_roles_user 
+  FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+
+ALTER TABLE public.user_roles 
+  ADD CONSTRAINT fk_user_roles_partner 
+  FOREIGN KEY (partner_id) REFERENCES public.partners(partner_id) ON DELETE SET NULL;
+
+-- bookings (critical table)
+ALTER TABLE public.bookings 
+  ADD CONSTRAINT fk_bookings_user 
+  FOREIGN KEY (user_id) REFERENCES public.users(user_id) ON DELETE RESTRICT;
+
+ALTER TABLE public.bookings 
+  ADD CONSTRAINT fk_bookings_trip 
+  FOREIGN KEY (trip_id) REFERENCES public.trips(trip_id) ON DELETE RESTRICT;
+
+ALTER TABLE public.bookings 
+  ADD CONSTRAINT fk_bookings_cancel_policy 
+  FOREIGN KEY (cancel_policy_id) REFERENCES public.cancel_policies(cancel_policy_id) ON DELETE SET NULL;
+
+-- passengers
+ALTER TABLE public.passengers 
+  ADD CONSTRAINT fk_passengers_booking 
+  FOREIGN KEY (booking_id) REFERENCES public.bookings(booking_id) ON DELETE CASCADE;
+
+ALTER TABLE public.passengers 
+  ADD CONSTRAINT fk_passengers_seat 
+  FOREIGN KEY (seat_id) REFERENCES public.seats(seat_id) ON DELETE RESTRICT;
+
+-- Apply similar pattern to ALL tables with foreign relationships
+```
+
+**Priority:** 🔴 **CRITICAL - Implement immediately**
+
+---
+
+### 1.2 Inconsistent Primary Key Strategy
+
+> [!WARNING]
+> The schema uses inconsistent primary key types and naming conventions, creating confusion and potential integration issues.
+
+**Issues Identified:**
+
+| Table | PK Column | Type | Issue |
+|-------|-----------|------|-------|
+| `user_roles` | `id` | `uuid` | Inconsistent with other tables |
+| `partners` | `partner_id` | `bigint` | Uses sequence |
+| `users` | `user_id` | `bigint` | Uses sequence |
+| `conversations` | `id` | `uuid` | Inconsistent naming |
+| `messages` | `id` | `uuid` | Inconsistent naming |
+
+**Problems:**
+- Mixed UUID and BIGINT types complicate joins
+- Inconsistent naming (`id` vs `{table}_id`) reduces code clarity
+- Sequence-based IDs expose record count information
+- UUIDs have performance implications for indexing
+
+#### Recommendations:
+
+1. **Standardize on BIGINT with sequences** for most tables (better performance)
+2. **Use UUID only where necessary** (distributed systems, security requirements)
+3. **Consistent naming:** Always use `{table_name}_id` format
+4. **Document the strategy** in schema comments
+
+**Priority:** 🟡 **MEDIUM - Address in next refactoring cycle**
+
+---
+
+### 1.3 Dual User Identity System
+
+> [!IMPORTANT]
+> The system maintains two separate user identity tables (`auth.users` and `public.users`), creating synchronization risks.
+
+**Current Structure:**
+```
+auth.users (Supabase Auth)
+    ↓ (auth_id reference)
+public.users (Application profiles)
+    ↓ (user_id reference)
+bookings, notifications, etc.
+```
+
+**Issues:**
+1. **Synchronization Risk:** `public.users` can become out of sync with `auth.users`
+2. **Duplicate Data:** Email and name stored in both places
+3. **Complex Queries:** Requires joins through both tables for user operations
+4. **Trigger Dependency:** Relies on `handle_new_user()` trigger which has had issues (per migration history)
+
+**Evidence from Migration Files:**
+- [20251224223000_root_cause_fix.sql](file:///c:/Users/ALBARQSOFT/Documents/GitHub/ahjazly-go-system/supabase/migrations/20251224223000_root_cause_fix.sql) shows duplicate cleanup logic
+- Multiple fixes for user/role synchronization issues
+
+#### Recommendations:
+
+**Option A: Eliminate public.users (Preferred)**
+```sql
+-- Migrate all user_id foreign keys to reference auth.users(id) directly
+-- Store additional profile data in a separate profiles table if needed
+CREATE TABLE public.user_profiles (
+  auth_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  phone VARCHAR,
+  preferences JSONB,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+```
+
+**Option B: Keep Current Structure but Strengthen**
+```sql
+-- Add FK constraint
+ALTER TABLE public.users 
+  ADD CONSTRAINT fk_users_auth 
+  FOREIGN KEY (auth_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+
+-- Add unique constraint (already exists per migration)
+ALTER TABLE public.users 
+  ADD CONSTRAINT users_auth_id_key UNIQUE (auth_id);
+
+-- Improve trigger reliability
+-- (Already addressed in root_cause_fix.sql)
+```
+
+**Priority:** 🟠 **HIGH - Plan for next major version**
+
+---
+
+## 2. Data Redundancy Prevention and Normalization
+
+### 2.1 Normalization Level Assessment
+
+**Overall Assessment:** The schema is approximately in **2NF (Second Normal Form)** with some violations.
+
+#### Violations Identified:
+
+**2.1.1 Denormalized Financial Data in `bookings` Table**
+
+> [!WARNING]
+> The `bookings` table stores calculated values that should be derived or stored in dedicated tables.
+
+```sql
+CREATE TABLE public.bookings (
+  -- ... other fields ...
+  total_price numeric NOT NULL,           -- ✓ Acceptable (transaction snapshot)
+  platform_commission numeric,            -- ⚠️ Should be calculated
+  partner_revenue numeric,                -- ⚠️ Should be calculated
+  refund_amount numeric,                  -- ⚠️ Duplicates booking_cancellations
+  refund_timestamp timestamp,             -- ⚠️ Duplicates booking_cancellations
+  -- ...
+);
+```
+
+**Issues:**
+- `platform_commission` and `partner_revenue` are derivable from `total_price` and commission percentage
+- `refund_amount` and `refund_timestamp` duplicate data in `booking_cancellations` and `refund_transactions`
+- Updates to commission rates don't automatically reflect in historical data (may be intentional for audit trail)
+
+**Recommendation:**
+
+**If these are intentional snapshots** (for financial audit trail):
+```sql
+-- Add comments to clarify intent
+COMMENT ON COLUMN bookings.platform_commission IS 
+  'Snapshot of commission at booking time - DO NOT recalculate';
+COMMENT ON COLUMN bookings.partner_revenue IS 
+  'Snapshot of partner revenue at booking time - DO NOT recalculate';
+```
+
+**If they should be calculated:**
+```sql
+-- Remove redundant columns
+ALTER TABLE bookings DROP COLUMN platform_commission;
+ALTER TABLE bookings DROP COLUMN partner_revenue;
+ALTER TABLE bookings DROP COLUMN refund_amount;
+ALTER TABLE bookings DROP COLUMN refund_timestamp;
+
+-- Create view for calculated values
+CREATE VIEW bookings_with_financials AS
+SELECT 
+  b.*,
+  b.total_price * (p.commission_percentage / 100) AS platform_commission,
+  b.total_price * (1 - p.commission_percentage / 100) AS partner_revenue,
+  bc.refund_amount,
+  bc.cancelled_at AS refund_timestamp
+FROM bookings b
+JOIN trips t ON b.trip_id = t.trip_id
+JOIN partners p ON t.partner_id = p.partner_id
+LEFT JOIN booking_cancellations bc ON b.booking_id = bc.booking_id;
+```
+
+**Priority:** 🟡 **MEDIUM - Clarify intent, then implement**
+
+---
+
+**2.1.2 Redundant Trip Reference in `passengers` Table**
+
+```sql
+CREATE TABLE public.passengers (
+  passenger_id bigint PRIMARY KEY,
+  booking_id bigint,      -- References bookings
+  trip_id bigint,         -- ⚠️ REDUNDANT - derivable from booking
+  seat_id bigint,
+  -- ...
+);
+```
+
+**Issue:** `trip_id` is redundant because:
+```sql
+-- trip_id can be derived:
+SELECT t.trip_id 
+FROM passengers p
+JOIN bookings b ON p.booking_id = b.booking_id
+JOIN trips t ON b.trip_id = t.trip_id;
+```
+
+**Recommendation:**
+```sql
+-- Remove redundant column
+ALTER TABLE passengers DROP COLUMN trip_id;
+
+-- If queries frequently need trip_id, create indexed view
+CREATE MATERIALIZED VIEW passengers_with_trip AS
+SELECT p.*, b.trip_id
+FROM passengers p
+JOIN bookings b ON p.booking_id = b.booking_id;
+
+CREATE INDEX idx_passengers_trip ON passengers_with_trip(trip_id);
+```
+
+**Priority:** 🟢 **LOW - Optimize during refactoring**
+
+---
+
+**2.1.3 Duplicate Refund Tables**
+
+> [!CAUTION]
+> Two separate refund tables exist with overlapping purposes, creating confusion and potential data inconsistency.
+
+**Tables:**
+1. `refunds` (lines 426-439)
+2. `refund_transactions` (lines 442-466)
+
+**Overlap:**
+- Both track `booking_id`, `refund_amount`, `status`, `created_at`
+- Both track payment method details (bank account, STC Pay)
+- Unclear which is authoritative
+
+**Recommendation:**
+
+**Option A: Merge into single table**
+```sql
+CREATE TABLE public.refund_transactions (
+  refund_id BIGSERIAL PRIMARY KEY,
+  booking_id BIGINT NOT NULL REFERENCES bookings(booking_id),
+  user_id BIGINT NOT NULL REFERENCES users(user_id),
+  
+  -- Financial details
+  refund_amount NUMERIC NOT NULL,
+  refund_fee NUMERIC DEFAULT 0,
+  net_refund NUMERIC GENERATED ALWAYS AS (refund_amount - refund_fee) STORED,
+  
+  -- Payment details
+  refund_method VARCHAR NOT NULL,
+  original_payment_method VARCHAR,
+  original_transaction_id VARCHAR,
+  refund_reference VARCHAR,
+  
+  -- Bank transfer details
+  bank_name VARCHAR,
+  bank_account VARCHAR,
+  account_holder_name VARCHAR,
+  
+  -- STC Pay details
+  stc_pay_number VARCHAR,
+  
+  -- Workflow tracking
+  status VARCHAR DEFAULT 'pending',
+  initiated_by BIGINT REFERENCES users(user_id),
+  processed_by BIGINT REFERENCES users(user_id),
+  completed_by BIGINT REFERENCES users(user_id),
+  
+  -- Notes
+  customer_notes TEXT,
+  internal_notes TEXT,
+  
+  -- Timestamps
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  processing_started_at TIMESTAMPTZ,
+  completed_at TIMESTAMPTZ,
+  
+  CONSTRAINT valid_refund_amount CHECK (refund_amount > 0),
+  CONSTRAINT valid_status CHECK (status IN ('pending', 'processing', 'completed', 'failed', 'cancelled'))
+);
+```
+
+**Option B: Clarify separation**
+- `refunds`: Customer-facing refund requests
+- `refund_transactions`: Internal processing records
+- Add clear documentation and enforce one-to-one relationship
+
+**Priority:** 🟠 **HIGH - Clarify immediately to prevent data inconsistency**
+
+---
+
+### 2.2 Unique Constraints and Duplicate Prevention
+
+#### 2.2.1 Missing Unique Constraints
+
+> [!WARNING]
+> Several tables lack unique constraints that would prevent logical duplicates.
+
+| Table | Missing Constraint | Risk |
+|-------|-------------------|------|
+| `buses` | `license_plate` | Duplicate vehicle registrations |
+| `drivers` | `license_number` | Duplicate driver licenses |
+| `users` | `email` | Duplicate email addresses (if not enforced by auth) |
+| `users` | `phone` | Duplicate phone numbers |
+| `seats` | `(bus_id, seat_number)` | Duplicate seat numbers per bus |
+| `routes` | `(origin_city, destination_city, partner_id)` | Duplicate routes |
+| `route_stops` | `(route_id, stop_order)` | Duplicate stop orders |
+| `user_device_tokens` | `fcm_token` | Duplicate device registrations |
+| `partner_invoices` | `invoice_number` | Duplicate invoice numbers |
+
+**Recommendations:**
+
+```sql
+-- Buses: Prevent duplicate license plates
+ALTER TABLE buses 
+  ADD CONSTRAINT uk_buses_license_plate UNIQUE (license_plate);
+
+-- Drivers: Prevent duplicate licenses
+ALTER TABLE drivers 
+  ADD CONSTRAINT uk_drivers_license_number UNIQUE (license_number);
+
+-- Seats: Prevent duplicate seat numbers per bus
+ALTER TABLE seats 
+  ADD CONSTRAINT uk_seats_bus_seat UNIQUE (bus_id, seat_number);
+
+-- Routes: Prevent duplicate routes per partner
+ALTER TABLE routes 
+  ADD CONSTRAINT uk_routes_partner_cities 
+  UNIQUE (partner_id, origin_city, destination_city);
+
+-- Route stops: Prevent duplicate stop orders
+ALTER TABLE route_stops 
+  ADD CONSTRAINT uk_route_stops_order UNIQUE (route_id, stop_order);
+
+-- User device tokens: One token per device
+ALTER TABLE user_device_tokens 
+  ADD CONSTRAINT uk_user_device_tokens_fcm UNIQUE (fcm_token);
+
+-- Partner invoices: Unique invoice numbers
+ALTER TABLE partner_invoices 
+  ADD CONSTRAINT uk_partner_invoices_number UNIQUE (invoice_number);
+```
+
+**Priority:** 🔴 **CRITICAL - Implement before production**
+
+---
+
+#### 2.2.2 User Roles Constraint Issues
+
+**Evidence from Migration History:**
+
+The [20251224223000_root_cause_fix.sql](file:///c:/Users/ALBARQSOFT/Documents/GitHub/ahjazly-go-system/supabase/migrations/20251224223000_root_cause_fix.sql) migration reveals a critical design flaw:
+
+```sql
+-- Lines 42-43: Changed from UUID PK to user_id PK
+ALTER TABLE public.user_roles ADD CONSTRAINT user_roles_pkey PRIMARY KEY (user_id);
+```
+
+**Issue:** This enforces **one role per user**, but the original design used UUID PK, suggesting **multiple roles per user** was intended.
+
+**Current State:** One role per user (enforced by PK)  
+**Likely Requirement:** Multiple roles per user (e.g., user is both partner and driver)
+
+**Recommendation:**
+
+**If multiple roles needed:**
+```sql
+-- Revert to composite unique constraint
+ALTER TABLE user_roles DROP CONSTRAINT user_roles_pkey;
+ALTER TABLE user_roles ADD PRIMARY KEY (id);
+ALTER TABLE user_roles ADD CONSTRAINT uk_user_roles_user_role 
+  UNIQUE (user_id, role);
+```
+
+**If single role is correct:**
+```sql
+-- Current design is correct, but add documentation
+COMMENT ON TABLE user_roles IS 
+  'Stores primary role for each user. Each user has exactly ONE role.';
+```
+
+**Priority:** 🔴 **CRITICAL - Clarify business requirement immediately**
+
+---
+
+## 3. Inter-Table Relationship Analysis
+
+### 3.1 Relationship Mapping
+
+#### Core Entity Relationships:
+
+```mermaid
+erDiagram
+    PARTNERS ||--o{ BRANCHES : owns
+    PARTNERS ||--o{ DRIVERS : employs
+    PARTNERS ||--o{ BUSES : owns
+    PARTNERS ||--o{ ROUTES : operates
+    PARTNERS ||--o{ TRIPS : schedules
+    PARTNERS ||--o{ CANCEL_POLICIES : defines
+    
+    USERS ||--o{ USER_ROLES : has
+    USERS ||--o{ BOOKINGS : makes
+    USERS ||--o{ SUPPORT_TICKETS : creates
+    USERS ||--o{ RATINGS : submits
+    
+    ROUTES ||--o{ ROUTE_STOPS : contains
+    ROUTES ||--o{ TRIPS : uses
+    
+    BUSES ||--o{ SEATS : contains
+    BUSES ||--o{ TRIPS : assigned_to
+    
+    DRIVERS ||--o{ TRIPS : drives
+    
+    TRIPS ||--o{ BOOKINGS : receives
+    TRIPS ||--o{ PASSENGERS : carries
+    
+    BOOKINGS ||--o{ PASSENGERS : includes
+    BOOKINGS ||--o{ BOOKING_CANCELLATIONS : may_have
+    BOOKINGS ||--o{ PAYMENT_TRANSACTIONS : has
+    BOOKINGS ||--o{ REFUNDS : may_have
+    BOOKINGS ||--o{ COMMISSIONS : generates
+    
+    CANCEL_POLICIES ||--o{ CANCEL_POLICY_RULES : contains
+    CANCEL_POLICIES ||--o{ BOOKINGS : applies_to
+```
+
+---
+
+### 3.2 Relationship Issues
+
+#### 3.2.1 Ambiguous Ownership: Buses Table
+
+```sql
+CREATE TABLE public.buses (
+  bus_id bigint PRIMARY KEY,
+  partner_id bigint,        -- Partner ownership
+  owner_user_id bigint,     -- ⚠️ Individual ownership?
+  -- ...
+);
+```
+
+> [!WARNING]
+> The `buses` table has both `partner_id` and `owner_user_id`, creating ambiguous ownership semantics.
+
+**Questions:**
+- Can a bus be owned by a user who is NOT part of the partner?
+- Is `owner_user_id` meant to track the individual within the partner who registered the bus?
+- What happens if `owner_user_id` leaves the partner?
+
+**Recommendation:**
+
+**Option A: Remove individual ownership**
+```sql
+ALTER TABLE buses DROP COLUMN owner_user_id;
+-- Track registration user in audit table instead
+```
+
+**Option B: Clarify as "registered_by"**
+```sql
+ALTER TABLE buses RENAME COLUMN owner_user_id TO registered_by_user_id;
+COMMENT ON COLUMN buses.registered_by_user_id IS 
+  'User who registered this bus (for audit trail only)';
+```
+
+**Priority:** 🟡 **MEDIUM - Clarify business logic**
+
+---
+
+#### 3.2.2 Missing Relationship: Employees to Users
+
+```sql
+CREATE TABLE public.employees (
+  employee_id bigint PRIMARY KEY,
+  user_id bigint,           -- References users table
+  partner_id bigint,
+  branch_id bigint,
+  role_in_company varchar,
+  -- ...
+);
+```
+
+**Issue:** The `employees` table references `users.user_id`, but there's no clear relationship between `employees` and `user_roles`.
+
+**Questions:**
+- Should employees automatically have a 'employee' role in `user_roles`?
+- Can a user be an employee at multiple partners?
+- How does `employees.role_in_company` relate to `user_roles.role`?
+
+**Recommendation:**
+
+```sql
+-- Add constraint to ensure employees have correct role
+ALTER TABLE employees 
+  ADD CONSTRAINT fk_employees_user 
+  FOREIGN KEY (user_id) REFERENCES users(user_id);
+
+-- Create trigger to sync employee status with user_roles
+CREATE OR REPLACE FUNCTION sync_employee_role()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF (TG_OP = 'INSERT') THEN
+    INSERT INTO user_roles (user_id, role, partner_id)
+    VALUES (NEW.user_id, 'employee', NEW.partner_id)
+    ON CONFLICT (user_id) DO UPDATE SET partner_id = NEW.partner_id;
+  ELSIF (TG_OP = 'DELETE') THEN
+    DELETE FROM user_roles WHERE user_id = OLD.user_id AND role = 'employee';
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trigger_sync_employee_role
+  AFTER INSERT OR DELETE ON employees
+  FOR EACH ROW EXECUTE FUNCTION sync_employee_role();
+```
+
+**Priority:** 🟠 **HIGH - Ensure data consistency**
+
+---
+
+#### 3.2.3 Circular Dependency: Bookings ↔ Passengers
+
+```sql
+-- bookings references passengers through cancellation
+CREATE TABLE bookings (
+  -- ... fields ...
+);
+
+-- passengers references bookings
+CREATE TABLE passengers (
+  passenger_id bigint PRIMARY KEY,
+  booking_id bigint,
+  cancellation_id bigint,  -- References booking_cancellations
+  -- ...
+);
+
+-- booking_cancellations references bookings
+CREATE TABLE booking_cancellations (
+  cancellation_id bigint PRIMARY KEY,
+  booking_id bigint,
+  -- ...
+);
+```
+
+**Issue:** While not a true circular FK (which would be impossible), the logical flow creates complexity:
+- Booking → Passengers → Cancellation → Booking
+
+**Recommendation:**
+
+This is acceptable IF:
+1. `passengers.cancellation_id` is nullable and only set when individual passenger is cancelled (partial booking cancellation)
+2. `booking_cancellations.booking_id` represents full booking cancellation
+
+**Add constraints to clarify:**
+```sql
+-- Ensure cancellation_id is nullable
+ALTER TABLE passengers ALTER COLUMN cancellation_id DROP NOT NULL;
+
+-- Add check constraint
+ALTER TABLE passengers 
+  ADD CONSTRAINT chk_passengers_cancellation 
+  CHECK (
+    (cancellation_id IS NULL) OR 
+    (passenger_status = 'cancelled')
+  );
+
+-- Add documentation
+COMMENT ON COLUMN passengers.cancellation_id IS 
+  'Individual passenger cancellation (for partial booking cancellations). NULL if passenger is active.';
+```
+
+**Priority:** 🟢 **LOW - Document and validate logic**
+
+---
+
+#### 3.2.4 Weak Relationship: Commissions Table
+
+```sql
+CREATE TABLE public.commissions (
+  commission_id bigint PRIMARY KEY,
+  booking_id bigint,
+  partner_id bigint,
+  trip_id bigint,          -- ⚠️ Redundant with booking→trip
+  -- ...
+);
+```
+
+**Issue:** `trip_id` is redundant (derivable from `booking_id → trip_id`)
+
+**Recommendation:**
+```sql
+-- Remove redundant column
+ALTER TABLE commissions DROP COLUMN trip_id;
+
+-- If trip_id queries are frequent, create indexed view
+CREATE INDEX idx_commissions_booking ON commissions(booking_id);
+```
+
+**Priority:** 🟢 **LOW - Optimize during refactoring**
+
+---
+
+### 3.3 Many-to-Many Relationships
+
+#### 3.3.1 Missing Junction Table: Buses ↔ Drivers
+
+**Current Design:**
+```sql
+-- trips table acts as implicit junction
+CREATE TABLE trips (
+  trip_id bigint PRIMARY KEY,
+  bus_id bigint,
+  driver_id bigint,
+  -- ...
+);
+```
+
+**Issue:** No way to track which drivers are **qualified** to drive which buses, only which driver drove which bus on a specific trip.
+
+**Recommendation:**
+
+**If driver-bus qualification tracking is needed:**
+```sql
+CREATE TABLE driver_bus_qualifications (
+  qualification_id BIGSERIAL PRIMARY KEY,
+  driver_id BIGINT NOT NULL REFERENCES drivers(driver_id),
+  bus_id BIGINT NOT NULL REFERENCES buses(bus_id),
+  qualified_at TIMESTAMPTZ DEFAULT NOW(),
+  qualified_by BIGINT REFERENCES users(user_id),
+  expires_at TIMESTAMPTZ,
+  is_active BOOLEAN DEFAULT TRUE,
+  UNIQUE (driver_id, bus_id)
+);
+
+-- Add constraint to trips to enforce qualification
+ALTER TABLE trips 
+  ADD CONSTRAINT chk_trips_driver_qualified 
+  CHECK (
+    EXISTS (
+      SELECT 1 FROM driver_bus_qualifications
+      WHERE driver_id = trips.driver_id
+        AND bus_id = trips.bus_id
+        AND is_active = TRUE
+        AND (expires_at IS NULL OR expires_at > NOW())
+    )
+  );
+```
+
+**Priority:** 🟡 **MEDIUM - Depends on business requirement**
+
+---
+
+## 4. Functional Alignment and Performance Implications
+
+### 4.1 Indexing Strategy
+
+> [!CAUTION]
+> **CRITICAL PERFORMANCE ISSUE:** The schema defines NO explicit indexes beyond primary keys.
+
+#### Missing Critical Indexes:
+
+**High-Priority Indexes (Frequent Queries):**
+
+```sql
+-- Bookings: User lookup
+CREATE INDEX idx_bookings_user_id ON bookings(user_id);
+CREATE INDEX idx_bookings_trip_id ON bookings(trip_id);
+CREATE INDEX idx_bookings_status ON bookings(booking_status) 
+  WHERE booking_status != 'completed';
+CREATE INDEX idx_bookings_payment_status ON bookings(payment_status) 
+  WHERE payment_status = 'pending';
+
+-- Trips: Date range queries
+CREATE INDEX idx_trips_departure_time ON trips(departure_time);
+CREATE INDEX idx_trips_partner_id ON trips(partner_id);
+CREATE INDEX idx_trips_status ON trips(status) 
+  WHERE status IN ('scheduled', 'boarding');
+
+-- Passengers: Booking lookup
+CREATE INDEX idx_passengers_booking_id ON passengers(booking_id);
+CREATE INDEX idx_passengers_trip_id ON passengers(trip_id);
+
+-- Notifications: User unread messages
+CREATE INDEX idx_notifications_user_unread 
+  ON notifications(user_id, is_read) 
+  WHERE is_read = FALSE;
+
+-- Ratings: Partner/Driver aggregations
+CREATE INDEX idx_ratings_partner_id ON ratings(partner_id);
+CREATE INDEX idx_ratings_driver_id ON ratings(driver_id);
+CREATE INDEX idx_ratings_trip_id ON ratings(trip_id);
+
+-- Routes: City searches
+CREATE INDEX idx_routes_origin ON routes(origin_city);
+CREATE INDEX idx_routes_destination ON routes(destination_city);
+CREATE INDEX idx_routes_cities ON routes(origin_city, destination_city);
+
+-- User roles: Auth lookup
+CREATE INDEX idx_user_roles_user_id ON user_roles(user_id);
+
+-- Users: Auth lookup
+CREATE INDEX idx_users_auth_id ON users(auth_id);
+
+-- Payment transactions: Booking lookup
+CREATE INDEX idx_payment_transactions_booking_id 
+  ON payment_transactions(booking_id);
+
+-- Commissions: Partner financial reports
+CREATE INDEX idx_commissions_partner_id ON commissions(partner_id);
+CREATE INDEX idx_commissions_booking_id ON commissions(booking_id);
+
+-- Support tickets: User lookup
+CREATE INDEX idx_support_tickets_user_id ON support_tickets(user_id);
+CREATE INDEX idx_support_tickets_status ON support_tickets(status) 
+  WHERE status != 'closed';
+```
+
+**Composite Indexes for Complex Queries:**
+
+```sql
+-- Trip search by route, date, and status
+CREATE INDEX idx_trips_search 
+  ON trips(route_id, departure_time, status);
+
+-- Booking history with date range
+CREATE INDEX idx_bookings_user_date 
+  ON bookings(user_id, booking_date DESC);
+
+-- Partner revenue calculations
+CREATE INDEX idx_bookings_partner_revenue 
+  ON bookings(trip_id, payment_status, booking_status) 
+  INCLUDE (total_price, platform_commission);
+```
+
+**Priority:** 🔴 **CRITICAL - Implement immediately for production**
+
+---
+
+### 4.2 Query Performance Issues
+
+#### 4.2.1 RLS Policy Performance
+
+**Current RLS Policies (lines 658-762):**
+
+```sql
+-- Example: Bookings policy
+CREATE POLICY "Users can view their own bookings" ON public.bookings
+  FOR SELECT USING (user_id IN (SELECT user_id FROM users WHERE auth_id = auth.uid()));
+```
+
+> [!WARNING]
+> **PERFORMANCE ISSUE:** Subquery in RLS policy executes for EVERY row check.
+
+**Recommendation:**
+
+```sql
+-- Optimize with direct join
+CREATE POLICY "Users can view their own bookings" ON public.bookings
+  FOR SELECT USING (
+    user_id = (SELECT user_id FROM users WHERE auth_id = auth.uid() LIMIT 1)
+  );
+
+-- Even better: Use function with caching
+CREATE OR REPLACE FUNCTION get_current_user_id()
+RETURNS BIGINT
+LANGUAGE SQL
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT user_id FROM users WHERE auth_id = auth.uid() LIMIT 1;
+$$;
+
+-- Then use in policy
+CREATE POLICY "Users can view their own bookings" ON public.bookings
+  FOR SELECT USING (user_id = get_current_user_id());
+```
+
+**Priority:** 🟠 **HIGH - Optimize before scaling**
+
+---
+
+#### 4.2.2 Seat Availability Queries
+
+**Current Design:**
+```sql
+CREATE TABLE seats (
+  seat_id bigint PRIMARY KEY,
+  bus_id bigint,
+  seat_number varchar,
+  is_available boolean DEFAULT true  -- ⚠️ Global flag, not trip-specific
+);
+```
+
+> [!CAUTION]
+> **CRITICAL DESIGN FLAW:** `is_available` is a global flag, but seat availability is **trip-specific**.
+
+**Issue:** A seat can be available for Trip A but booked for Trip B. Current design cannot represent this.
+
+**Recommendation:**
+
+**Option A: Remove is_available, derive from passengers**
+```sql
+ALTER TABLE seats DROP COLUMN is_available;
+
+-- Query available seats for a trip
+CREATE VIEW trip_seat_availability AS
+SELECT 
+  t.trip_id,
+  s.seat_id,
+  s.seat_number,
+  s.bus_id,
+  CASE 
+    WHEN p.passenger_id IS NULL THEN TRUE 
+    ELSE FALSE 
+  END AS is_available
+FROM trips t
+JOIN buses b ON t.bus_id = b.bus_id
+JOIN seats s ON b.bus_id = s.bus_id
+LEFT JOIN passengers p ON s.seat_id = p.seat_id 
+  AND p.trip_id = t.trip_id
+  AND p.passenger_status = 'active';
+
+-- Index for performance
+CREATE INDEX idx_passengers_seat_trip 
+  ON passengers(seat_id, trip_id) 
+  WHERE passenger_status = 'active';
+```
+
+**Option B: Create trip_seats junction table**
+```sql
+CREATE TABLE trip_seats (
+  trip_id BIGINT NOT NULL REFERENCES trips(trip_id),
+  seat_id BIGINT NOT NULL REFERENCES seats(seat_id),
+  is_available BOOLEAN DEFAULT TRUE,
+  reserved_until TIMESTAMPTZ,
+  PRIMARY KEY (trip_id, seat_id)
+);
+
+-- Populate on trip creation
+CREATE OR REPLACE FUNCTION initialize_trip_seats()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO trip_seats (trip_id, seat_id)
+  SELECT NEW.trip_id, s.seat_id
+  FROM seats s
+  WHERE s.bus_id = NEW.bus_id;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trigger_initialize_trip_seats
+  AFTER INSERT ON trips
+  FOR EACH ROW EXECUTE FUNCTION initialize_trip_seats();
+```
+
+**Priority:** 🔴 **CRITICAL - Fix immediately (data model flaw)**
+
+---
+
+### 4.3 Scalability Concerns
+
+#### 4.3.1 Unbounded Table Growth
+
+**Tables at Risk:**
+
+| Table | Growth Rate | Risk | Mitigation |
+|-------|------------|------|------------|
+| `bookings` | High (per transaction) | Query slowdown | Partitioning by date |
+| `passengers` | High (per seat sold) | Large table scans | Partitioning by date |
+| `notifications` | Very High (per event) | Storage bloat | Archival strategy |
+| `messages` | High (chat system) | Storage bloat | Partitioning + archival |
+| `payment_transactions` | High (per payment) | Audit queries slow | Partitioning by date |
+| `ratings` | Medium (per trip) | Acceptable | Monitor |
+
+**Recommendation:**
+
+```sql
+-- Partition bookings by month
+CREATE TABLE bookings_partitioned (
+  LIKE bookings INCLUDING ALL
+) PARTITION BY RANGE (booking_date);
+
+-- Create partitions
+CREATE TABLE bookings_2026_01 PARTITION OF bookings_partitioned
+  FOR VALUES FROM ('2026-01-01') TO ('2026-02-01');
+
+-- Automate partition creation
+CREATE OR REPLACE FUNCTION create_monthly_partition(
+  table_name TEXT,
+  partition_date DATE
+)
+RETURNS VOID AS $$
+DECLARE
+  partition_name TEXT;
+  start_date DATE;
+  end_date DATE;
+BEGIN
+  partition_name := table_name || '_' || TO_CHAR(partition_date, 'YYYY_MM');
+  start_date := DATE_TRUNC('month', partition_date);
+  end_date := start_date + INTERVAL '1 month';
+  
+  EXECUTE FORMAT(
+    'CREATE TABLE IF NOT EXISTS %I PARTITION OF %I FOR VALUES FROM (%L) TO (%L)',
+    partition_name, table_name, start_date, end_date
+  );
+END;
+$$ LANGUAGE plpgsql;
+
+-- Schedule monthly partition creation (use pg_cron or application job)
+```
+
+**Priority:** 🟡 **MEDIUM - Implement before 100K bookings**
+
+---
+
+#### 4.3.2 Notification System Scalability
+
+```sql
+CREATE TABLE notifications (
+  notification_id bigint PRIMARY KEY,
+  user_id bigint,
+  message text,
+  is_read boolean DEFAULT false,
+  sent_at timestamptz DEFAULT now()
+);
+```
+
+**Issues:**
+- No archival strategy for read notifications
+- No batching mechanism for bulk notifications
+- No priority or delivery tracking
+
+**Recommendation:**
+
+```sql
+-- Add archival mechanism
+CREATE TABLE notifications_archive (
+  LIKE notifications INCLUDING ALL
+);
+
+-- Archive old read notifications
+CREATE OR REPLACE FUNCTION archive_old_notifications()
+RETURNS INTEGER AS $$
+DECLARE
+  archived_count INTEGER;
+BEGIN
+  WITH archived AS (
+    DELETE FROM notifications
+    WHERE is_read = TRUE 
+      AND sent_at < NOW() - INTERVAL '90 days'
+    RETURNING *
+  )
+  INSERT INTO notifications_archive SELECT * FROM archived;
+  
+  GET DIAGNOSTICS archived_count = ROW_COUNT;
+  RETURN archived_count;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Schedule weekly archival (use pg_cron or application job)
+
+-- Add delivery tracking
+ALTER TABLE notifications ADD COLUMN delivery_status VARCHAR DEFAULT 'pending';
+ALTER TABLE notifications ADD COLUMN delivered_at TIMESTAMPTZ;
+ALTER TABLE notifications ADD COLUMN delivery_attempts INTEGER DEFAULT 0;
+```
+
+**Priority:** 🟡 **MEDIUM - Implement before 1M notifications**
+
+---
+
+## 5. Security and Data Integrity
+
+### 5.1 Row-Level Security (RLS) Analysis
+
+**Strengths:**
+✅ RLS enabled on all sensitive tables  
+✅ Partner data isolation implemented  
+✅ User-specific data access enforced  
+
+**Weaknesses:**
+
+#### 5.1.1 Missing RLS on Critical Tables
+
+**Tables WITHOUT RLS (from schema):**
+
+| Table | Risk | Recommendation |
+|-------|------|----------------|
+| `buses` | ❌ No RLS | Enable partner isolation |
+| `seats` | ❌ No RLS | Enable (public read acceptable) |
+| `users` | ❌ No RLS | Enable user self-access only |
+| `employees` | ✅ Has RLS | OK |
+| `payment_transactions` | ❌ No RLS | Enable user/admin access only |
+| `refunds` | ❌ No RLS | Enable user/admin access only |
+| `refund_transactions` | ❌ No RLS | Enable admin access only |
+| `documents` | ❌ No RLS | Enable user/partner/admin access |
+| `conversations` | ❌ No RLS | Enable user self-access only |
+| `messages` | ❌ No RLS | Enable conversation participant access |
+
+**Recommendation:**
+
+```sql
+-- Enable RLS on missing tables
+ALTER TABLE buses ENABLE ROW LEVEL SECURITY;
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE payment_transactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE refunds ENABLE ROW LEVEL SECURITY;
+ALTER TABLE refund_transactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE documents ENABLE ROW LEVEL SECURITY;
+ALTER TABLE conversations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
+
+-- Add policies
+CREATE POLICY "Users can view own profile" ON users
+  FOR SELECT USING (auth_id = auth.uid());
+
+CREATE POLICY "Users can update own profile" ON users
+  FOR UPDATE USING (auth_id = auth.uid());
+
+CREATE POLICY "Users can view own payments" ON payment_transactions
+  FOR SELECT USING (user_id = get_current_user_id());
+
+CREATE POLICY "Users can view own conversations" ON conversations
+  FOR SELECT USING (user_id::uuid = auth.uid());
+
+CREATE POLICY "Users can view own messages" ON messages
+  FOR SELECT USING (
+    conversation_id IN (
+      SELECT id FROM conversations WHERE user_id::uuid = auth.uid()
+    )
+  );
+```
+
+**Priority:** 🔴 **CRITICAL - Security vulnerability**
+
+---
+
+### 5.2 Data Validation Constraints
+
+#### 5.2.1 Missing CHECK Constraints
+
+> [!WARNING]
+> The schema lacks CHECK constraints for business rule enforcement.
+
+**Missing Validations:**
+
+```sql
+-- Bookings: Ensure positive prices
+ALTER TABLE bookings 
+  ADD CONSTRAINT chk_bookings_total_price 
+  CHECK (total_price > 0);
+
+ALTER TABLE bookings 
+  ADD CONSTRAINT chk_bookings_commission 
+  CHECK (platform_commission >= 0 AND platform_commission <= total_price);
+
+-- Trips: Ensure logical times
+ALTER TABLE trips 
+  ADD CONSTRAINT chk_trips_times 
+  CHECK (arrival_time > departure_time);
+
+ALTER TABLE trips 
+  ADD CONSTRAINT chk_trips_base_price 
+  CHECK (base_price > 0);
+
+-- Buses: Ensure positive capacity
+ALTER TABLE buses 
+  ADD CONSTRAINT chk_buses_capacity 
+  CHECK (capacity > 0 AND capacity <= 100);
+
+-- Ratings: Ensure valid star range
+ALTER TABLE ratings 
+  ADD CONSTRAINT chk_ratings_stars 
+  CHECK (stars >= 1 AND stars <= 5);
+
+-- Cancel policies: Ensure valid percentages
+ALTER TABLE cancel_policies 
+  ADD CONSTRAINT chk_cancel_policies_refund 
+  CHECK (refund_percentage >= 0 AND refund_percentage <= 100);
+
+ALTER TABLE cancel_policy_rules 
+  ADD CONSTRAINT chk_cancel_policy_rules_refund 
+  CHECK (refund_percentage >= 0 AND refund_percentage <= 100);
+
+-- Partners: Ensure valid commission
+ALTER TABLE partners 
+  ADD CONSTRAINT chk_partners_commission 
+  CHECK (commission_percentage >= 0 AND commission_percentage <= 100);
+
+-- Passengers: Ensure valid phone format (basic check)
+ALTER TABLE passengers 
+  ADD CONSTRAINT chk_passengers_phone 
+  CHECK (phone_number ~ '^[0-9+\-() ]+$' OR phone_number IS NULL);
+
+-- Refunds: Ensure positive amounts
+ALTER TABLE refunds 
+  ADD CONSTRAINT chk_refunds_amount 
+  CHECK (refund_amount > 0);
+
+ALTER TABLE refund_transactions 
+  ADD CONSTRAINT chk_refund_transactions_amounts 
+  CHECK (refund_amount > 0 AND refund_fee >= 0 AND net_refund > 0);
+```
+
+**Priority:** 🟠 **HIGH - Prevent invalid data entry**
+
+---
+
+### 5.3 Audit Trail Completeness
+
+**Current Audit Mechanisms:**
+
+✅ `role_changes_log` (from migration 20251224231000)  
+✅ `booking_approvals` (tracks approval actions)  
+✅ Timestamps on most tables (`created_at`, `updated_at`)  
+
+**Missing Audit Trails:**
+
+| Entity | Missing Audit | Business Impact |
+|--------|---------------|-----------------|
+| `bookings` | Status change history | Cannot track booking lifecycle |
+| `trips` | Status change history | Cannot track trip progression |
+| `refunds` | Status change history | Compliance risk for financial audits |
+| `partners` | Status change history | Cannot track approval/suspension |
+| `drivers` | License renewal history | Safety compliance risk |
+| `buses` | Maintenance history | Safety compliance risk |
+
+**Recommendation:**
+
+```sql
+-- Generic audit trail table
+CREATE TABLE audit_log (
+  audit_id BIGSERIAL PRIMARY KEY,
+  table_name VARCHAR NOT NULL,
+  record_id BIGINT NOT NULL,
+  action VARCHAR NOT NULL, -- INSERT, UPDATE, DELETE
+  old_values JSONB,
+  new_values JSONB,
+  changed_by UUID REFERENCES auth.users(id),
+  changed_at TIMESTAMPTZ DEFAULT NOW(),
+  ip_address INET,
+  user_agent TEXT
+);
+
+CREATE INDEX idx_audit_log_table_record ON audit_log(table_name, record_id);
+CREATE INDEX idx_audit_log_changed_at ON audit_log(changed_at DESC);
+
+-- Generic audit trigger function
+CREATE OR REPLACE FUNCTION audit_trigger_func()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF (TG_OP = 'INSERT') THEN
+    INSERT INTO audit_log (table_name, record_id, action, new_values, changed_by)
+    VALUES (TG_TABLE_NAME, NEW.id, 'INSERT', row_to_json(NEW), auth.uid());
+    RETURN NEW;
+  ELSIF (TG_OP = 'UPDATE') THEN
+    INSERT INTO audit_log (table_name, record_id, action, old_values, new_values, changed_by)
+    VALUES (TG_TABLE_NAME, NEW.id, 'UPDATE', row_to_json(OLD), row_to_json(NEW), auth.uid());
+    RETURN NEW;
+  ELSIF (TG_OP = 'DELETE') THEN
+    INSERT INTO audit_log (table_name, record_id, action, old_values, changed_by)
+    VALUES (TG_TABLE_NAME, OLD.id, 'DELETE', row_to_json(OLD), auth.uid());
+    RETURN OLD;
+  END IF;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Attach to critical tables
+CREATE TRIGGER audit_bookings 
+  AFTER INSERT OR UPDATE OR DELETE ON bookings
+  FOR EACH ROW EXECUTE FUNCTION audit_trigger_func();
+
+CREATE TRIGGER audit_trips 
+  AFTER INSERT OR UPDATE OR DELETE ON trips
+  FOR EACH ROW EXECUTE FUNCTION audit_trigger_func();
+
+CREATE TRIGGER audit_refunds 
+  AFTER INSERT OR UPDATE OR DELETE ON refunds
+  FOR EACH ROW EXECUTE FUNCTION audit_trigger_func();
+```
+
+**Priority:** 🟠 **HIGH - Compliance requirement**
+
+---
+
+## 6. Summary of Critical Issues
+
+### 🔴 Critical (Fix Immediately)
+
+1. **No Foreign Key Constraints** - Entire schema lacks referential integrity
+2. **Seat Availability Design Flaw** - Cannot track trip-specific availability
+3. **Missing Unique Constraints** - Allows duplicate licenses, seats, invoices
+4. **User Roles Constraint Conflict** - Single vs. multiple roles unclear
+5. **Missing Indexes** - Will cause severe performance degradation
+6. **Missing RLS on Financial Tables** - Security vulnerability
+
+### 🟠 High Priority (Address Soon)
+
+7. **Duplicate Refund Tables** - Risk of data inconsistency
+8. **RLS Policy Performance** - Subqueries in policies
+9. **Missing Audit Trails** - Compliance risk
+10. **Missing CHECK Constraints** - Invalid data can be inserted
+11. **Employee-Role Synchronization** - No enforcement mechanism
+
+### 🟡 Medium Priority (Plan for Refactoring)
+
+12. **Dual User Identity System** - Synchronization complexity
+13. **Denormalized Financial Data** - Clarify intent (snapshot vs. calculated)
+14. **Ambiguous Bus Ownership** - Business logic unclear
+15. **Scalability Planning** - Partitioning strategy needed
+
+### 🟢 Low Priority (Optimize Later)
+
+16. **Redundant Columns** - `passengers.trip_id`, `commissions.trip_id`
+17. **Inconsistent PK Strategy** - Mixed UUID/BIGINT types
+18. **Missing Driver-Bus Qualifications** - Depends on business need
+
+---
+
+## 7. Recommended Implementation Roadmap
+
+### Phase 1: Data Integrity Foundation (Week 1-2)
+1. Add all foreign key constraints
+2. Add unique constraints (licenses, seats, invoices)
+3. Fix user_roles constraint (clarify single vs. multiple roles)
+4. Add CHECK constraints for business rules
+
+### Phase 2: Performance Optimization (Week 3-4)
+5. Create all critical indexes
+6. Optimize RLS policies
+7. Fix seat availability design
+8. Implement query performance monitoring
+
+### Phase 3: Security Hardening (Week 5)
+9. Enable RLS on all tables
+10. Add missing RLS policies
+11. Implement comprehensive audit logging
+12. Security penetration testing
+
+### Phase 4: Scalability Preparation (Week 6-8)
+13. Implement table partitioning
+14. Set up archival strategies
+15. Optimize notification system
+16. Load testing and tuning
+
+### Phase 5: Refinement (Week 9-10)
+17. Resolve dual user identity system
+18. Clarify denormalized data intent
+19. Remove redundant columns
+20. Documentation and knowledge transfer
+
+---
+
+## 8. Conclusion
+
+The database schema demonstrates **good business logic modeling** with comprehensive coverage of booking workflows, cancellation policies, and financial tracking. However, **critical structural deficiencies** in referential integrity, indexing, and data validation create significant risks for data corruption, performance degradation, and security vulnerabilities.
+
+**Immediate action is required** on the Critical and High Priority items before this system can be considered production-ready for scale.
+
+### Key Strengths:
+✅ Comprehensive enum types for data consistency  
+✅ Row-level security implementation (partial)  
+✅ Audit trail for role changes  
+✅ Sophisticated cancellation policy system  
+✅ Multi-tenant architecture with partner isolation  
+
+### Key Weaknesses:
+❌ No foreign key constraints (catastrophic for data integrity)  
+❌ No indexes beyond primary keys (performance disaster at scale)  
+❌ Flawed seat availability model (business logic broken)  
+❌ Incomplete RLS coverage (security gaps)  
+❌ Missing data validation constraints (allows invalid data)  
+
+**Recommendation:** Implement Phase 1 and Phase 2 items immediately before production deployment. Phases 3-5 should follow within 2-3 months of launch.
+
+---
+
+**End of Audit Report**

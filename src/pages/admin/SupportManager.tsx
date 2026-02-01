@@ -49,7 +49,7 @@ import { PaginationControls } from "@/components/ui/pagination-controls";
 
 interface SupportTicket {
     ticket_id: number;
-    user_id: number;
+    auth_id: string;
     title: string;
     description: string;
     issue_type: string;
@@ -60,6 +60,8 @@ interface SupportTicket {
         full_name: string;
         email: string;
     };
+    full_name: string;
+    email: string;
 }
 
 const SupportManager = () => {

@@ -1,0 +1,21 @@
+-- ==========================================================
+-- المرحلة 1: تحديث أنواع البيانات (Enums) - جشّلها أولاً لوحدها
+-- ==========================================================
+
+-- تحديث نوع app_role
+ALTER TYPE app_role ADD VALUE IF NOT EXISTS 'SUPERUSER';
+ALTER TYPE app_role ADD VALUE IF NOT EXISTS 'TRAVELER';
+ALTER TYPE app_role ADD VALUE IF NOT EXISTS 'PARTNER_ADMIN';
+ALTER TYPE app_role ADD VALUE IF NOT EXISTS 'DRIVER';
+ALTER TYPE app_role ADD VALUE IF NOT EXISTS 'AGENT';
+ALTER TYPE app_role ADD VALUE IF NOT EXISTS 'PARTNER_EMPLOYEE';
+ALTER TYPE app_role ADD VALUE IF NOT EXISTS 'CUSTOMER_SUPPORT';
+
+-- تحديث نوع user_type
+ALTER TYPE user_type ADD VALUE IF NOT EXISTS 'SUPERUSER';
+ALTER TYPE user_type ADD VALUE IF NOT EXISTS 'TRAVELER';
+ALTER TYPE user_type ADD VALUE IF NOT EXISTS 'PARTNER_ADMIN';
+ALTER TYPE user_type ADD VALUE IF NOT EXISTS 'DRIVER';
+ALTER TYPE user_type ADD VALUE IF NOT EXISTS 'AGENT';
+ALTER TYPE user_type ADD VALUE IF NOT EXISTS 'PARTNER_EMPLOYEE';
+ALTER TYPE user_type ADD VALUE IF NOT EXISTS 'CUSTOMER_SUPPORT';

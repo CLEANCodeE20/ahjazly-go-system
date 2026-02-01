@@ -1,7 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import { PrefetchLink } from "@/components/ui/PrefetchLink";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { supabase } from "@/integrations/supabase/client";
 import {
     Bus,
     Home,
@@ -17,27 +19,73 @@ import {
     Shield,
     Menu,
     X,
-    ArrowLeftRight
+    ArrowLeftRight,
+    Star,
+    LayoutDashboard,
+    ClipboardList,
+    Wallet,
+    BarChart,
+    UserCog,
+    Banknote,
+    TrendingUp,
+    ArrowRightLeft,
+    Plus,
+    DollarSign
 } from "lucide-react";
 import { usePartner } from "@/hooks/usePartner";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useAuth } from "@/hooks/useAuth";
+import { useWallet } from "@/hooks/useWallet";
 import { NotificationBell } from "../notifications/NotificationBell";
 
-const sidebarLinks = [
-    { href: "/dashboard", label: "الرئيسية", icon: Home },
-    { href: "/dashboard/fleet", label: "إدارة الأسطول", icon: Bus },
-    { href: "/dashboard/routes", label: "المسارات", icon: MapPin },
-    { href: "/dashboard/trips", label: "الرحلات", icon: Route },
-    { href: "/dashboard/employees", label: "الموظفين", icon: Users },
-    { href: "/dashboard/branches", label: "الفروع", icon: Building2 },
-    { href: "/dashboard/bookings", label: "الحجوزات", icon: Ticket },
-    { href: "/dashboard/payments", label: "المدفوعات", icon: CreditCard },
-    { href: "/dashboard/refunds", label: "إدارة المستردات", icon: ArrowLeftRight },
-    { href: "/dashboard/reports", label: "التقارير", icon: BarChart3 },
-    { href: "/dashboard/permissions", label: "الصلاحيات", icon: Shield },
-    { href: "/dashboard/cancellation-policies", label: "سياسات الإلغاء", icon: Shield },
-    { href: "/dashboard/settings", label: "الإعدادات", icon: Settings }
+const sidebarSections = [
+    {
+        title: "الرئيسية",
+        links: [
+            { href: "/dashboard", label: "الرئيسية", icon: Home },
+        ]
+    },
+    {
+        title: "العمليات",
+        links: [
+            { href: "/dashboard/fleet", label: "إدارة الأسطول", icon: Bus },
+            { href: "/dashboard/routes", label: "المسارات", icon: MapPin },
+            { href: "/dashboard/trips", label: "الرحلات", icon: Route },
+            { href: "/dashboard/drivers", label: "إدارة السائقين", icon: Users },
+            { href: "/dashboard/branches", label: "الفروع", icon: Building2 },
+        ]
+    },
+    {
+        title: "المبيعات والمالية",
+        links: [
+            { href: "/dashboard/bookings", label: "الحجوزات", icon: Ticket },
+            { href: "/dashboard/payments", label: "المدفوعات", icon: CreditCard },
+            { href: "/dashboard/wallet", label: "المحفظة", icon: Wallet },
+            { href: "/dashboard/withdrawals", label: "طلبات السحب", icon: Banknote },
+            { href: "/dashboard/deposits", label: "إدارة الشحن", icon: Plus },
+            { href: "/dashboard/admin-wallets", label: "إدارة المحافظ", icon: Wallet },
+            { href: "/dashboard/financial-analytics", label: "التحليلات المالية", icon: TrendingUp },
+            { href: "/dashboard/partner-settlements", label: "تسويات الشركاء", icon: ArrowRightLeft },
+            { href: "/dashboard/refunds", label: "إدارة المستردات", icon: ArrowLeftRight },
+        ]
+    },
+    {
+        title: "التحليلات",
+        links: [
+            { href: "/dashboard/reports", label: "لوحة التقارير", icon: BarChart3 },
+            { href: "/dashboard/advanced-reports", label: "التقارير التفصيلية", icon: ClipboardList },
+            { href: "/dashboard/ratings", label: "التقييمات", icon: Star, badgeKey: 'ratings' },
+        ]
+    },
+    {
+        title: "الإدارة",
+        links: [
+            { href: "/dashboard/employees", label: "الموظفين", icon: Users },
+            { href: "/dashboard/permissions", label: "الصلاحيات", icon: Shield },
+            { href: "/dashboard/cancellation-policies", label: "سياسات الإلغاء", icon: Shield },
+            { href: "/dashboard/settings", label: "الإعدادات", icon: Settings }
+        ]
+    }
 ];
 
 interface DashboardLayoutProps {
@@ -53,8 +101,31 @@ export const DashboardLayout = ({ children, title, subtitle, actions }: Dashboar
     const { partner, isLoading: partnerLoading } = usePartner();
     const { can, loading: permissionsLoading } = usePermissions();
     const { userRole, signOut, isLoading: authLoading } = useAuth();
-
+    const { wallet } = useWallet();
+    const [badges, setBadges] = useState<{ [key: string]: number }>({});
     const isLoading = authLoading || partnerLoading || permissionsLoading;
+
+    useEffect(() => {
+        const fetchBadges = async () => {
+            if (!partner?.partner_id) return;
+
+            try {
+                const { count, error } = await supabase
+                    .from('v_ratings_requiring_attention' as any)
+                    .select('*', { count: 'exact', head: true });
+
+                if (!error) {
+                    setBadges(prev => ({ ...prev, ratings: count || 0 }));
+                }
+            } catch (err) {
+                console.error('Error fetching sidebar badges:', err);
+            }
+        };
+
+        if (!isLoading) {
+            fetchBadges();
+        }
+    }, [partner?.partner_id, isLoading]);
 
     return (
         <div className="min-h-screen bg-muted/30" dir="rtl">
@@ -81,49 +152,73 @@ export const DashboardLayout = ({ children, title, subtitle, actions }: Dashboar
                     </Button>
                 </div>
 
-                <nav className="p-3 space-y-1 flex-1 overflow-y-auto custom-scrollbar">
-                    {sidebarLinks.map((link) => {
-                        // While loading, we don't apply filters to avoid flickering or missing links
-                        if (isLoading) {
-                            return (
-                                <div key={link.href} className="flex items-center gap-3 px-3 py-2.5 rounded-lg opacity-40 animate-pulse">
-                                    <link.icon className="w-5 h-5 shrink-0" />
-                                    <div className="h-4 bg-sidebar-foreground/20 rounded w-24"></div>
-                                </div>
-                            );
-                        }
+                <nav className="p-3 space-y-6 flex-1 overflow-y-auto custom-scrollbar">
+                    {sidebarSections.map((section) => (
+                        <div key={section.title} className="space-y-1">
+                            <h3 className="px-3 text-[10px] font-bold text-sidebar-foreground/40 uppercase tracking-wider mb-2">
+                                {section.title}
+                            </h3>
+                            <div className="space-y-1">
+                                {section.links.map((link) => {
+                                    if (isLoading) {
+                                        return (
+                                            <div key={link.href} className="flex items-center gap-3 px-3 py-2.5 rounded-lg opacity-40 animate-pulse">
+                                                <link.icon className="w-5 h-5 shrink-0" />
+                                                <div className="h-4 bg-sidebar-foreground/20 rounded w-24"></div>
+                                            </div>
+                                        );
+                                    }
 
-                        const isPartner = userRole?.role === 'partner';
-                        const isAdmin = userRole?.role === 'admin';
-                        const isOwner = isPartner || isAdmin;
+                                    const isPartner = userRole?.role === 'PARTNER_ADMIN';
+                                    const isAdmin = userRole?.role === 'SUPERUSER';
+                                    const isOwner = isPartner || isAdmin;
 
-                        if (link.href === "/dashboard/permissions" && !isOwner && !can('employees.manage')) return null;
-                        if (link.href === "/dashboard/fleet" && !isOwner && !can('fleet.view')) return null;
-                        if (link.href === "/dashboard/routes" && !isOwner && !can('routes.view')) return null;
-                        if (link.href === "/dashboard/trips" && !isOwner && !can('trips.view')) return null;
-                        if (link.href === "/dashboard/employees" && !isOwner && !can('employees.view')) return null;
-                        if (link.href === "/dashboard/bookings" && !isOwner && !can('bookings.view')) return null;
-                        if (link.href === "/dashboard/reports" && !isOwner && !can('reports.view')) return null;
-                        if (link.href === "/dashboard/settings" && !isOwner && !can('settings.manage')) return null;
-                        if (link.href === "/dashboard/cancellation-policies" && !isOwner && !can('settings.manage')) return null;
-                        if (link.href === "/dashboard/branches" && !isOwner && !can('fleet.view')) return null;
-                        if (link.href === "/dashboard/payments" && !isOwner && !can('finance.view')) return null;
+                                    if (link.href === "/dashboard/permissions" && !isOwner && !can('employees.manage')) return null;
+                                    if (link.href === "/dashboard/fleet" && !isOwner && !can('fleet.view')) return null;
+                                    if (link.href === "/dashboard/routes" && !isOwner && !can('routes.view')) return null;
+                                    if (link.href === "/dashboard/trips" && !isOwner && !can('trips.view')) return null;
+                                    if (link.href === "/dashboard/drivers" && !isOwner && !can('employees.view')) return null;
+                                    if (link.href === "/dashboard/employees" && !isOwner && !can('employees.view')) return null;
+                                    if (link.href === "/dashboard/bookings" && !isOwner && !can('bookings.view')) return null;
+                                    if (link.href === "/dashboard/ratings" && !isOwner && !can('trips.view')) return null;
+                                    if (link.href === "/dashboard/reports" && !isOwner && !can('reports.view')) return null;
+                                    if (link.href === "/dashboard/settings" && !isOwner && !can('settings.manage')) return null;
+                                    if (link.href === "/dashboard/cancellation-policies" && !isOwner && !can('settings.manage')) return null;
+                                    if (link.href === "/dashboard/branches" && !isOwner && !can('fleet.view')) return null;
+                                    if (link.href === "/dashboard/payments" && !isOwner && !can('finance.view')) return null;
+                                    if (link.href === "/dashboard/withdrawals" && !isAdmin) return null;
+                                    if (link.href === "/dashboard/deposits" && !isAdmin) return null;
+                                    if (link.href === "/dashboard/admin-wallets" && !isAdmin) return null;
+                                    if (link.href === "/dashboard/financial-analytics" && !isAdmin && !isPartner) return null;
+                                    if (link.href === "/dashboard/partner-settlements" && !isAdmin) return null;
 
-                        return (
-                            <PrefetchLink
-                                key={link.href}
-                                to={link.href}
-                                onClick={() => setIsSidebarOpen(false)}
-                                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${location.pathname === link.href
-                                    ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
-                                    }`}
-                            >
-                                <link.icon className="w-5 h-5 shrink-0" />
-                                <span>{link.label}</span>
-                            </PrefetchLink>
-                        )
-                    })}
+                                    const badgeCount = link.badgeKey ? badges[link.badgeKey] : 0;
+
+                                    return (
+                                        <PrefetchLink
+                                            key={link.href}
+                                            to={link.href}
+                                            onClick={() => setIsSidebarOpen(false)}
+                                            className={`flex items-center justify-between px-3 py-2.5 rounded-lg transition-colors group ${location.pathname === link.href
+                                                ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                                                : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+                                                }`}
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <link.icon className="w-5 h-5 shrink-0" />
+                                                <span>{link.label}</span>
+                                            </div>
+                                            {badgeCount > 0 && (
+                                                <Badge variant="destructive" className="h-5 min-w-[20px] flex items-center justify-center px-1 text-[10px]">
+                                                    {badgeCount}
+                                                </Badge>
+                                            )}
+                                        </PrefetchLink>
+                                    )
+                                })}
+                            </div>
+                        </div>
+                    ))}
                 </nav>
 
                 <div className="p-4 border-t border-sidebar-border shrink-0">
@@ -154,6 +249,12 @@ export const DashboardLayout = ({ children, title, subtitle, actions }: Dashboar
                         </div>
                         <div className="flex items-center gap-3">
                             {actions}
+                            <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-secondary/10 rounded-full border border-secondary/20">
+                                <Wallet className="w-4 h-4 text-secondary" />
+                                <span className="text-sm font-black text-secondary">
+                                    {wallet?.balance?.toLocaleString() || '0'} {wallet?.currency || 'ر.س'}
+                                </span>
+                            </div>
                             <NotificationBell />
                             <div className="w-9 h-9 rounded-full gradient-primary flex items-center justify-center text-primary-foreground font-medium overflow-hidden">
                                 {partner?.company_name?.[0] || 'س'}

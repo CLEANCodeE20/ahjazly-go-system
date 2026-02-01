@@ -1,0 +1,279 @@
+/**
+ * CSS لكشف حساب الشريك
+ */
+
+.partner-statement-wrapper {
+    min-height: 100vh;
+    background: #f5f5f5;
+    padding: 20px;
+}
+
+.partner-statement {
+    background: white;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+}
+
+/* الرأس */
+.statement-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 3px solid var(--primary-color);
+}
+
+.statement-title {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--primary-color);
+    margin-bottom: 15px;
+}
+
+.meta-info p {
+    margin-bottom: 5px;
+    font-size: 14px;
+}
+
+/* معلومات الشريك */
+.partner-section {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    padding: 25px;
+    border-radius: var(--border-radius);
+    margin-bottom: 30px;
+    color: white;
+}
+
+.partner-section .section-title {
+    color: white;
+    border-bottom-color: rgba(255, 255, 255, 0.3);
+}
+
+.partner-details {
+    gap: 15px;
+}
+
+.partner-details .detail-row {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 10px 15px;
+    border-radius: 6px;
+}
+
+.partner-details .detail-row strong {
+    color: rgba(255, 255, 255, 0.8);
+    margin-left: 8px;
+}
+
+/* الملخص المالي */
+.summary-section {
+    margin-bottom: 30px;
+}
+
+.summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+}
+
+.summary-card {
+    background: var(--bg-light);
+    padding: 20px;
+    border-radius: var(--border-radius);
+    text-align: center;
+    border: 2px solid var(--border-color);
+    transition: all 0.3s;
+}
+
+.summary-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-md);
+}
+
+.summary-card.opening {
+    background: #f3f4f6;
+    border-color: #9ca3af;
+}
+
+.summary-card.bookings {
+    background: #dbeafe;
+    border-color: var(--primary-color);
+}
+
+.summary-card.revenue {
+    background: #dcfce7;
+    border-color: var(--success-color);
+}
+
+.summary-card.commission {
+    background: #fef3c7;
+    border-color: var(--warning-color);
+}
+
+.summary-card.refunds {
+    background: #fee2e2;
+    border-color: var(--danger-color);
+}
+
+.summary-card.payments {
+    background: #f3e8ff;
+    border-color: #9333ea;
+}
+
+.summary-card.closing {
+    background: #e0e7ff;
+    border-color: #4f46e5;
+}
+
+.summary-label {
+    font-size: 13px;
+    color: var(--text-muted);
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.summary-value {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--text-color);
+}
+
+/* جدول المعاملات */
+.transactions-section {
+    margin-bottom: 30px;
+}
+
+.transactions-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.transactions-table thead {
+    background: var(--primary-color);
+    color: white;
+}
+
+.transactions-table th {
+    padding: 12px 10px;
+    text-align: right;
+    font-weight: 700;
+    font-size: 12px;
+}
+
+.transactions-table td {
+    padding: 12px 10px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.transactions-table tbody tr:hover {
+    background: var(--bg-light);
+}
+
+.transaction-type {
+    text-align: center;
+    font-size: 18px;
+}
+
+.amount {
+    font-family: var(--font-numbers);
+    text-align: left;
+}
+
+.amount.debit {
+    color: var(--danger-color);
+}
+
+.amount.credit {
+    color: var(--success-color);
+}
+
+.amount.balance {
+    font-weight: 700;
+    color: var(--primary-color);
+}
+
+.transactions-table tfoot {
+    background: var(--bg-light);
+    font-weight: 700;
+}
+
+.totals-row td {
+    padding: 15px 10px;
+    border-top: 2px solid var(--primary-color);
+    border-bottom: 2px solid var(--primary-color);
+}
+
+/* التذييل */
+.statement-footer {
+    margin-top: 40px;
+    padding-top: 20px;
+    border-top: 2px solid var(--border-color);
+}
+
+.footer-note {
+    background: #fffbeb;
+    padding: 15px;
+    border-radius: var(--border-radius);
+    border-right: 4px solid var(--warning-color);
+    margin-bottom: 20px;
+}
+
+/* الطباعة */
+@media print {
+    .partner-statement-wrapper {
+        background: white;
+        padding: 0;
+    }
+
+    .partner-statement {
+        box-shadow: none;
+    }
+
+    .partner-section {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    .summary-card {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    .transactions-table {
+        page-break-inside: auto;
+    }
+
+    .transactions-table tr {
+        page-break-inside: avoid;
+        page-break-after: auto;
+    }
+
+    .transactions-table thead {
+        display: table-header-group;
+    }
+
+    .transactions-table tfoot {
+        display: table-footer-group;
+    }
+}
+
+/* الاستجابة */
+@media screen and (max-width: 768px) {
+    .statement-header {
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    .summary-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .transactions-table {
+        font-size: 11px;
+    }
+
+    .transactions-table th,
+    .transactions-table td {
+        padding: 8px 6px;
+    }
+}

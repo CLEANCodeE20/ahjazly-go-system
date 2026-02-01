@@ -6,9 +6,41 @@ export interface Permission {
     code: string;
 }
 
+// Helper function to get default permissions based on role
+function getRoleDefaultPermissions(role: string): string[] {
+    switch (role) {
+        case 'manager':
+            return [
+                'view_routes', 'view_trips', 'view_bookings', 'view_drivers',
+                'manage_trips', 'view_reports', 'view_employees'
+            ];
+        case 'accountant':
+            return [
+                'view_payments', 'manage_payments', 'view_bookings',
+                'view_reports', 'view_financial_reports', 'manage_refunds'
+            ];
+        case 'support':
+            return [
+                'view_bookings', 'view_trips', 'view_routes',
+                'view_customers', 'manage_support_tickets'
+            ];
+        case 'supervisor':
+            return [
+                'view_routes', 'view_trips', 'view_drivers', 'view_buses',
+                'manage_trips', 'view_reports'
+            ];
+        case 'driver':
+            return ['view_own_trips', 'update_trip_status', 'view_own_schedule'];
+        default:
+            // For unknown roles, give minimal permissions
+            return ['view_dashboard'];
+    }
+}
+
 export const usePermissions = () => {
     const { user, userRole, isLoading: authLoading } = useAuth();
-    const [permissions, setPermissions] = useState<string[]>([]);
+    // Start with empty permissions
+    const [permissions, setPermissions] = useState<{ action: string, resource: string, code: string }[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -23,38 +55,14 @@ export const usePermissions = () => {
         const fetchPermissions = async () => {
             setLoading(true);
             try {
-                let roleName: string | null = null;
+                let roleName = userRole.role;
                 let partnerId = userRole.partner_id;
 
-                // 1. Determine the effective role name
-                if (userRole.role === 'admin') {
-                    // Admins have all permissions implicitly, or we can fetch a wildcard
-                    roleName = 'admin';
-                } else if (userRole.role === 'partner') {
-                    // Partners are "managers" of their company
-                    roleName = 'manager';
-                } else if (userRole.role === 'employee') {
-                    // For employees, we need their specific job title from the employees table
-                    // Fix: employees uses integer user_id, not UUID. We might need to look it up or join.
-                    // Assuming we don't have integer ID in userRole, we fetch from public.users first.
-
-                    const { data: userData } = await supabase
-                        .from('users')
-                        .select('user_id')
-                        .eq('auth_id', user.id)
-                        .maybeSingle();
-
-                    if (userData?.user_id) {
-                        const { data: empData, error: empError } = await supabase
-                            .from('employees')
-                            .select('role_in_company')
-                            .eq('user_id', userData.user_id)
-                            .maybeSingle();
-
-                        if (!empError && empData) {
-                            roleName = empData.role_in_company;
-                        }
-                    }
+                // SUPERUSER bypass
+                if (roleName === 'SUPERUSER') {
+                    setPermissions([{ action: '*', resource: '*', code: '*' }]);
+                    setLoading(false);
+                    return;
                 }
 
                 if (!roleName) {
@@ -63,34 +71,52 @@ export const usePermissions = () => {
                     return;
                 }
 
-                // 2. Fetch permissions for this role
-                // Logic: Get permissions specifically for this partner, OR system defaults (partner_id is null) for this role
-                // If a partner has overridden a role, we might want to ONLY show partner permissions, or merge.
-                // For now, let's assume we fetch all matches.
+                // Fetch standard permissions from role_permissions joined with permissions table
+                // We assume there is a FK or joining on code. Since our migration didn't enforce FK on code yet,
+                // we'll try to join if possible, or fetch raw codes then fetch details.
+                // Assuming 'role_permissions' has 'permission_code' and 'permissions' table has 'permission_code'
 
-                const query = supabase
-                    .from('role_permissions' as any)
-                    .select('permission_code')
-                    .eq('role', roleName);
+                // Optimized Query:
+                // SELECT p.action, p.resource, p.permission_code 
+                // FROM role_permissions rp
+                // JOIN permissions p ON p.permission_code = rp.permission_code
+                // WHERE rp.role = roleName AND ...
 
-                if (partnerId) {
-                    query.or(`partner_id.eq.${partnerId},partner_id.is.null`);
+                const { data: rawPerms, error } = await supabase
+                    .from('role_permissions')
+                    .select(`
+                        permission_code,
+                        permissions!inner (
+                            action,
+                            resource
+                        )
+                    `)
+                    .eq('role', roleName)
+                    .or(partnerId ? `partner_id.eq.${partnerId},partner_id.is.null` : `partner_id.is.null`) as any;
+
+                if (error || !rawPerms) {
+                    console.warn('[Permissions] Failed to fetch fine-grained permissions, falling back to defaults');
+                    // Fallback to defaults (convert codes to pseudo action/resource)
+                    const defaults = getRoleDefaultPermissions(roleName);
+                    const mappedDefaults = defaults.map(code => ({
+                        code,
+                        action: code.split('_')[0] || 'read',
+                        resource: code.split('_').slice(1).join('_') || code
+                    }));
+                    setPermissions(mappedDefaults);
                 } else {
-                    query.is('partner_id', null);
-                }
-
-                const { data, error } = await query as any;
-
-                if (error) {
-                    console.error('Error fetching permissions:', error);
-                    setPermissions([]);
-                } else {
-                    const codes = data.map(p => p.permission_code);
-                    setPermissions(codes);
+                    // map response
+                    const mapped = rawPerms.map((p: any) => ({
+                        code: p.permission_code,
+                        action: p.permissions?.action || 'read',
+                        resource: p.permissions?.resource || p.permission_code
+                    }));
+                    setPermissions(mapped);
                 }
 
             } catch (err) {
-                console.error('Error in usePermissions:', err);
+                console.error('[Permissions] Critical error:', err);
+                setPermissions([]);
             } finally {
                 setLoading(false);
             }
@@ -99,25 +125,32 @@ export const usePermissions = () => {
         fetchPermissions();
     }, [user, userRole, authLoading]);
 
-    // Helper to check if user has a permission
-    const can = (permissionCode: string) => {
-        // Admins and Partners (Managers) might have bypass, but let's stick to the loaded permissions list for consistency.
-        // Exception: Admin role in app might just return true always.
-        if (userRole?.role === 'admin') return true;
+    // Check by action + resource (The Gold Standard)
+    const hasPermission = (action: string, resource: string) => {
+        if (permissions.some(p => p.code === '*')) return true; // Superuser
 
-        return permissions.includes(permissionCode);
+        return permissions.some(p =>
+            (p.action === action || p.action === 'manage') && // 'manage' implies all actions
+            (p.resource === resource || p.resource === '*')
+        );
     };
 
-    // Helper to check multiple permissions (OR)
+    // Legacy check by code
+    const can = (permissionCode: string) => {
+        if (permissions.some(p => p.code === '*')) return true;
+        return permissions.some(p => p.code === permissionCode);
+    };
+
     const canAny = (permissionCodes: string[]) => {
-        if (userRole?.role === 'admin') return true;
-        return permissionCodes.some(code => permissions.includes(code));
+        if (permissions.some(p => p.code === '*')) return true;
+        return permissionCodes.some(code => can(code));
     };
 
     return {
-        permissions,
+        permissions, // now array of objects
         loading,
-        can,
-        canAny
+        hasPermission, // New standard method
+        can,           // Legacy support
+        canAny,        // Legacy support
     };
 };

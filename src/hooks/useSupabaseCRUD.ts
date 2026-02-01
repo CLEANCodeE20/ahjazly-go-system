@@ -5,12 +5,14 @@ import type { Database } from '@/integrations/supabase/types';
 
 type TableNames = keyof Database['public']['Tables'];
 
-interface UseSupabaseCRUDOptions {
+export interface UseSupabaseCRUDOptions {
   tableName: TableNames;
   primaryKey?: string;
   initialFetch?: boolean;
   orderBy?: { column: string; ascending?: boolean };
   select?: string;
+  pageSize?: number;
+  filter?: (query: any) => any;
 }
 
 export function useSupabaseCRUD<T>({
@@ -18,9 +20,13 @@ export function useSupabaseCRUD<T>({
   primaryKey = 'id',
   initialFetch = true,
   orderBy,
-  select = '*'
+  select = '*',
+  pageSize = 10,
+  filter
 }: UseSupabaseCRUDOptions) {
   const [data, setData] = useState<T[]>([]);
+  const [count, setCount] = useState<number>(0);
+  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -29,19 +35,29 @@ export function useSupabaseCRUD<T>({
     setError(null);
 
     try {
-      let query = supabase.from(tableName).select(select);
+      let query = supabase.from(tableName).select(select, { count: 'exact' });
 
       if (orderBy) {
         query = query.order(orderBy.column, { ascending: orderBy.ascending ?? true });
       }
 
-      const { data: result, error: fetchError } = await query;
+      if (filter) {
+        query = filter(query);
+      }
+
+      const from = (page - 1) * pageSize;
+      const to = from + pageSize - 1;
+
+      query = query.range(from, to);
+
+      const { data: result, error: fetchError, count: totalCount } = await query;
 
       if (fetchError) {
         throw fetchError;
       }
 
       setData((result as unknown as T[]) || []);
+      setCount(totalCount || 0);
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'حدث خطأ أثناء جلب البيانات';
       setError(errorMessage);
@@ -49,7 +65,7 @@ export function useSupabaseCRUD<T>({
     } finally {
       setLoading(false);
     }
-  }, [tableName, orderBy, select]);
+  }, [tableName, orderBy, select, pageSize, page, filter]);
 
   const create = useCallback(async (record: Partial<T>) => {
     setLoading(true);
@@ -64,7 +80,12 @@ export function useSupabaseCRUD<T>({
         throw insertError;
       }
 
-      setData(prev => [...prev, result as unknown as T]);
+      // Optimistic update or refetch? 
+      // For pagination, refetching is safer to ensure correct order and count, 
+      // but appending to current page is faster. 
+      // Let's just refetch to be safe with pagination.
+      fetchData();
+
       toast({
         title: "تمت الإضافة",
         description: "تم إضافة السجل بنجاح"
@@ -82,7 +103,7 @@ export function useSupabaseCRUD<T>({
     } finally {
       setLoading(false);
     }
-  }, [tableName]);
+  }, [tableName, fetchData]);
 
   const update = useCallback(async (id: string | number, record: Partial<T>) => {
     setLoading(true);
@@ -133,6 +154,9 @@ export function useSupabaseCRUD<T>({
       }
 
       setData(prev => prev.filter(item => (item as Record<string, unknown>)[primaryKey] !== id));
+      // Also update count?
+      setCount(prev => Math.max(0, prev - 1));
+
       toast({
         title: "تم الحذف",
         description: "تم حذف السجل بنجاح"
@@ -159,6 +183,11 @@ export function useSupabaseCRUD<T>({
 
   return {
     data,
+    count,
+    page,
+    pageSize,
+    totalPages: Math.ceil(count / pageSize),
+    setPage,
     loading,
     error,
     refetch: fetchData,

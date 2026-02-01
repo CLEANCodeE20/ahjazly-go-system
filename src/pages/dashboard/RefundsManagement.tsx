@@ -1,29 +1,19 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
-    RefreshCw,
+    DollarSign,
     Search,
     CheckCircle2,
+    XCircle,
     Clock,
-    ArrowLeftRight,
-    User,
-    Phone,
-    Banknote,
-    Navigation,
-    Loader2
+    TrendingUp,
+    Download,
+    FileText,
+    Calendar,
 } from "lucide-react";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
-import { useSupabaseCRUD } from "@/hooks/useSupabaseCRUD";
-import { DashboardLayout } from "@/components/layout/DashboardLayout";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
 import {
     Dialog,
     DialogContent,
@@ -32,170 +22,320 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
+import { DashboardLayout } from "@/components/layout/DashboardLayout";
+import { usePermissions } from "@/hooks/usePermissions";
+import { useExport } from "@/hooks/useExport";
+import { FileSpreadsheet } from "lucide-react";
 
 interface RefundRecord {
     refund_id: number;
     booking_id: number;
-    user_id: number;
+    customer_name: string;
     refund_amount: number;
-    refund_method: string;
-    bank_account: string | null;
-    stc_pay_number: string | null;
-    transaction_id: string | null;
+    refund_method: string | null;
     status: string;
-    created_at: string;
-    user?: {
-        full_name: string;
-        phone_number: string;
-    };
+    refund_reference: string | null;
+    requested_at: string;
+    processed_at: string | null;
+    processing_hours: number;
+    processed_by_name: string | null;
+    rejection_reason: string | null;
+    notes: string | null;
+    original_payment_method: string;
 }
 
 const RefundsManagement = () => {
-    const [isConfirmOpen, setIsConfirmOpen] = useState(false);
-    const [selectedRefund, setSelectedRefund] = useState<RefundRecord | null>(null);
-    const [txId, setTxId] = useState("");
-    const [processing, setProcessing] = useState(false);
-    const [searchTerm, setSearchTerm] = useState("");
+    const { can } = usePermissions();
+    const { exportToExcel, exportToPDF } = useExport();
+    const [refunds, setRefunds] = useState<RefundRecord[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [searchQuery, setSearchQuery] = useState("");
     const [filterStatus, setFilterStatus] = useState("all");
-
-    const { data: refunds, loading, refetch, update } = useSupabaseCRUD<RefundRecord>({
-        tableName: 'refunds',
-        primaryKey: 'refund_id',
-        initialFetch: true,
-        select: '*, user:users(full_name, phone_number)'
+    const [selectedRefund, setSelectedRefund] = useState<RefundRecord | null>(null);
+    const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [isProcessing, setIsProcessing] = useState(false);
+    const [formData, setFormData] = useState({
+        status: "",
+        refund_reference: "",
+        notes: "",
+        rejection_reason: "",
     });
 
-    const handleProcessRefund = async () => {
-        if (!selectedRefund || !txId) {
-            toast.error("يرجى إدخال رقم المعاملة");
+    useEffect(() => {
+        fetchRefunds();
+    }, []);
+
+    const fetchRefunds = async () => {
+        setLoading(true);
+        const { data, error } = await supabase
+            .from("refunds_status_report")
+            .select("*")
+            .order("requested_at", { ascending: false });
+
+        if (!error && data) {
+            setRefunds(data);
+        }
+        setLoading(false);
+    };
+
+    const handleUpdateStatus = async () => {
+        if (!selectedRefund || !formData.status) {
+            toast({ title: "خطأ", description: "يرجى اختيار الحالة", variant: "destructive" });
             return;
         }
 
-        setProcessing(true);
+        setIsProcessing(true);
         try {
-            await update(selectedRefund.refund_id, {
-                status: 'completed',
-                transaction_id: txId,
-                //@ts-ignore - added in migration but might not be in types yet
-                completed_at: new Date().toISOString(),
-                processed_at: new Date().toISOString()
+            const { data, error } = await supabase.rpc("update_refund_status", {
+                p_refund_id: selectedRefund.refund_id,
+                p_new_status: formData.status,
+                p_refund_reference: formData.refund_reference || null,
+                p_notes: formData.notes || null,
+                p_rejection_reason: formData.status === "rejected" ? formData.rejection_reason : null,
             });
 
-            setIsConfirmOpen(false);
-            setTxId("");
-            // Explicitly refetch to ensure we get joined user data back 
-            // as update.select().single() loses joins
-            await refetch();
+            if (error) throw error;
+
+            toast({ title: "✅ تم التحديث", description: "تم تحديث حالة الاسترداد بنجاح" });
+            setIsDialogOpen(false);
+            setSelectedRefund(null);
+            setFormData({ status: "", refund_reference: "", notes: "", rejection_reason: "" });
+            fetchRefunds();
         } catch (error: any) {
-            // Already handled by hook toast, but let's close if it was a success masked as error
+            toast({ title: "❌ خطأ", description: error.message, variant: "destructive" });
         } finally {
-            setProcessing(false);
+            setIsProcessing(false);
         }
     };
 
-    const filteredRefunds = refunds.filter(r => {
-        const matchesSearch = r.user?.full_name?.includes(searchTerm) ||
-            r.booking_id.toString().includes(searchTerm);
-        const matchesStatus = filterStatus === "all" || r.status === filterStatus;
+    const openUpdateDialog = (refund: RefundRecord) => {
+        setSelectedRefund(refund);
+        setFormData({
+            status: refund.status,
+            refund_reference: refund.refund_reference || "",
+            notes: refund.notes || "",
+            rejection_reason: refund.rejection_reason || "",
+        });
+        setIsDialogOpen(true);
+    };
+
+    const getStatusBadge = (status: string) => {
+        const styles = {
+            pending: "bg-yellow-100 text-yellow-800",
+            approved: "bg-blue-100 text-blue-800",
+            processing: "bg-purple-100 text-purple-800",
+            completed: "bg-green-100 text-green-800",
+            rejected: "bg-red-100 text-red-800",
+            failed: "bg-gray-100 text-gray-800",
+        };
+        const labels = {
+            pending: "قيد الانتظار",
+            approved: "تمت الموافقة",
+            processing: "قيد المعالجة",
+            completed: "مكتمل",
+            rejected: "مرفوض",
+            failed: "فشل",
+        };
+        return (
+            <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${styles[status as keyof typeof styles] || styles.pending}`}>
+                {labels[status as keyof typeof labels] || status}
+            </span>
+        );
+    };
+
+    const filteredRefunds = refunds.filter((refund) => {
+        const matchesSearch =
+            refund.customer_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            refund.booking_id.toString().includes(searchQuery);
+        const matchesStatus = filterStatus === "all" || refund.status === filterStatus;
         return matchesSearch && matchesStatus;
     });
 
-    const getStatusBadge = (status: string) => {
-        switch (status) {
-            case "completed":
-                return <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700"><CheckCircle2 className="w-3 h-3" /> تم الإرجاع</span>;
-            case "pending":
-                return <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700"><Clock className="w-3 h-3" /> قيد المراجعة</span>;
-            case "failed":
-                return <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700"><ArrowLeftRight className="w-3 h-3" /> فشل</span>;
-            default:
-                return <span className="text-xs text-muted-foreground">{status}</span>;
+    // Stats
+    const pendingCount = refunds.filter((r) => r.status === "pending").length;
+    const completedCount = refunds.filter((r) => r.status === "completed").length;
+    const totalAmount = refunds.reduce((sum, r) => sum + r.refund_amount, 0);
+
+    // Export function
+    const handleExport = (format: "excel" | "pdf") => {
+        const dataToExport = filteredRefunds.map((r) => ({
+            "رقم الطلب": r.refund_id,
+            "رقم الحجز": r.booking_id,
+            "اسم العميل": r.customer_name,
+            "المبلغ": r.refund_amount.toFixed(2),
+            "طريقة الدفع": r.refund_method || "-",
+            "الحالة": r.status,
+            "الرقم المرجعي": r.refund_reference || "-",
+            "تاريخ الطلب": new Date(r.requested_at).toLocaleDateString("ar-SA"),
+            "تاريخ المعالجة": r.processed_at ? new Date(r.processed_at).toLocaleDateString("ar-SA") : "-",
+            "معالج بواسطة": r.processed_by_name || "-",
+        }));
+
+        if (format === "excel") {
+            exportToExcel(dataToExport, "refunds_report");
+        } else {
+            exportToPDF(
+                dataToExport,
+                [
+                    { header: "رقم الطلب", key: "رقم الطلب" },
+                    { header: "رقم الحجز", key: "رقم الحجز" },
+                    { header: "اسم العميل", key: "اسم العميل" },
+                    { header: "المبلغ", key: "المبلغ" },
+                    { header: "الحالة", key: "الحالة" },
+                    { header: "تاريخ الطلب", key: "تاريخ الطلب" },
+                ],
+                { title: "تقرير طلبات الاسترداد" }
+            );
         }
     };
 
     return (
         <DashboardLayout
-            title="إدارة المستردات"
-            subtitle="معالجة طلبات إرجاع المبالغ للعملاء"
+            title="إدارة طلبات الاسترداد"
+            subtitle="معالجة ومتابعة طلبات استرداد الأموال"
+            actions={
+                <div className="flex items-center gap-2">
+                    <Button variant="outline" onClick={() => window.location.href = '/dashboard/advanced-reports?type=refunds'}>
+                        <FileText className="w-4 h-4 ml-2 text-blue-600" />
+                        تقرير تفصيلي
+                    </Button>
+                    <Button variant="outline" onClick={() => handleExport("excel")}>
+                        <FileSpreadsheet className="w-4 h-4 ml-2 text-green-600" />
+                        تصدير Excel
+                    </Button>
+                    <Button variant="outline" onClick={() => handleExport("pdf")}>
+                        <Download className="w-4 h-4 ml-2 text-red-600" />
+                        تصدير PDF
+                    </Button>
+                </div>
+            }
         >
             <div className="space-y-6">
-                {/* Filters */}
-                <div className="bg-card rounded-xl border border-border p-4 flex flex-col md:flex-row gap-4">
-                    <div className="relative flex-1">
-                        <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                        <Input
-                            placeholder="بحث باسم العميل أو رقم الحجز..."
-                            className="pr-10"
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                        />
+                {/* Stats */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div className="bg-card rounded-xl border border-border p-4">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-lg bg-yellow-100 flex items-center justify-center">
+                                <Clock className="w-5 h-5 text-yellow-600" />
+                            </div>
+                            <div>
+                                <p className="text-2xl font-bold text-foreground">{pendingCount}</p>
+                                <p className="text-sm text-muted-foreground">قيد الانتظار</p>
+                            </div>
+                        </div>
                     </div>
-                    <Select value={filterStatus} onValueChange={setFilterStatus}>
-                        <SelectTrigger className="w-48">
-                            <SelectValue placeholder="الحالة" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">كل الطلبات</SelectItem>
-                            <SelectItem value="pending">قيد المراجعة</SelectItem>
-                            <SelectItem value="completed">تم الإرجاع</SelectItem>
-                        </SelectContent>
-                    </Select>
+                    <div className="bg-card rounded-xl border border-border p-4">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
+                                <CheckCircle2 className="w-5 h-5 text-green-600" />
+                            </div>
+                            <div>
+                                <p className="text-2xl font-bold text-foreground">{completedCount}</p>
+                                <p className="text-sm text-muted-foreground">مكتمل</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="bg-card rounded-xl border border-border p-4">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
+                                <DollarSign className="w-5 h-5 text-blue-600" />
+                            </div>
+                            <div>
+                                <p className="text-2xl font-bold text-foreground">{totalAmount.toFixed(2)}</p>
+                                <p className="text-sm text-muted-foreground">إجمالي المبالغ (ر.س)</p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
-                {/* List */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    {loading ? (
-                        <div className="col-span-full py-20 flex justify-center"><Loader2 className="animate-spin text-primary" /></div>
-                    ) : filteredRefunds.length === 0 ? (
-                        <div className="col-span-full py-20 text-center bg-card rounded-xl border border-dashed border-border text-muted-foreground">
-                            لا توجد طلبات استرداد حالياً
+                {/* Search and Filter */}
+                <div className="bg-card rounded-xl border border-border p-4">
+                    <div className="flex flex-col md:flex-row gap-4">
+                        <div className="flex-1 relative">
+                            <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                            <Input
+                                placeholder="بحث بالاسم أو رقم الحجز..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="pr-10"
+                            />
                         </div>
+                        <Select value={filterStatus} onValueChange={setFilterStatus}>
+                            <SelectTrigger className="w-40">
+                                <SelectValue placeholder="الحالة" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">كل الحالات</SelectItem>
+                                <SelectItem value="pending">قيد الانتظار</SelectItem>
+                                <SelectItem value="approved">تمت الموافقة</SelectItem>
+                                <SelectItem value="processing">قيد المعالجة</SelectItem>
+                                <SelectItem value="completed">مكتمل</SelectItem>
+                                <SelectItem value="rejected">مرفوض</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                </div>
+
+                {/* Refunds List */}
+                <div className="space-y-4">
+                    {loading ? (
+                        <div className="text-center py-8">جاري التحميل...</div>
+                    ) : filteredRefunds.length === 0 ? (
+                        <div className="text-center py-8 text-muted-foreground">لا توجد طلبات استرداد</div>
                     ) : (
                         filteredRefunds.map((refund) => (
-                            <div key={refund.refund_id} className="bg-card border border-border rounded-xl p-5 hover:border-primary/20 transition-all">
-                                <div className="flex justify-between items-start mb-4">
-                                    <div>
-                                        <span className="text-xs font-mono text-primary bg-primary/5 px-2 py-0.5 rounded">BK-{refund.booking_id}</span>
-                                        <h3 className="text-lg font-bold mt-1 flex items-center gap-2">
-                                            <User className="w-4 h-4 text-muted-foreground" />
-                                            {refund.user?.full_name}
-                                        </h3>
-                                        <p className="text-sm text-muted-foreground flex items-center gap-1">
-                                            <Phone className="w-3 h-3" /> {refund.user?.phone_number}
-                                        </p>
-                                    </div>
-                                    {getStatusBadge(refund.status)}
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-4 mb-5 border-y border-border/50 py-4">
-                                    <div>
-                                        <p className="text-xs text-muted-foreground">المبلغ المستحق</p>
-                                        <p className="text-xl font-bold text-secondary">{refund.refund_amount} ر.س</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-xs text-muted-foreground">طريقة الدفع الأصلية</p>
-                                        <p className="text-sm font-medium">{refund.refund_method}</p>
-                                    </div>
-                                </div>
-
-                                <div className="flex items-center justify-between">
-                                    <div className="text-xs text-muted-foreground">
-                                        تاريخ الإلغاء: {new Date(refund.created_at).toLocaleString('ar-SA')}
-                                    </div>
-                                    {refund.status === 'pending' && (
-                                        <Button
-                                            size="sm"
-                                            onClick={() => { setSelectedRefund(refund); setIsConfirmOpen(true); }}
-                                        >
-                                            <Banknote className="w-4 h-4 ml-2" />
-                                            تأكيد الإرجاع
-                                        </Button>
-                                    )}
-                                    {refund.status === 'completed' && (
-                                        <div className="text-xs font-mono text-green-600 bg-green-50 px-2 py-1 rounded">
-                                            رقم المعاملة: {refund.transaction_id}
+                            <div
+                                key={refund.refund_id}
+                                className="bg-card rounded-xl border border-border p-5 hover:shadow-lg transition-shadow"
+                            >
+                                <div className="flex flex-col lg:flex-row lg:items-center gap-4">
+                                    <div className="flex-1">
+                                        <div className="flex items-center gap-3 mb-2">
+                                            <h3 className="font-bold text-foreground text-lg">{refund.customer_name}</h3>
+                                            {getStatusBadge(refund.status)}
                                         </div>
-                                    )}
+                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm text-muted-foreground">
+                                            <div>
+                                                <span className="font-medium">رقم الحجز:</span> #{refund.booking_id}
+                                            </div>
+                                            <div>
+                                                <span className="font-medium">المبلغ:</span> {refund.refund_amount} ر.س
+                                            </div>
+                                            <div>
+                                                <span className="font-medium">الطريقة:</span> {refund.refund_method || "-"}
+                                            </div>
+                                            <div>
+                                                <span className="font-medium">وقت المعالجة:</span>{" "}
+                                                {refund.processing_hours ? `${refund.processing_hours.toFixed(1)} ساعة` : "-"}
+                                            </div>
+                                        </div>
+                                        {refund.refund_reference && (
+                                            <div className="mt-2 text-sm">
+                                                <span className="font-medium">الرقم المرجعي:</span> {refund.refund_reference}
+                                            </div>
+                                        )}
+                                        {refund.rejection_reason && (
+                                            <div className="mt-2 text-sm text-red-600">
+                                                <span className="font-medium">سبب الرفض:</span> {refund.rejection_reason}
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div>
+                                        {can("bookings.refund") && refund.status !== "completed" && refund.status !== "rejected" && (
+                                            <Button onClick={() => openUpdateDialog(refund)} variant="outline">
+                                                تحديث الحالة
+                                            </Button>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         ))
@@ -203,40 +343,71 @@ const RefundsManagement = () => {
                 </div>
             </div>
 
-            {/* Confirmation Dialog */}
-            <Dialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
-                <DialogContent>
+            {/* Update Dialog */}
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                <DialogContent className="sm:max-w-[500px]">
                     <DialogHeader>
-                        <DialogTitle>تأكيد إرجاع المبلغ</DialogTitle>
+                        <DialogTitle>تحديث حالة الاسترداد</DialogTitle>
                         <DialogDescription>
-                            يرجى إدخال رقم المرجع (Transaction ID) للحوالة التي قمت بإرسالها للعميل لتوثيقها في النظام.
+                            الحجز رقم #{selectedRefund?.booking_id} - {selectedRefund?.customer_name}
                         </DialogDescription>
                     </DialogHeader>
-                    <div className="space-y-4 py-4">
-                        <div className="bg-muted p-3 rounded-lg text-sm">
-                            <div className="flex justify-between mb-1">
-                                <span>اسم العميل:</span>
-                                <span className="font-bold">{selectedRefund?.user?.full_name}</span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span>المبلغ المطلوب إرجاعه:</span>
-                                <span className="font-bold text-secondary">{selectedRefund?.refund_amount} ر.س</span>
-                            </div>
-                        </div>
+                    <div className="grid gap-4 py-4">
                         <div className="space-y-2">
-                            <label className="text-sm font-medium">رقم الحوالة / المعاملة</label>
-                            <Input
-                                placeholder="أدخل رقم العملية..."
-                                value={txId}
-                                onChange={(e) => setTxId(e.target.value)}
+                            <Label>الحالة الجديدة *</Label>
+                            <Select value={formData.status} onValueChange={(v) => setFormData({ ...formData, status: v })}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="اختر الحالة" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="approved">تمت الموافقة</SelectItem>
+                                    <SelectItem value="processing">قيد المعالجة</SelectItem>
+                                    <SelectItem value="completed">مكتمل</SelectItem>
+                                    <SelectItem value="rejected">مرفوض</SelectItem>
+                                    <SelectItem value="failed">فشل</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        {formData.status === "completed" && (
+                            <div className="space-y-2">
+                                <Label>الرقم المرجعي</Label>
+                                <Input
+                                    placeholder="رقم المعاملة من البنك/بوابة الدفع"
+                                    value={formData.refund_reference}
+                                    onChange={(e) => setFormData({ ...formData, refund_reference: e.target.value })}
+                                />
+                            </div>
+                        )}
+
+                        {formData.status === "rejected" && (
+                            <div className="space-y-2">
+                                <Label>سبب الرفض *</Label>
+                                <Textarea
+                                    placeholder="اذكر سبب رفض الاسترداد"
+                                    value={formData.rejection_reason}
+                                    onChange={(e) => setFormData({ ...formData, rejection_reason: e.target.value })}
+                                    rows={3}
+                                />
+                            </div>
+                        )}
+
+                        <div className="space-y-2">
+                            <Label>ملاحظات</Label>
+                            <Textarea
+                                placeholder="ملاحظات إضافية (اختياري)"
+                                value={formData.notes}
+                                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                                rows={2}
                             />
                         </div>
                     </div>
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setIsConfirmOpen(false)}>إلغاء</Button>
-                        <Button onClick={handleProcessRefund} disabled={processing || !txId}>
-                            {processing && <Loader2 className="w-4 h-4 animate-spin ml-2" />}
-                            إتمام العملية
+                        <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+                            إلغاء
+                        </Button>
+                        <Button onClick={handleUpdateStatus} disabled={isProcessing}>
+                            {isProcessing ? "جاري التحديث..." : "حفظ التغييرات"}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

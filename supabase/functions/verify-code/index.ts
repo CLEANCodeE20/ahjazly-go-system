@@ -36,17 +36,6 @@ serve(async (req) => {
             throw new Error('Missing required fields: code and type')
         }
 
-        // Get user_id
-        const { data: userData } = await supabaseClient
-            .from('users')
-            .select('user_id')
-            .eq('auth_id', user.id)
-            .single()
-
-        if (!userData) {
-            throw new Error('User profile not found')
-        }
-
         // Find valid verification code
         const { data: verificationData, error: fetchError } = await supabaseClient
             .from('user_verification_codes')
@@ -92,7 +81,6 @@ serve(async (req) => {
 
         // Log activity
         await supabaseClient.rpc('log_user_activity', {
-            p_user_id: userData.user_id,
             p_auth_id: user.id,
             p_activity_type: type === 'email' ? 'email_verified' : 'phone_verified',
             p_activity_category: 'security',

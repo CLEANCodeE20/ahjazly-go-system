@@ -49,14 +49,6 @@ serve(async (req) => {
         }
 
         if (action === 'setup') {
-            const { data: profile } = await supabaseClient
-                .from('users')
-                .select('user_id')
-                .eq('auth_id', user.id)
-                .single()
-
-            if (!profile) throw new Error('User profile not found')
-
             const secret = new OTPAuth.Secret({ size: 20 });
             const backupCodes = Array.from({ length: 8 }, () =>
                 Math.random().toString(36).substring(2, 10).toUpperCase()
@@ -83,7 +75,6 @@ serve(async (req) => {
                 await supabaseClient
                     .from('user_two_factor')
                     .insert({
-                        user_id: profile.user_id,
                         auth_id: user.id,
                         method: 'totp',
                         secret_key: secret.base32,

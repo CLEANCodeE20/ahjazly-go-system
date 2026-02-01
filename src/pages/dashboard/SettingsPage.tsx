@@ -43,6 +43,15 @@ const SettingsPage = () => {
     company_name: "",
     contact_person: "",
     address: "",
+    commercial_registration: "",
+    tax_number: "",
+    website: "",
+    bank_name: "",
+    iban: "",
+    account_number: "",
+    swift_code: "",
+    commercial_register_url: "",
+    tax_certificate_url: "",
     commission_percentage: 10
   });
 
@@ -73,6 +82,15 @@ const SettingsPage = () => {
         company_name: partner.company_name || "",
         contact_person: partner.contact_person || "",
         address: partner.address || "",
+        commercial_registration: (partner as any).commercial_registration || "",
+        tax_number: (partner as any).tax_number || "",
+        website: (partner as any).website || "",
+        bank_name: (partner as any).bank_name || "",
+        iban: (partner as any).iban || "",
+        account_number: (partner as any).account_number || "",
+        swift_code: (partner as any).swift_code || "",
+        commercial_register_url: (partner as any).commercial_register_url || "",
+        tax_certificate_url: (partner as any).tax_certificate_url || "",
         commission_percentage: partner.commission_percentage || 10
       });
     }
@@ -88,7 +106,16 @@ const SettingsPage = () => {
         .update({
           company_name: companyData.company_name,
           contact_person: companyData.contact_person,
-          address: companyData.address
+          address: companyData.address,
+          commercial_registration: companyData.commercial_registration,
+          tax_number: companyData.tax_number,
+          website: companyData.website,
+          bank_name: companyData.bank_name,
+          iban: companyData.iban,
+          account_number: companyData.account_number,
+          swift_code: companyData.swift_code,
+          commercial_register_url: companyData.commercial_register_url,
+          tax_certificate_url: companyData.tax_certificate_url
         })
         .eq('partner_id', partnerId);
 
@@ -261,12 +288,71 @@ const SettingsPage = () => {
                     </div>
                   </div>
 
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label>الموقع الإلكتروني</Label>
+                      <Input
+                        value={companyData.website}
+                        onChange={(e) => setCompanyData({ ...companyData, website: e.target.value })}
+                        placeholder="https://..."
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>السجل التجاري</Label>
+                      <Input
+                        value={companyData.commercial_registration}
+                        onChange={(e) => setCompanyData({ ...companyData, commercial_registration: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>الرقم الضريبي</Label>
+                      <Input
+                        value={companyData.tax_number}
+                        onChange={(e) => setCompanyData({ ...companyData, tax_number: e.target.value })}
+                      />
+                    </div>
+                  </div>
+
                   <div className="space-y-2">
                     <Label>العنوان</Label>
                     <Input
                       value={companyData.address}
                       onChange={(e) => setCompanyData({ ...companyData, address: e.target.value })}
                     />
+                  </div>
+
+                  <div className="border-t border-border pt-6 mt-2">
+                    <h3 className="text-sm font-semibold mb-4">البيانات البنكية</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>اسم البنك</Label>
+                        <Input
+                          value={companyData.bank_name}
+                          onChange={(e) => setCompanyData({ ...companyData, bank_name: e.target.value })}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>رقم الآيبان (IBAN)</Label>
+                        <Input
+                          value={companyData.iban}
+                          onChange={(e) => setCompanyData({ ...companyData, iban: e.target.value })}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>رقم الحساب</Label>
+                        <Input
+                          value={companyData.account_number}
+                          onChange={(e) => setCompanyData({ ...companyData, account_number: e.target.value })}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>رمز السويفت (Swift Code)</Label>
+                        <Input
+                          value={companyData.swift_code}
+                          onChange={(e) => setCompanyData({ ...companyData, swift_code: e.target.value })}
+                        />
+                      </div>
+                    </div>
                   </div>
 
                   <div className="space-y-2">
@@ -280,6 +366,97 @@ const SettingsPage = () => {
                       />
                       <span className="text-muted-foreground">%</span>
                       <span className="text-xs text-muted-foreground">(يتم تحديدها من قبل الإدارة)</span>
+                    </div>
+                  </div>
+
+                  <div className="border-t border-border pt-6 mt-2">
+                    <h3 className="text-sm font-semibold mb-4">الوثائق الرسمية</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>صورة السجل التجاري</Label>
+                        <div className="flex items-center gap-2">
+                          {companyData.commercial_register_url ? (
+                            <Button variant="outline" size="sm" asChild>
+                              <a href={companyData.commercial_register_url} target="_blank" rel="noopener noreferrer">
+                                <Eye className="w-4 h-4 ml-2" />
+                                عرض الملف الحالي
+                              </a>
+                            </Button>
+                          ) : (
+                            <span className="text-sm text-muted-foreground">لا يوجد ملف</span>
+                          )}
+                          <div className="relative">
+                            <Input
+                              type="file"
+                              accept="image/*,.pdf"
+                              className="hidden"
+                              id="cr-upload"
+                              onChange={async (e) => {
+                                if (e.target.files?.[0] && partnerId) {
+                                  // Upload logic
+                                  const file = e.target.files[0];
+                                  const path = `partners/${partnerId}/cr_${Date.now()}.${file.name.split('.').pop()}`;
+                                  const { data, error } = await supabase.storage.from('partner-documents').upload(path, file);
+                                  if (!error) {
+                                    const { data: { publicUrl } } = supabase.storage.from('partner-documents').getPublicUrl(path);
+                                    setCompanyData(prev => ({ ...prev, commercial_register_url: publicUrl }));
+                                    toast({ title: "تم رفع الملف", description: "تم تحديث السجل التجاري" });
+                                  }
+                                }
+                              }}
+                            />
+                            <Button variant="ghost" size="sm" asChild>
+                              <Label htmlFor="cr-upload" className="cursor-pointer">
+                                <Upload className="w-4 h-4 ml-2" />
+                                تحديث الملف
+                              </Label>
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>صورة شهادة الزكاة</Label>
+                        <div className="flex items-center gap-2">
+                          {companyData.tax_certificate_url ? (
+                            <Button variant="outline" size="sm" asChild>
+                              <a href={companyData.tax_certificate_url} target="_blank" rel="noopener noreferrer">
+                                <Eye className="w-4 h-4 ml-2" />
+                                عرض الملف الحالي
+                              </a>
+                            </Button>
+                          ) : (
+                            <span className="text-sm text-muted-foreground">لا يوجد ملف</span>
+                          )}
+                          <div className="relative">
+                            <Input
+                              type="file"
+                              accept="image/*,.pdf"
+                              className="hidden"
+                              id="tax-upload"
+                              onChange={async (e) => {
+                                if (e.target.files?.[0] && partnerId) {
+                                  // Upload logic
+                                  const file = e.target.files[0];
+                                  const path = `partners/${partnerId}/tax_${Date.now()}.${file.name.split('.').pop()}`;
+                                  const { data, error } = await supabase.storage.from('partner-documents').upload(path, file);
+                                  if (!error) {
+                                    const { data: { publicUrl } } = supabase.storage.from('partner-documents').getPublicUrl(path);
+                                    setCompanyData(prev => ({ ...prev, tax_certificate_url: publicUrl }));
+                                    toast({ title: "تم رفع الملف", description: "تم تحديث شهادة الزكاة" });
+                                  }
+                                }
+                              }}
+                            />
+                            <Button variant="ghost" size="sm" asChild>
+                              <Label htmlFor="tax-upload" className="cursor-pointer">
+                                <Upload className="w-4 h-4 ml-2" />
+                                تحديث الملف
+                              </Label>
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
 

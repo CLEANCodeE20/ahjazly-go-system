@@ -20,23 +20,33 @@ import {
     ClipboardList
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { usePermissions } from "@/hooks/usePermissions";
 
-const adminSidebarLinks = [
-    { href: "/admin", label: "طلبات الانضمام", icon: ClipboardList },
-    { href: "/admin/partners", label: "إدارة الشركاء", icon: Building2 },
-    { href: "/admin/cities", label: "المدن والمناطق", icon: MapPin },
-    { href: "/admin/staff", label: "طاقم المنصة", icon: Shield },
-    { href: "/admin/users", label: "دليل المستخدمين", icon: Users },
-    { href: "/admin/commissions", label: "العمولات", icon: DollarSign },
-    { href: "/admin/reports", label: "التقارير المالية", icon: BarChart3 },
-    { href: "/admin/notifications", label: "الإشعارات العامّة", icon: Bell },
-    { href: "/admin/banners", label: "إدارة السلايدر", icon: ImageIcon },
-    { href: "/admin/faqs", label: "الأسئلة الشائعة", icon: HelpCircle },
-    { href: "/admin/support", label: "مركز الدعم", icon: LifeBuoy },
-    { href: "/admin/audit-logs", label: "سجل العمليات", icon: History },
-    { href: "/admin/policies", label: "الشروط والسياسات", icon: ScrollText },
-    { href: "/admin/sdui", label: "إدارة الواجهة", icon: Palette },
-    { href: "/admin/settings", label: "إعدادات المنصة", icon: Settings }
+interface SidebarLink {
+    href: string;
+    label: string;
+    icon: any;
+    permission?: string; // Optional: if not set, everyone sees it (or maybe only admins/partners?)
+    hideForRoles?: string[]; // Optional: roles that should NOT see this link
+}
+
+const adminSidebarLinks: SidebarLink[] = [
+    { href: "/admin", label: "طلبات الانضمام", icon: ClipboardList, permission: "partners.manage" }, // Assuming partners.manage for requests
+    { href: "/admin/partners", label: "إدارة الشركاء", icon: Building2, permission: "partners.view" },
+    { href: "/admin/cities", label: "المدن والمناطق", icon: MapPin, permission: "routes.manage" }, // Cities usually with routes
+    { href: "/admin/staff", label: "طاقم المنصة", icon: Shield, permission: "users.manage" },
+    { href: "/admin/users", label: "دليل المستخدمين", icon: Users, permission: "users.view" },
+    { href: "/dashboard/drivers", label: "إدارة السائقين", icon: Users, permission: "fleet.view", hideForRoles: ['SUPERUSER'] },
+    { href: "/admin/commissions", label: "العمولات", icon: DollarSign, permission: "financial.view" },
+    { href: "/admin/reports", label: "التقارير المالية", icon: BarChart3, permission: "financial.view" },
+    { href: "/admin/notifications", label: "الإشعارات العامّة", icon: Bell, permission: "settings.edit" },
+    { href: "/admin/banners", label: "إدارة السلايدر", icon: ImageIcon, permission: "settings.edit" },
+    { href: "/admin/faqs", label: "الأسئلة الشائعة", icon: HelpCircle, permission: "settings.edit" },
+    { href: "/admin/support", label: "مركز الدعم", icon: LifeBuoy, permission: "bookings.view" }, // Support usually needs booking access
+    { href: "/admin/audit-logs", label: "سجل العمليات", icon: History, permission: "settings.view" },
+    { href: "/admin/policies", label: "الشروط والسياسات", icon: ScrollText, permission: "settings.edit" },
+    { href: "/admin/sdui", label: "إدارة الواجهة", icon: Palette, permission: "settings.edit" },
+    { href: "/admin/settings", label: "إعدادات المنصة", icon: Settings, permission: "settings.view" }
 ];
 
 interface AdminSidebarProps {
@@ -46,7 +56,19 @@ interface AdminSidebarProps {
 
 export const AdminSidebar = ({ isOpen = false, onClose }: AdminSidebarProps) => {
     const location = useLocation();
-    const { signOut } = useAuth();
+    const { signOut, userRole } = useAuth();
+    const { hasPermission, loading } = usePermissions();
+
+    // Filter links based on permissions
+    const filteredLinks = adminSidebarLinks.filter(link => {
+        // Check if explicitly hidden for this role
+        if (userRole?.role && link.hideForRoles?.includes(userRole.role)) {
+            return false;
+        }
+
+        if (!link.permission) return true; // No permission required? Show it.
+        return hasPermission(link.permission);
+    });
 
     return (
         <aside
@@ -67,25 +89,29 @@ export const AdminSidebar = ({ isOpen = false, onClose }: AdminSidebarProps) => 
             </div>
 
             <nav className="p-3 space-y-1 flex-1 overflow-y-auto custom-scrollbar">
-                {adminSidebarLinks.map((link) => {
-                    const Icon = link.icon;
-                    const isActive = location.pathname === link.href;
+                {loading ? (
+                    <div className="p-4 text-center text-sm text-muted-foreground">جاري التحميل...</div>
+                ) : (
+                    filteredLinks.map((link) => {
+                        const Icon = link.icon;
+                        const isActive = location.pathname === link.href;
 
-                    return (
-                        <Link
-                            key={link.href}
-                            to={link.href}
-                            onClick={onClose}
-                            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${isActive
-                                ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                                : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
-                                }`}
-                        >
-                            <Icon className="w-5 h-5 shrink-0" />
-                            <span>{link.label}</span>
-                        </Link>
-                    );
-                })}
+                        return (
+                            <Link
+                                key={link.href}
+                                to={link.href}
+                                onClick={onClose}
+                                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${isActive
+                                    ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+                                    }`}
+                            >
+                                <Icon className="w-5 h-5 shrink-0" />
+                                <span>{link.label}</span>
+                            </Link>
+                        );
+                    })
+                )}
             </nav>
 
             <div className="p-4 shrink-0 border-t border-sidebar-border">

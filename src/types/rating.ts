@@ -5,7 +5,7 @@
 
 export interface Rating {
     rating_id: number;
-    user_id: number;
+    auth_id: string; // Gold Standard: UUID from auth.users
     trip_id: number;
     booking_id: number;
     driver_id?: number;
@@ -31,7 +31,7 @@ export interface RatingResponse {
     response_id: number;
     rating_id: number;
     partner_id: number;
-    responder_user_id?: number;
+    responder_auth_id?: string; // Gold Standard: UUID
     response_text: string;
     is_visible: boolean;
     created_at: string;
@@ -41,7 +41,7 @@ export interface RatingResponse {
 export interface RatingHelpfulness {
     id: number;
     rating_id: number;
-    user_id: number;
+    auth_id: string; // Gold Standard: UUID
     is_helpful: boolean;
     created_at: string;
 }
@@ -49,7 +49,7 @@ export interface RatingHelpfulness {
 export interface RatingReport {
     report_id: number;
     rating_id: number;
-    reporter_user_id: number;
+    reporter_auth_id: string; // Gold Standard: UUID
     reason: string;
     description?: string;
     status: 'pending' | 'reviewed' | 'resolved' | 'dismissed';
@@ -174,9 +174,16 @@ export interface RatingRequiringAttention {
     partner_name: string;
     user_name: string;
     stars: number;
+    service_rating?: number;
+    cleanliness_rating?: number;
+    punctuality_rating?: number;
+    comfort_rating?: number;
+    value_for_money_rating?: number;
     comment?: string;
-    rating_date: string;
+    helpful_count: number;
+    not_helpful_count: number;
     reported_count: number;
+    is_verified: boolean;
     has_response: boolean;
     days_since_rating: number;
 }

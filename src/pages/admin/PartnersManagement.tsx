@@ -167,6 +167,8 @@ const PartnersManagement = () => {
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState("");
     const { exportToExcel, exportToPDF } = useExport();
+    const [partnerDocuments, setPartnerDocuments] = useState<any[]>([]);
+    const [fetchingDocs, setFetchingDocs] = useState(false);
 
     useEffect(() => {
         fetchPartners();
@@ -176,7 +178,15 @@ const PartnersManagement = () => {
         setLoading(true);
         const { data, error } = await supabase
             .from('partners')
-            .select('*')
+            .select(`
+                *,
+                manager:users!partners_manager_auth_public_fkey(
+                    auth_id,
+                    full_name,
+                    email,
+                    phone_number
+                )
+            `)
             .order('company_name');
 
         if (error) {
@@ -215,7 +225,8 @@ const PartnersManagement = () => {
 
     const filteredPartners = partners.filter(p =>
         p.company_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.contact_person?.toLowerCase().includes(searchQuery.toLowerCase())
+        p.contact_person?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (p as any).manager?.full_name?.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
     const handleExport = (type: 'excel' | 'pdf') => {
@@ -248,9 +259,25 @@ const PartnersManagement = () => {
     const [currentPartner, setCurrentPartner] = useState<Partial<Partner>>({});
     const [isSaving, setIsSaving] = useState(false);
 
+    const fetchDocuments = async (partnerId: number) => {
+        setFetchingDocs(true);
+        const { data, error } = await supabase
+            .from('documents')
+            .select('*')
+            .eq('partner_id', partnerId);
+
+        if (error) {
+            console.error('Error fetching documents:', error);
+        } else {
+            setPartnerDocuments(data || []);
+        }
+        setFetchingDocs(false);
+    };
+
     const openDialog = (partner?: Partner) => {
         if (partner) {
             setCurrentPartner({ ...partner });
+            fetchDocuments(partner.partner_id);
         } else {
             setCurrentPartner({
                 company_name: "",
@@ -259,6 +286,7 @@ const PartnersManagement = () => {
                 commission_percentage: 0,
                 status: "approved"
             });
+            setPartnerDocuments([]);
         }
         setIsDialogOpen(true);
     };
@@ -288,14 +316,11 @@ const PartnersManagement = () => {
                 website: currentPartner.website,
                 logo_url: currentPartner.logo_url,
 
-                owner_name: currentPartner.owner_name,
-                owner_phone: currentPartner.owner_phone,
-                owner_email: currentPartner.owner_email,
-
                 bank_name: currentPartner.bank_name,
                 iban: currentPartner.iban,
                 account_number: currentPartner.account_number,
-                swift_code: currentPartner.swift_code
+                swift_code: currentPartner.swift_code,
+                manager_auth_id: (currentPartner as any).manager_auth_id
             };
 
             let error;
@@ -413,7 +438,9 @@ const PartnersManagement = () => {
                                                     <span className="font-medium">{partner.company_name}</span>
                                                 </div>
                                             </TableCell>
-                                            <TableCell>{partner.contact_person || "-"}</TableCell>
+                                            <TableCell>
+                                                {(partner as any).manager?.full_name || partner.contact_person || "-"}
+                                            </TableCell>
                                             <TableCell>{partner.commission_percentage}%</TableCell>
                                             <TableCell>
                                                 {partner.status === 'approved' ? (
@@ -595,32 +622,41 @@ const PartnersManagement = () => {
                             </TabsContent>
 
                             <TabsContent value="owner" className="space-y-4 pt-4">
-                                <div className="space-y-2">
-                                    <Label>اسم المالك</Label>
-                                    <Input
-                                        value={currentPartner.owner_name || ""}
-                                        onChange={(e) => setCurrentPartner({ ...currentPartner, owner_name: e.target.value })}
-                                        placeholder="الاسم الكامل للمالك"
-                                    />
-                                </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <Label>رقم الجوال</Label>
-                                        <Input
-                                            value={currentPartner.owner_phone || ""}
-                                            onChange={(e) => setCurrentPartner({ ...currentPartner, owner_phone: e.target.value })}
-                                            placeholder="05xxxxxxxx"
-                                        />
+                                {(currentPartner as any).manager ? (
+                                    <div className="bg-secondary/5 border border-secondary/20 rounded-lg p-4 mb-4">
+                                        <div className="flex items-start gap-3">
+                                            <div className="p-2 bg-secondary/10 rounded-full">
+                                                <CheckCircle2 className="w-4 h-4 text-secondary" />
+                                            </div>
+                                            <div>
+                                                <h4 className="font-medium text-secondary-foreground text-sm">حساب مدير مرتبط</h4>
+                                                <p className="text-muted-foreground text-xs mt-1">هذه البيانات مستمدة تلقائياً من حساب المستخدم الموثق.</p>
+                                                <div className="mt-3 grid grid-cols-2 gap-4 text-sm">
+                                                    <div>
+                                                        <Label className="text-xs text-muted-foreground">الاسم الكامل</Label>
+                                                        <p className="font-medium">{(currentPartner as any).manager.full_name}</p>
+                                                    </div>
+                                                    <div>
+                                                        <Label className="text-xs text-muted-foreground">البريد الإلكتروني</Label>
+                                                        <p className="font-medium">{(currentPartner as any).manager.email}</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div className="space-y-2">
-                                        <Label>البريد الإلكتروني</Label>
-                                        <Input
-                                            value={currentPartner.owner_email || ""}
-                                            onChange={(e) => setCurrentPartner({ ...currentPartner, owner_email: e.target.value })}
-                                            placeholder="owner@example.com"
-                                        />
-                                    </div>
-                                </div>
+                                ) : (
+                                    <>
+                                        <div className="space-y-2">
+                                            <Label>اسم المالك (بيانات نصية)</Label>
+                                            <Input
+                                                value={currentPartner.contact_person || ""}
+                                                onChange={(e) => setCurrentPartner({ ...currentPartner, contact_person: e.target.value })}
+                                                placeholder="الاسم الكامل للمالك"
+                                            />
+                                        </div>
+                                        <p className="text-xs text-muted-foreground">ملاحظة: لربط الشركة بحساب مستخدم كامل، يجب تحويل هذا الشريك لنظام الهوية الموحدة.</p>
+                                    </>
+                                )}
                             </TabsContent>
 
                             <TabsContent value="financial" className="space-y-4 pt-4">
@@ -681,22 +717,58 @@ const PartnersManagement = () => {
                                     </div>
                                 </div>
 
-                                {[
-                                    { id: 'cr', label: 'السجل التجاري', type: 'commercial_registration', dbValue: 'registration', required: true },
-                                    { id: 'tax', label: 'شهادة الضريبة', type: 'tax_certificate', dbValue: 'other', required: true },
-                                    { id: 'owner_id', label: 'هوية المالك', type: 'owner_id', dbValue: 'id_card', required: true },
-                                    { id: 'contract', label: 'عقد التأسيس', type: 'foundation_contract', dbValue: 'other', required: false },
-                                ].map((docItem) => (
-                                    <DocumentUploadItem
-                                        key={docItem.id}
-                                        docItem={docItem}
-                                        partnerId={currentPartner.partner_id}
-                                    />
-                                ))}
+                                <div className="space-y-4">
+                                    {fetchingDocs ? (
+                                        <div className="flex items-center justify-center py-8">
+                                            <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                                        </div>
+                                    ) : partnerDocuments.length > 0 ? (
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            {partnerDocuments.map((doc) => (
+                                                <div key={doc.document_id} className="flex items-center justify-between border p-4 rounded-lg bg-card">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="p-2 bg-primary/10 rounded">
+                                                            <FileText className="w-4 h-4 text-primary" />
+                                                        </div>
+                                                        <div>
+                                                            <div className="text-sm font-medium">
+                                                                {doc.document_type === 'registration' ? 'السجل التجاري' :
+                                                                    doc.document_type === 'tax_certificate' ? 'الشهادة الضريبية' :
+                                                                        doc.document_type === 'license' ? 'الرخصة' : 'مستند آخر'}
+                                                            </div>
+                                                            <div className="text-[10px] text-muted-foreground">
+                                                                رقم: {doc.document_number || '-'}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        {doc.verification_status === 'approved' ? (
+                                                            <CheckCircle2 className="w-4 h-4 text-green-500" />
+                                                        ) : doc.verification_status === 'rejected' ? (
+                                                            <XCircle className="w-4 h-4 text-red-500" />
+                                                        ) : (
+                                                            <Clock className="w-4 h-4 text-amber-500" />
+                                                        )}
+                                                        <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
+                                                            <a href={doc.document_url} target="_blank" rel="noopener noreferrer">
+                                                                <Eye className="w-4 h-4" />
+                                                            </a>
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div className="text-center py-12 border-2 border-dashed rounded-lg">
+                                            <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-3 opacity-20" />
+                                            <p className="text-muted-foreground text-sm">لا توجد مستندات مرفوعة حالياً</p>
+                                        </div>
+                                    )}
+                                </div>
 
                                 <div className="flex items-center gap-2 mt-4 text-xs text-muted-foreground bg-muted p-2 rounded justify-center">
                                     <ShieldAlert className="w-4 h-4" />
-                                    جميع المستندات يتم تشفيرها وحفظها بشكل آمن.
+                                    جميع المستندات يتم تشفيرها وحفظها بشكل آمن وفق معايير الهيئة.
                                 </div>
                             </TabsContent>
                         </Tabs>

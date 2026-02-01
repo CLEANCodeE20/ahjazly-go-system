@@ -49,6 +49,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { usePartner } from "@/hooks/usePartner";
+import { usePermissions } from "@/hooks/usePermissions";
 import { toast } from "@/hooks/use-toast";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 
@@ -63,7 +64,7 @@ const roles = [
 
 interface EmployeeRecord {
   employee_id: number;
-  user_id: number | null;
+  auth_id: string | null;
   partner_id: number | null;
   branch_id: number | null;
   role_in_company: string | null;
@@ -91,6 +92,7 @@ interface DriverRecord {
 
 const EmployeesManagement = () => {
   const { partnerId } = usePartner();
+  const { can } = usePermissions();
 
   const [employees, setEmployees] = useState<EmployeeRecord[]>([]);
   const [branches, setBranches] = useState<BranchRecord[]>([]);
@@ -180,26 +182,18 @@ const EmployeesManagement = () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("لا يوجد جلسة نشطة");
 
-      const payload = editingEmployee ? {
-        action: 'update',
-        user_id: editingEmployee.user_id,
-        email: formData.email,
-        password: formData.password || undefined,
+      const payload = {
+        action: editingEmployee ? "update" : "create",
+        employee_id: editingEmployee?.employee_id,
         full_name: formData.full_name,
+        email: formData.email,
         phone_number: formData.phone_number,
-        branch_id: parseInt(formData.branch_id),
+        auth_id: editingEmployee?.auth_id,
+        partner_id: partnerId,
+        branch_id: formData.branch_id ? parseInt(formData.branch_id) : null,
         role_in_company: formData.role_in_company,
         status: formData.status,
-        partner_id: partnerId
-      } : {
-        action: 'create',
-        email: formData.email,
-        password: formData.password,
-        full_name: formData.full_name,
-        phone_number: formData.phone_number,
-        role_in_company: formData.role_in_company,
-        branch_id: parseInt(formData.branch_id),
-        partner_id: partnerId
+        password: formData.password || undefined,
       };
 
       // Workaround: Use ANON KEY directly to bypass 401 Unauthorized from Gateway
@@ -293,29 +287,26 @@ const EmployeesManagement = () => {
 
   const handleDelete = async () => {
     if (deleteId) {
-      const employee = employees.find(e => e.employee_id === deleteId);
-      if (!employee || !employee.user_id) {
-        // Fallback for direct table delete if somehow missing user_id
-        await supabase.from('employees').delete().eq('employee_id', deleteId);
-        toast({ title: "تم الحذف", description: "تم حذف سجل الموظف محلياً" });
-        fetchData();
-        setDeleteId(null);
-        return;
-      }
-
       setIsSubmitting(true);
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) throw new Error("لا يوجد جلسة نشطة");
+        const employee = employees.find(e => e.employee_id === deleteId);
+        if (!employee) {
+          throw new Error("الموظف غير موجود.");
+        }
 
-        const { data, error } = await supabase.functions.invoke('manage-employee', {
-          body: {
-            action: 'delete',
-            user_id: employee.user_id
+        // Call Edge Function to handle user deletion
+        const { data, error: functionError } = await supabase.functions.invoke(
+          'manage-employee',
+          {
+            body: {
+              action: 'delete',
+              employee_id: deleteId,
+              auth_id: employee.auth_id // Pass auth_id to the function
+            }
           }
-        });
+        );
 
-        if (error) throw error;
+        if (functionError) throw functionError;
 
         if (!data.success) throw new Error(data.error || "فشل الحذف");
 
@@ -351,62 +342,64 @@ const EmployeesManagement = () => {
       subtitle="إضافة وإدارة موظفي وسائقي الشركة"
       actions={
         <div className="flex items-center gap-2">
-          <Dialog open={isAddDriverDialogOpen} onOpenChange={setIsAddDriverDialogOpen}>
-            <DialogTrigger asChild>
-              <Button variant="outline">
-                <Plus className="w-4 h-4 ml-2" />
-                إضافة سائق
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-md">
-              <DialogHeader>
-                <DialogTitle>إضافة سائق جديد</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4 mt-4">
-                <div className="space-y-2">
-                  <Label>الاسم الكامل *</Label>
-                  <Input
-                    placeholder="اسم السائق"
-                    value={driverFormData.full_name}
-                    onChange={(e) => setDriverFormData({ ...driverFormData, full_name: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>رقم الجوال *</Label>
-                  <Input
-                    placeholder="05xxxxxxxx"
-                    value={driverFormData.phone_number}
-                    onChange={(e) => setDriverFormData({ ...driverFormData, phone_number: e.target.value })}
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
+          {can('employees.manage') && (
+            <Dialog open={isAddDriverDialogOpen} onOpenChange={setIsAddDriverDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline">
+                  <Plus className="w-4 h-4 ml-2" />
+                  إضافة سائق
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-md">
+                <DialogHeader>
+                  <DialogTitle>إضافة سائق جديد</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 mt-4">
                   <div className="space-y-2">
-                    <Label>رقم الرخصة</Label>
+                    <Label>الاسم الكامل *</Label>
                     <Input
-                      placeholder="رقم رخصة القيادة"
-                      value={driverFormData.license_number}
-                      onChange={(e) => setDriverFormData({ ...driverFormData, license_number: e.target.value })}
+                      placeholder="اسم السائق"
+                      value={driverFormData.full_name}
+                      onChange={(e) => setDriverFormData({ ...driverFormData, full_name: e.target.value })}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>تاريخ انتهاء الرخصة</Label>
+                    <Label>رقم الجوال *</Label>
                     <Input
-                      type="date"
-                      value={driverFormData.license_expiry}
-                      onChange={(e) => setDriverFormData({ ...driverFormData, license_expiry: e.target.value })}
+                      placeholder="05xxxxxxxx"
+                      value={driverFormData.phone_number}
+                      onChange={(e) => setDriverFormData({ ...driverFormData, phone_number: e.target.value })}
                     />
                   </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>رقم الرخصة</Label>
+                      <Input
+                        placeholder="رقم رخصة القيادة"
+                        value={driverFormData.license_number}
+                        onChange={(e) => setDriverFormData({ ...driverFormData, license_number: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>تاريخ انتهاء الرخصة</Label>
+                      <Input
+                        type="date"
+                        value={driverFormData.license_expiry}
+                        onChange={(e) => setDriverFormData({ ...driverFormData, license_expiry: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                  <div className="flex gap-3 pt-4">
+                    <Button onClick={handleAddDriver} className="flex-1" disabled={isSubmitting}>
+                      {isSubmitting && <Loader2 className="w-4 h-4 ml-2 animate-spin" />}
+                      إضافة السائق
+                    </Button>
+                    <Button variant="outline" onClick={() => setIsAddDriverDialogOpen(false)}>إلغاء</Button>
+                  </div>
                 </div>
-                <div className="flex gap-3 pt-4">
-                  <Button onClick={handleAddDriver} className="flex-1" disabled={isSubmitting}>
-                    {isSubmitting && <Loader2 className="w-4 h-4 ml-2 animate-spin" />}
-                    إضافة السائق
-                  </Button>
-                  <Button variant="outline" onClick={() => setIsAddDriverDialogOpen(false)}>إلغاء</Button>
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
+              </DialogContent>
+            </Dialog>
+          )}
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogTrigger asChild>
               <Button onClick={() => {
@@ -515,7 +508,7 @@ const EmployeesManagement = () => {
               </div>
             </DialogContent>
           </Dialog>
-        </div>
+        </div >
       }
     >
       <div className="space-y-8">
@@ -632,10 +625,12 @@ const EmployeesManagement = () => {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => setDeleteDriverId(driver.driver_id)} className="text-destructive">
-                              <Trash2 className="w-4 h-4 ml-2" />
-                              حذف
-                            </DropdownMenuItem>
+                            {can('employees.manage') && (
+                              <DropdownMenuItem onClick={() => setDeleteDriverId(driver.driver_id)} className="text-destructive">
+                                <Trash2 className="w-4 h-4 ml-2" />
+                                حذف
+                              </DropdownMenuItem>
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </div>
@@ -687,14 +682,18 @@ const EmployeesManagement = () => {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleEdit(employee)}>
-                              <Edit className="w-4 h-4 ml-2" />
-                              تعديل
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => setDeleteId(employee.employee_id)} className="text-destructive">
-                              <Trash2 className="w-4 h-4 ml-2" />
-                              حذف
-                            </DropdownMenuItem>
+                            {can('employees.manage') && (
+                              <>
+                                <DropdownMenuItem onClick={() => handleEdit(employee)}>
+                                  <Edit className="w-4 h-4 ml-2" />
+                                  تعديل
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => setDeleteId(employee.employee_id)} className="text-destructive">
+                                  <Trash2 className="w-4 h-4 ml-2" />
+                                  حذف
+                                </DropdownMenuItem>
+                              </>
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </div>
@@ -753,7 +752,7 @@ const EmployeesManagement = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </DashboardLayout>
+    </DashboardLayout >
   );
 };
 

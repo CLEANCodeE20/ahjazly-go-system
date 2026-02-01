@@ -13,7 +13,7 @@ interface UseFCMReturn {
     isSupported: boolean;
     permission: NotificationPermission;
     requestPermission: () => Promise<boolean>;
-    saveFCMToken: (userId: number) => Promise<boolean>;
+    saveFCMToken: (userId: string) => Promise<boolean>;
     isLoading: boolean;
 }
 
@@ -96,7 +96,7 @@ export const useFCM = (): UseFCMReturn => {
     /**
      * Save FCM token to database (user_device_tokens table)
      */
-    const saveFCMToken = useCallback(async (userId: number): Promise<boolean> => {
+    const saveFCMToken = useCallback(async (userId: string): Promise<boolean> => {
         if (!token) {
             console.warn('No FCM token to save');
             return false;
@@ -112,12 +112,12 @@ export const useFCM = (): UseFCMReturn => {
             const { error: deviceError } = await supabase
                 .from('user_device_tokens')
                 .upsert({
-                    user_id: userId,
+                    auth_id: userId, // Switched to auth_id (Gold Standard)
                     device_type: deviceType,
                     fcm_token: token,
                     updated_at: new Date().toISOString(),
                 }, {
-                    onConflict: 'user_id,fcm_token'
+                    onConflict: 'auth_id,fcm_token'
                 });
 
             if (deviceError) {

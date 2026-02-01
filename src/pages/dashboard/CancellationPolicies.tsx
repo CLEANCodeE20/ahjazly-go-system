@@ -369,7 +369,7 @@ const CancellationPolicies = () => {
                                     onChange={(e) => setEditingPolicy({ ...editingPolicy, priority: Number(e.target.value) })}
                                     className="bg-background/50 border-border/50 focus:border-primary/50"
                                 />
-                                <p className="text-[10px] text-muted-foreground">قيم أعلى تظهر أولاً</ p>
+                                <p className="text-[10px] text-muted-foreground">قيم أعلى تظهر أولاً</p>
                             </div>
                             <div className="flex flex-col justify-center gap-3">
                                 <div className="flex items-center justify-between">

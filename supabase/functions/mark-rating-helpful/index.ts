@@ -45,18 +45,8 @@ serve(async (req) => {
             throw new Error("Unauthorized");
         }
 
-        // Get user_id from users table
-        const { data: userData, error: userDataError } = await supabaseClient
-            .from("users")
-            .select("user_id")
-            .eq("auth_id", user.id)
-            .single();
-
-        if (userDataError || !userData) {
-            throw new Error("User not found");
-        }
-
-        const userId = userData.user_id;
+        // User is authenticated, use user.id (auth_id)
+        const userId = user.id;
 
         // Parse request body
         const body: MarkHelpfulRequest = await req.json();
@@ -83,7 +73,7 @@ serve(async (req) => {
             .from("rating_helpfulness")
             .select("id, is_helpful")
             .eq("rating_id", body.rating_id)
-            .eq("user_id", userId)
+            .eq("auth_id", userId) // Updated to auth_id (using existing var which is now auth_id)
             .single();
 
         let result;
@@ -123,7 +113,7 @@ serve(async (req) => {
                 .from("rating_helpfulness")
                 .insert({
                     rating_id: body.rating_id,
-                    user_id: userId,
+                    auth_id: userId, // Updated to auth_id
                     is_helpful: body.is_helpful,
                 })
                 .select()

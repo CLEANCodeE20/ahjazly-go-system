@@ -17,6 +17,17 @@ import { toast } from "sonner";
 import { Send, Users, Building2, Megaphone, Loader2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 
+interface Partner {
+    partner_id: number;
+    company_name: string;
+}
+
+interface UserSummary {
+    auth_id: string;
+    full_name: string | null;
+    email: string | null;
+}
+
 export const AdminNotifications = () => {
     const [isSending, setIsSending] = useState(false);
     const [targetType, setTargetType] = useState<"all" | "partners" | "specific_partner" | "specific_user">("all");
@@ -29,12 +40,25 @@ export const AdminNotifications = () => {
         action_url: "",
     });
 
-    const { data: partners = [] } = useQuery({
+    const { data: partners = [] } = useQuery<Partner[]>({
         queryKey: ["partners-list"],
         queryFn: async () => {
             const { data, error } = await supabase.from("partners").select("partner_id, company_name");
             if (error) throw error;
-            return data;
+            return data as Partner[];
+        },
+    });
+
+    const { data: users = [] } = useQuery<UserSummary[]>({
+        queryKey: ["admin-users-list"],
+        queryFn: async () => {
+            const { data, error } = await supabase
+                .from("users")
+                .select("auth_id, full_name, email")
+                .not("auth_id", "is", null)
+                .order("full_name");
+            if (error) throw error;
+            return data as UserSummary[];
         },
     });
 
@@ -43,23 +67,36 @@ export const AdminNotifications = () => {
         setIsSending(true);
 
         try {
-            let targetUsers: any[] = [];
+            let targetUsers: { auth_id: string }[] = [];
 
             if (targetType === "all") {
-                const { data } = await supabase.from("users").select("user_id");
+                // Get all users via auth_id
+                const { data } = await supabase.from("users").select("auth_id");
                 targetUsers = data || [];
             } else if (targetType === "partners") {
-                const { data } = await supabase.from("users").select("user_id").eq("user_type", "partner");
-                targetUsers = data || [];
+                // Get all partner admins via user_roles (Gold Standard)
+                const { data } = await supabase
+                    .from("user_roles")
+                    .select("user_id")
+                    .eq("role", "PARTNER_ADMIN");
+
+                // user_id in user_roles is actually auth_id (UUID)
+                targetUsers = (data || []).map(r => ({ auth_id: r.user_id }));
             } else if (targetType === "specific_partner") {
-                const { data } = await supabase.from("users").select("user_id").eq("partner_id", parseInt(formData.target_id));
-                targetUsers = data || [];
+                // Get all users for a specific partner
+                const { data } = await supabase
+                    .from("user_roles")
+                    .select("user_id")
+                    .eq("partner_id", parseInt(formData.target_id));
+
+                targetUsers = (data || []).map(r => ({ auth_id: r.user_id }));
             } else if (targetType === "specific_user") {
-                targetUsers = [{ user_id: parseInt(formData.target_id) }];
+                // Direct auth_id (UUID format)
+                targetUsers = [{ auth_id: formData.target_id }];
             }
 
             const notificationsToInsert = targetUsers.map(u => ({
-                user_id: u.user_id,
+                auth_id: u.auth_id, // Gold Standard: UUID
                 title: formData.title,
                 message: formData.message,
                 type: formData.type as any,
@@ -142,12 +179,22 @@ export const AdminNotifications = () => {
 
                                 {targetType === "specific_user" && (
                                     <div className="space-y-2">
-                                        <Label>معرف المستخدم (User ID)</Label>
-                                        <Input
+                                        <Label>اختر المستخدم</Label>
+                                        <Select
                                             value={formData.target_id}
-                                            onChange={(e) => setFormData({ ...formData, target_id: e.target.value })}
-                                            placeholder="أدخل ID المستخدم..."
-                                        />
+                                            onValueChange={(v) => setFormData({ ...formData, target_id: v })}
+                                        >
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="ابحث عن مستخدم..." />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {users.map(u => (
+                                                    <SelectItem key={u.auth_id} value={u.auth_id}>
+                                                        {u.full_name} {u.email ? `(${u.email})` : ""}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
                                     </div>
                                 )}
 
@@ -225,7 +272,7 @@ export const AdminNotifications = () => {
                                 </div>
                                 <div>
                                     <p className="text-sm text-muted-foreground">إجمالي المستخدمين</p>
-                                    <h3 className="text-2xl font-bold">--</h3>
+                                    <h3 className="text-2xl font-bold">{users.length}</h3>
                                 </div>
                             </div>
                         </CardContent>

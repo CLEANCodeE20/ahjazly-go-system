@@ -1,0 +1,787 @@
+# مقارنة شاملة: MySQL القديم vs PostgreSQL الحالي
+## نظام حجز الحافلات - تحليل مقارن
+
+**تاريخ المقارنة:** 2026-01-26  
+**الملف القديم:** `a (3).sql` (MySQL/MariaDB - 8 يناير 2026)  
+**النظام الحالي:** PostgreSQL (Supabase)
+
+---
+
+## 📊 نظرة عامة
+
+| الجانب | MySQL (القديم) | PostgreSQL (الحالي) |
+|--------|----------------|---------------------|
+| **نظام قاعدة البيانات** | MySQL 10.4.28-MariaDB | PostgreSQL (Supabase) |
+| **اسم قاعدة البيانات** | `ahjezli_db_v2_1` | Supabase Cloud |
+| **عدد الجداول** | ~40 جدول | ~45 جدول |
+| **تاريخ الإنشاء** | 8 يناير 2026 | مستمر (آخر ترحيل: يناير 2026) |
+| **نوع المفاتيح الأساسية** | INT UNSIGNED AUTO_INCREMENT | BIGINT مع SEQUENCES |
+| **الأمان** | لا يوجد RLS | Row Level Security (RLS) |
+| **نظام الأدوار** | نظام RBAC متقدم | نظام أدوار أبسط |
+
+---
+
+## 1. الفروقات الهيكلية الرئيسية
+
+### 1.1 نظام تخطيط الحافلات 🚌
+
+#### **MySQL (القديم) - نظام متطور:**
+
+```sql
+-- جداول التخطيط
+bus_layouts (60+ تخطيط)
+  ↓
+bus_layout_seats (مقاعد مع تفاصيل الموقع)
+  ↓
+trip_seats (مقاعد الرحلة الفعلية)
+
+-- ميزات:
+- دعم طوابق متعددة (deck: 1, 2)
+- معلومات موقع المقعد (row_num, col_num)
+- تحديد نافذة/ممر (is_window, is_aisle)
+- قوالب قابلة لإعادة الاستخدام
+```
+
+**مثال من البيانات:**
+```sql
+CREATE TABLE `bus_layout_seats` (
+  `layout_seat_id` int(11) NOT NULL,
+  `layout_id` int(11) NOT NULL,
+  `class_id` int(11) NOT NULL,
+  `seat_number` varchar(10) NOT NULL,
+  `row_num` int(11) DEFAULT NULL,
+  `col_num` int(11) DEFAULT NULL,
+  `deck` int(11) NOT NULL DEFAULT 1,
+  `is_window` tinyint(1) DEFAULT 0,
+  `is_aisle` tinyint(1) DEFAULT 0
+);
+```
+
+#### **PostgreSQL (الحالي) - نظام مبسط:**
+
+```sql
+-- جدول واحد فقط
+CREATE TABLE seats (
+  seat_id bigint PRIMARY KEY,
+  bus_id bigint,
+  seat_number varchar,
+  is_available boolean DEFAULT true  -- ⚠️ عيب تصميم
+);
+
+-- مشاكل:
+❌ لا يوجد نظام تخطيط
+❌ لا معلومات موقع المقعد
+❌ is_available عامة وليست خاصة بالرحلة
+❌ لا دعم للطوابق
+```
+
+**التوصية:** ✅ **اعتماد نظام التخطيط من MySQL القديم**
+
+---
+
+### 1.2 نظام الأسعار (Fares)
+
+#### **MySQL (القديم):**
+
+```sql
+CREATE TABLE `fares` (
+  `fare_id` int(10) UNSIGNED NOT NULL,
+  `trip_id` int(10) UNSIGNED NOT NULL,
+  `class_id` int(11) NOT NULL,  -- VIP, Standard, Economy
+  `price` decimal(10,2) NOT NULL
+);
+
+-- ميزات:
+✅ أسعار مختلفة لكل فئة مقعد
+✅ تسعير ديناميكي لكل رحلة
+✅ مرونة في التسعير
+```
+
+#### **PostgreSQL (الحالي):**
+
+```sql
+-- لا يوجد جدول fares منفصل
+-- الأسعار مخزنة في:
+CREATE TABLE trips (
+  base_price numeric,  -- سعر واحد فقط
+  ...
+);
+
+-- مشاكل:
+❌ سعر واحد لكل الرحلة
+❌ لا تمييز بين فئات المقاعد
+❌ صعوبة التسعير الديناميكي
+```
+
+**التوصية:** ✅ **إضافة جدول fares للتسعير المرن**
+
+---
+
+### 1.3 نظام الحجز والركاب
+
+#### **MySQL (القديم):**
+
+```sql
+-- جدول واحد للتذاكر
+CREATE TABLE `booking_seats` (
+  `booking_seat_id` bigint(20) UNSIGNED NOT NULL,
+  `booking_id` int(10) UNSIGNED NOT NULL,
+  `trip_seat_id` bigint(20) UNSIGNED NOT NULL,
+  `passenger_name` varchar(100) NOT NULL,
+  `gender_id` int(11) DEFAULT NULL,
+  `nationality_id` int(11) DEFAULT NULL,
+  `date_of_birth` date DEFAULT NULL,
+  `document_type_id` int(11) DEFAULT NULL,
+  `passenger_document_number` varchar(50) DEFAULT NULL,
+  `document_image_url` varchar(255) DEFAULT NULL,
+  `price_at_booking` decimal(10,2) NOT NULL,
+  `status_id` int(11) NOT NULL DEFAULT 1
+);
+
+-- ميزات:
+✅ كل شيء في جدول واحد
+✅ price_at_booking (لقطة السعر)
+✅ معلومات الوثيقة مدمجة
+```
+
+#### **PostgreSQL (الحالي):**
+
+```sql
+CREATE TABLE passengers (
+  passenger_id bigint PRIMARY KEY,
+  booking_id bigint,
+  trip_id bigint,  -- ⚠️ زائد (مذكور في التدقيق)
+  seat_id bigint,
+  full_name varchar,
+  phone_number varchar,
+  id_number varchar,
+  passenger_status varchar,
+  cancellation_id bigint
+);
+
+-- مشاكل:
+⚠️ trip_id زائد (قابل للاشتقاق)
+⚠️ لا يوجد price_at_booking
+⚠️ معلومات أقل عن الوثائق
+```
+
+**التوصية:** 🟡 **النظامان متقاربان، لكن MySQL أكثر تفصيلاً**
+
+---
+
+### 1.4 نظام الأدوار والصلاحيات (RBAC)
+
+#### **MySQL (القديم) - نظام متقدم جدًا:**
+
+```sql
+-- 3 جداول منفصلة
+roles (8 أدوار)
+  ↓
+permissions (48 صلاحية مفصلة)
+  ↓
+role_permissions (ربط الأدوار بالصلاحيات)
+
+-- أمثلة على الصلاحيات:
+- trip:create
+- trip:read_all
+- trip:update
+- booking:create
+- booking:read_own
+- admin:full_access
+- partners:review
+- settlements:manage
+- system:analytics:view
+```
+
+**الأدوار المتاحة:**
+1. SUPERUSER (مشرف أعلى)
+2. TRAVELER (مسافر)
+3. PARTNER_ADMIN (مدير شريك)
+4. DRIVER (سائق)
+5. AGENT (وكيل حجز)
+6. PARTNER_EMPLOYEE (موظف شريك)
+7. CUSTOMER_SUPPORT (دعم عملاء)
+8. guest (زائر)
+
+#### **PostgreSQL (الحالي) - نظام أبسط:**
+
+```sql
+CREATE TABLE user_roles (
+  id uuid PRIMARY KEY,  -- أو user_id حسب الترحيل
+  user_id bigint,
+  role varchar,  -- ENUM: admin, partner, driver, traveler
+  partner_id bigint
+);
+
+-- مشاكل:
+❌ لا يوجد جدول permissions منفصل
+❌ أدوار محدودة (4 فقط)
+❌ لا صلاحيات مفصلة
+❌ تعارض في التصميم (ذكر في التدقيق)
+```
+
+**التوصية:** ✅ **اعتماد نظام RBAC الكامل من MySQL**
+
+---
+
+### 1.5 نظام المدن والدول
+
+#### **MySQL (القديم):**
+
+```sql
+CREATE TABLE `countries` (
+  `country_id` smallint(5) UNSIGNED NOT NULL,
+  `name` varchar(100) NOT NULL,
+  `code` varchar(10) NOT NULL
+);
+
+CREATE TABLE `cities` (
+  `city_id` int(10) UNSIGNED NOT NULL,
+  `country_id` smallint(5) UNSIGNED NOT NULL,
+  `name` varchar(100) NOT NULL
+);
+
+-- بيانات موجودة:
+- السعودية (الرياض، جدة، الدمام، مكة، المدينة)
+- اليمن (صنعاء، عدن، تعز، الحديدة، المكلا)
+```
+
+#### **PostgreSQL (الحالي):**
+
+```sql
+-- لا يوجد جدول countries
+-- المدن مخزنة كـ VARCHAR مباشرة في:
+routes (origin_city, destination_city)
+
+-- مشاكل:
+❌ لا تطبيع
+❌ تكرار أسماء المدن
+❌ صعوبة الترجمة
+❌ لا معلومات عن الدول
+```
+
+**التوصية:** ✅ **إضافة جداول countries و cities**
+
+---
+
+### 1.6 نظام الجداول الزمنية (Schedules)
+
+#### **MySQL (القديم) - نظام متقدم:**
+
+```sql
+CREATE TABLE `schedules` (
+  `schedule_id` int(10) UNSIGNED NOT NULL,
+  `partner_id` int(10) UNSIGNED NOT NULL,
+  `route_id` int(10) UNSIGNED NOT NULL,
+  `schedule_name` varchar(150) NOT NULL,
+  `departure_time` time NOT NULL,
+  `duration_minutes` int(10) UNSIGNED NOT NULL,
+  `bus_class_required` varchar(50) DEFAULT NULL,
+  `is_active` tinyint(1) NOT NULL DEFAULT 1
+);
+
+CREATE TABLE `schedule_recurrence_rules` (
+  `rule_id` int(10) UNSIGNED NOT NULL,
+  `schedule_id` int(10) UNSIGNED NOT NULL,
+  `recurrence_type` enum('Daily','Weekly') NOT NULL,
+  `day_of_week` tinyint(3) UNSIGNED DEFAULT NULL,
+  `start_date` date NOT NULL,
+  `end_date` date DEFAULT NULL
+);
+
+-- ميزات:
+✅ قوالب رحلات متكررة
+✅ جدولة يومية/أسبوعية
+✅ تحديد فئة الحافلة المطلوبة
+```
+
+#### **PostgreSQL (الحالي):**
+
+```sql
+-- لا يوجد نظام schedules
+-- الرحلات تُنشأ يدويًا فقط
+
+-- مشاكل:
+❌ لا رحلات متكررة تلقائية
+❌ عمل يدوي كثير
+❌ صعوبة إدارة الجداول
+```
+
+**التوصية:** ✅ **إضافة نظام الجداول الزمنية**
+
+---
+
+### 1.7 نظام الوثائق والمستندات
+
+#### **MySQL (القديم):**
+
+```sql
+CREATE TABLE `partner_documents` (
+  `document_id` int(10) UNSIGNED NOT NULL,
+  `file_url` varchar(255) NOT NULL,
+  `uploaded_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `partner_id` int(10) UNSIGNED NOT NULL,
+  `document_type_id` int(10) UNSIGNED NOT NULL,
+  `status_id` int(10) UNSIGNED NOT NULL
+);
+
+CREATE TABLE `partner_document_types` (
+  `type_id` int(10) UNSIGNED NOT NULL,
+  `name` varchar(100) NOT NULL,
+  `is_required` tinyint(1) NOT NULL DEFAULT 1
+);
+-- أنواع: Commercial Registration, Transport License, Owner National ID, Vehicle Insurance
+
+CREATE TABLE `document_action_logs` (
+  `log_id` int(10) UNSIGNED NOT NULL,
+  `action_timestamp` timestamp NOT NULL DEFAULT current_timestamp(),
+  `comments` text DEFAULT NULL,
+  `action_type_id` int(11) NOT NULL,
+  `document_id` int(10) UNSIGNED NOT NULL,
+  `action_by_user_id` int(10) UNSIGNED NOT NULL
+);
+
+-- ميزات:
+✅ تتبع كامل لإجراءات الوثائق
+✅ تعليقات على كل إجراء
+✅ أنواع وثائق محددة
+```
+
+#### **PostgreSQL (الحالي):**
+
+```sql
+CREATE TABLE documents (
+  document_id bigint PRIMARY KEY,
+  user_id bigint,
+  partner_id bigint,
+  document_type varchar,
+  file_url varchar,
+  status varchar,
+  reviewed_by bigint,
+  created_at timestamptz
+);
+
+-- مشاكل:
+⚠️ لا سجل إجراءات (action log)
+⚠️ لا تعليقات
+⚠️ لا أنواع وثائق محددة
+```
+
+**التوصية:** ✅ **إضافة document_action_logs**
+
+---
+
+### 1.8 نظام المعاملات المالية
+
+#### **MySQL (القديم):**
+
+```sql
+CREATE TABLE `transactions` (
+  `transaction_id` bigint(20) UNSIGNED NOT NULL,
+  `booking_id` int(10) UNSIGNED DEFAULT NULL,
+  `amount` decimal(10,2) NOT NULL,
+  `type_id` int(11) NOT NULL,  -- PAYMENT / REFUND
+  `payment_method` varchar(50) NOT NULL,
+  `gateway_ref_id` varchar(255) DEFAULT NULL,
+  `status_id` int(11) NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+);
+
+CREATE TABLE `transaction_types` (
+  `type_id` int(11) NOT NULL,
+  `name` varchar(50) NOT NULL
+);
+-- PAYMENT, REFUND
+
+CREATE TABLE `transaction_statuses` (
+  `status_id` int(11) NOT NULL,
+  `name` varchar(50) NOT NULL
+);
+-- Pending, Completed, Failed
+```
+
+#### **PostgreSQL (الحالي):**
+
+```sql
+CREATE TABLE payment_transactions (
+  transaction_id bigint PRIMARY KEY,
+  booking_id bigint,
+  user_id bigint,
+  amount numeric,
+  payment_method varchar,
+  payment_status varchar,
+  transaction_reference varchar,
+  created_at timestamptz
+);
+
+-- مشاكل:
+⚠️ لا تمييز واضح بين PAYMENT و REFUND
+⚠️ لا جداول lookup منفصلة
+```
+
+**التوصية:** 🟡 **النظامان متقاربان**
+
+---
+
+### 1.9 نظام التسويات المالية
+
+#### **MySQL (القديم):**
+
+```sql
+CREATE TABLE `partner_settlements` (
+  `settlement_id` int(10) UNSIGNED NOT NULL,
+  `partner_id` int(10) UNSIGNED NOT NULL,
+  `amount` decimal(12,2) NOT NULL,
+  `status` enum('Pending','Paid','Failed') NOT NULL DEFAULT 'Pending',
+  `period_start_date` date NOT NULL,
+  `period_end_date` date DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `paid_at` timestamp NULL DEFAULT NULL
+);
+
+-- ميزات:
+✅ تسويات دورية
+✅ تتبع الفترة الزمنية
+✅ حالات واضحة
+```
+
+#### **PostgreSQL (الحالي):**
+
+```sql
+-- لا يوجد جدول partner_settlements
+
+-- مشاكل:
+❌ لا نظام تسويات مالية
+❌ صعوبة تتبع المدفوعات للشركاء
+```
+
+**التوصية:** ✅ **إضافة جدول partner_settlements**
+
+---
+
+### 1.10 نظام الركاب المحفوظين
+
+#### **MySQL (القديم):**
+
+```sql
+CREATE TABLE `saved_passengers` (
+  `saved_passenger_id` int(10) UNSIGNED NOT NULL,
+  `user_id` int(10) UNSIGNED NOT NULL,
+  `full_name` varchar(100) NOT NULL,
+  `gender_id` int(11) DEFAULT NULL,
+  `nationality_id` int(11) DEFAULT NULL,
+  `document_type_id` int(11) DEFAULT NULL,
+  `document_number` varchar(50) DEFAULT NULL,
+  `date_of_birth` date DEFAULT NULL,
+  `relationship_id` int(11) DEFAULT NULL
+);
+
+CREATE TABLE `passenger_relationships` (
+  `relationship_id` int(11) NOT NULL,
+  `name` varchar(50) NOT NULL
+);
+-- SELF, WIFE, SON, DAUGHTER, FATHER, MOTHER, OTHER
+
+-- ميزات:
+✅ حفظ بيانات الركاب المتكررين
+✅ علاقة القرابة
+✅ تسريع الحجز
+```
+
+#### **PostgreSQL (الحالي):**
+
+```sql
+-- لا يوجد جدول saved_passengers
+
+-- مشاكل:
+❌ لا حفظ للركاب المتكررين
+❌ المستخدم يدخل البيانات في كل مرة
+```
+
+**التوصية:** ✅ **إضافة saved_passengers**
+
+---
+
+## 2. الجداول الموجودة في PostgreSQL فقط
+
+### 2.1 جداول Supabase الخاصة
+
+```sql
+-- جداول إضافية في النظام الحالي:
+✅ partner_applications (طلبات انضمام الشركاء)
+✅ booking_cancellations (إلغاءات الحجوزات)
+✅ cancel_policies (سياسات الإلغاء)
+✅ cancel_policy_rules (قواعد سياسات الإلغاء)
+✅ commissions (العمولات)
+✅ booking_ledger (دفتر الحجوزات)
+✅ refunds (الاستردادات)
+✅ refund_transactions (معاملات الاسترداد)
+✅ partner_invoices (فواتير الشركاء)
+✅ partner_invoice_items (بنود الفواتير)
+✅ partner_payments (مدفوعات الشركاء)
+✅ notifications (الإشعارات)
+✅ user_device_tokens (رموز الأجهزة)
+✅ ratings (التقييمات)
+✅ support_tickets (تذاكر الدعم)
+✅ conversations (المحادثات)
+✅ messages (الرسائل)
+```
+
+**هذه ميزات جديدة ممتازة غير موجودة في MySQL القديم!**
+
+---
+
+## 3. مقارنة الأنواع والقيود
+
+### 3.1 أنواع البيانات
+
+| الجانب | MySQL | PostgreSQL |
+|--------|-------|------------|
+| **المفاتيح الأساسية** | `INT UNSIGNED AUTO_INCREMENT` | `BIGINT` مع `SEQUENCES` |
+| **النصوص** | `VARCHAR(n)` | `VARCHAR` أو `TEXT` |
+| **الأرقام العشرية** | `DECIMAL(10,2)` | `NUMERIC` |
+| **التواريخ** | `DATETIME` | `TIMESTAMPTZ` |
+| **القيم المنطقية** | `TINYINT(1)` | `BOOLEAN` |
+| **ENUM** | `ENUM('value1', 'value2')` | أنواع ENUM مخصصة |
+
+### 3.2 القيود والفهارس
+
+| الجانب | MySQL (القديم) | PostgreSQL (الحالي) |
+|--------|----------------|---------------------|
+| **Foreign Keys** | ❌ لا توجد | ❌ لا توجد (مشكلة حرجة) |
+| **Unique Constraints** | ✅ موجودة جزئيًا | ❌ مفقودة (مشكلة حرجة) |
+| **CHECK Constraints** | ⚠️ محدودة | ❌ مفقودة (مشكلة) |
+| **Indexes** | ⚠️ محدودة | ❌ مفقودة (مشكلة حرجة) |
+| **RLS Policies** | ❌ لا يوجد | ✅ موجودة (ميزة ممتازة) |
+
+---
+
+## 4. مقارنة الميزات
+
+### 4.1 نقاط قوة MySQL القديم
+
+| الميزة | الوصف | الأولوية |
+|--------|-------|----------|
+| **نظام تخطيط الحافلات** | نظام متطور مع دعم طوابق ومواقع | 🔴 حرج |
+| **نظام الأسعار** | تسعير مرن لكل فئة مقعد | 🔴 حرج |
+| **نظام RBAC** | 48 صلاحية مفصلة | 🟠 عالي |
+| **الجداول الزمنية** | رحلات متكررة تلقائية | 🟠 عالي |
+| **المدن والدول** | تطبيع صحيح | 🟡 متوسط |
+| **الركاب المحفوظون** | تسريع الحجز | 🟡 متوسط |
+| **التسويات المالية** | تتبع مدفوعات الشركاء | 🟠 عالي |
+| **سجل إجراءات الوثائق** | تدقيق كامل | 🟡 متوسط |
+
+### 4.2 نقاط قوة PostgreSQL الحالي
+
+| الميزة | الوصف | الأولوية |
+|--------|-------|----------|
+| **Row Level Security** | أمان على مستوى الصف | 🔴 حرج |
+| **سياسات الإلغاء** | نظام متقدم للإلغاءات | 🟠 عالي |
+| **نظام العمولات** | تتبع دقيق للعمولات | 🟠 عالي |
+| **نظام الفواتير** | فواتير للشركاء | 🟠 عالي |
+| **الإشعارات** | نظام إشعارات متكامل | 🟡 متوسط |
+| **التقييمات** | تقييم الرحلات والسائقين | 🟡 متوسط |
+| **الدعم الفني** | نظام تذاكر دعم | 🟡 متوسط |
+| **المحادثات** | نظام رسائل مباشر | 🟡 متوسط |
+
+---
+
+## 5. التوصيات الاستراتيجية
+
+### 5.1 ميزات يجب نقلها من MySQL إلى PostgreSQL
+
+#### **🔴 أولوية حرجة (نفذ فورًا):**
+
+1. **نظام تخطيط الحافلات الكامل**
+   ```sql
+   -- إضافة الجداول:
+   - bus_layouts
+   - bus_layout_seats
+   -- تعديل جدول seats ليشير إلى التخطيط
+   ```
+
+2. **نظام الأسعار المرن**
+   ```sql
+   CREATE TABLE fares (
+     fare_id BIGSERIAL PRIMARY KEY,
+     trip_id BIGINT REFERENCES trips(trip_id),
+     class_id INTEGER REFERENCES bus_classes(class_id),
+     price NUMERIC NOT NULL
+   );
+   ```
+
+3. **إصلاح عيب is_available في seats**
+   - حذف العمود is_available
+   - الاعتماد على trip_seats أو passengers
+
+#### **🟠 أولوية عالية (خطط للتنفيذ):**
+
+4. **نظام RBAC الكامل**
+   ```sql
+   CREATE TABLE permissions (
+     permission_id BIGSERIAL PRIMARY KEY,
+     name VARCHAR UNIQUE NOT NULL,
+     module VARCHAR NOT NULL,
+     description TEXT
+   );
+   
+   CREATE TABLE role_permissions (
+     role_id BIGINT REFERENCES roles(id),
+     permission_id BIGINT REFERENCES permissions(permission_id),
+     PRIMARY KEY (role_id, permission_id)
+   );
+   ```
+
+5. **نظام الجداول الزمنية**
+   ```sql
+   CREATE TABLE schedules (
+     schedule_id BIGSERIAL PRIMARY KEY,
+     partner_id BIGINT REFERENCES partners(partner_id),
+     route_id BIGINT REFERENCES routes(route_id),
+     departure_time TIME NOT NULL,
+     duration_minutes INTEGER NOT NULL,
+     is_active BOOLEAN DEFAULT TRUE
+   );
+   
+   CREATE TABLE schedule_recurrence_rules (
+     rule_id BIGSERIAL PRIMARY KEY,
+     schedule_id BIGINT REFERENCES schedules(schedule_id),
+     recurrence_type VARCHAR CHECK (recurrence_type IN ('Daily', 'Weekly')),
+     day_of_week SMALLINT,
+     start_date DATE NOT NULL,
+     end_date DATE
+   );
+   ```
+
+6. **التسويات المالية**
+   ```sql
+   CREATE TABLE partner_settlements (
+     settlement_id BIGSERIAL PRIMARY KEY,
+     partner_id BIGINT REFERENCES partners(partner_id),
+     amount NUMERIC NOT NULL,
+     status VARCHAR CHECK (status IN ('Pending', 'Paid', 'Failed')),
+     period_start_date DATE NOT NULL,
+     period_end_date DATE,
+     created_at TIMESTAMPTZ DEFAULT NOW(),
+     paid_at TIMESTAMPTZ
+   );
+   ```
+
+#### **🟡 أولوية متوسطة (حسّن لاحقًا):**
+
+7. **المدن والدول**
+   ```sql
+   CREATE TABLE countries (
+     country_id SMALLSERIAL PRIMARY KEY,
+     name VARCHAR NOT NULL,
+     code VARCHAR(10) NOT NULL UNIQUE
+   );
+   
+   CREATE TABLE cities (
+     city_id SERIAL PRIMARY KEY,
+     country_id SMALLINT REFERENCES countries(country_id),
+     name VARCHAR NOT NULL
+   );
+   ```
+
+8. **الركاب المحفوظون**
+   ```sql
+   CREATE TABLE saved_passengers (
+     saved_passenger_id BIGSERIAL PRIMARY KEY,
+     user_id BIGINT REFERENCES users(user_id),
+     full_name VARCHAR NOT NULL,
+     gender VARCHAR,
+     nationality VARCHAR,
+     document_type VARCHAR,
+     document_number VARCHAR,
+     date_of_birth DATE,
+     relationship VARCHAR
+   );
+   ```
+
+9. **سجل إجراءات الوثائق**
+   ```sql
+   CREATE TABLE document_action_logs (
+     log_id BIGSERIAL PRIMARY KEY,
+     document_id BIGINT REFERENCES documents(document_id),
+     action_type VARCHAR NOT NULL,
+     action_by BIGINT REFERENCES users(user_id),
+     comments TEXT,
+     action_timestamp TIMESTAMPTZ DEFAULT NOW()
+   );
+   ```
+
+### 5.2 ميزات يجب الاحتفاظ بها في PostgreSQL
+
+✅ **احتفظ بهذه الميزات الممتازة:**
+- Row Level Security (RLS)
+- سياسات الإلغاء المتقدمة
+- نظام العمولات
+- نظام الفواتير
+- الإشعارات
+- التقييمات
+- الدعم الفني
+- المحادثات
+
+---
+
+## 6. خطة الترحيل المقترحة
+
+### المرحلة 1: الأساسيات الحرجة (أسبوع 1-2)
+1. ✅ إضافة جميع Foreign Key Constraints
+2. ✅ إضافة Unique Constraints
+3. ✅ إضافة Indexes الحرجة
+4. ✅ نظام تخطيط الحافلات
+5. ✅ نظام الأسعار المرن
+
+### المرحلة 2: الميزات المتقدمة (أسبوع 3-4)
+6. ✅ نظام RBAC الكامل
+7. ✅ الجداول الزمنية
+8. ✅ التسويات المالية
+9. ✅ سجل إجراءات الوثائق
+
+### المرحلة 3: التحسينات (أسبوع 5-6)
+10. ✅ المدن والدول
+11. ✅ الركاب المحفوظون
+12. ✅ تحسينات الأداء
+13. ✅ التوثيق الكامل
+
+---
+
+## 7. الخلاصة
+
+### نقاط القوة لكل نظام:
+
+**MySQL القديم:**
+- ✅ نظام تخطيط حافلات متطور جدًا
+- ✅ نظام RBAC شامل (48 صلاحية)
+- ✅ تسعير مرن ومتقدم
+- ✅ جداول زمنية متكررة
+- ✅ تطبيع أفضل للمدن
+
+**PostgreSQL الحالي:**
+- ✅ أمان متقدم (RLS)
+- ✅ ميزات مالية متطورة (عمولات، فواتير)
+- ✅ سياسات إلغاء متقدمة
+- ✅ نظام إشعارات ودعم
+- ✅ تقييمات ومحادثات
+
+### التوصية النهائية:
+
+**🎯 دمج أفضل ما في النظامين:**
+
+1. **احتفظ بـ:** PostgreSQL كنظام أساسي (لميزات Supabase و RLS)
+2. **أضف من MySQL:**
+   - نظام تخطيط الحافلات الكامل
+   - نظام الأسعار المرن
+   - نظام RBAC المتقدم
+   - الجداول الزمنية
+   - التسويات المالية
+3. **أصلح:** جميع المشاكل المذكورة في تقرير التدقيق
+4. **حسّن:** الأداء بالفهارس والتقسيم
+
+**النتيجة:** نظام هجين يجمع قوة PostgreSQL الأمنية مع ميزات MySQL المتقدمة!
+
+---
+
+**نهاية تقرير المقارنة**

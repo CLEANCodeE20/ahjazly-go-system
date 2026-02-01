@@ -46,6 +46,7 @@ const applyFormSchema = z.object({
   companyPhone: z.string().optional(),
   companyAddress: z.string().optional(),
   companyCity: z.string().min(2, "المدينة مطلوبة"),
+  commercialRegistration: z.string().min(1, "رقم السجل التجاري مطلوب"),
   fleetSize: z.preprocess((val) => Number(val), z.number().min(1, "يجب أن يكون لديك حافلة واحدة على الأقل").optional()),
   website: z.string().url("رابط الموقع غير صحيح").optional().or(z.literal("")),
   taxNumber: z.string().optional(),
@@ -96,7 +97,12 @@ const Apply = () => {
       companyCity: "",
       fleetSize: undefined,
       website: "",
+      commercialRegistration: "",
       taxNumber: "",
+      bankName: "",
+      iban: "",
+      accountNumber: "",
+      swiftCode: "",
       // Checkbox
       acceptTerms: false,
     }
@@ -130,7 +136,9 @@ const Apply = () => {
     if (step === 1) {
       fieldsToValidate = ['ownerName', 'ownerPhone', 'ownerEmail', 'password', 'confirmPassword'];
     } else if (step === 2) {
-      fieldsToValidate = ['companyName', 'companyCity'];
+      fieldsToValidate = ['companyName', 'companyCity', 'commercialRegistration', 'website', 'taxNumber'];
+    } else if (step === 3) {
+      fieldsToValidate = ['bankName', 'iban', 'accountNumber'];
     }
 
     const isValid = await form.trigger(fieldsToValidate);
@@ -159,8 +167,7 @@ const Apply = () => {
           emailRedirectTo: `${window.location.origin}/login`,
           data: {
             full_name: values.ownerName,
-            phone: values.ownerPhone,
-            user_type: 'partner'
+            phone: values.ownerPhone
           }
         }
       });
@@ -194,6 +201,7 @@ const Apply = () => {
           company_address: values.companyAddress || null,
           company_city: values.companyCity,
           fleet_size: values.fleetSize || null,
+          commercial_registration: values.commercialRegistration,
           website: values.website || null,
           tax_number: values.taxNumber || null,
 
@@ -218,9 +226,27 @@ const Apply = () => {
           full_name: values.ownerName,
           email: values.ownerEmail,
           phone_number: values.ownerPhone,
-          user_type: 'partner',
           account_status: 'pending'
         });
+
+        // Insert into centralized documents table
+        if (commercialRegisterUrl) {
+          await supabase.from('documents').insert({
+            auth_id: userId,
+            document_type: 'registration',
+            document_url: commercialRegisterUrl,
+            verification_status: 'pending'
+          } as any);
+        }
+
+        if (taxCertificateUrl) {
+          await supabase.from('documents').insert({
+            auth_id: userId,
+            document_type: 'tax_certificate',
+            document_url: taxCertificateUrl,
+            verification_status: 'pending'
+          } as any);
+        }
       }
 
       await supabase.auth.signOut();
@@ -283,7 +309,8 @@ const Apply = () => {
               {[
                 { num: 1, label: "معلومات المالك" },
                 { num: 2, label: "بيانات الشركة" },
-                { num: 3, label: "الوثائق" }
+                { num: 3, label: "البيانات المالية" },
+                { num: 4, label: "الوثائق" }
               ].map((s, index) => (
                 <div key={s.num} className="flex items-center">
                   <div className="flex flex-col items-center">
@@ -297,8 +324,8 @@ const Apply = () => {
                       {s.label}
                     </span>
                   </div>
-                  {index < 2 && (
-                    <div className={`w-24 md:w-32 h-1 mx-2 rounded-full transition-all ${step > s.num ? "bg-primary" : "bg-muted"
+                  {index < 3 && (
+                    <div className={`w-16 md:w-24 h-1 mx-2 rounded-full transition-all ${step > s.num ? "bg-primary" : "bg-muted"
                       }`} />
                   )}
                 </div>
@@ -513,6 +540,22 @@ const Apply = () => {
                       />
                       <FormField
                         control={form.control}
+                        name="commercialRegistration"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>رقم السجل التجاري *</FormLabel>
+                            <FormControl>
+                              <Input placeholder="1010xxxxxx" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
                         name="fleetSize"
                         render={({ field }) => (
                           <FormItem>
@@ -531,7 +574,33 @@ const Apply = () => {
                           </FormItem>
                         )}
                       />
+                      <FormField
+                        control={form.control}
+                        name="website"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>الموقع الإلكتروني</FormLabel>
+                            <FormControl>
+                              <Input placeholder="https://..." {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
                     </div>
+                    <FormField
+                      control={form.control}
+                      name="taxNumber"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>الرقم الضريبي</FormLabel>
+                          <FormControl>
+                            <Input placeholder="الرقم الضريبي" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
                     <FormField
                       control={form.control}
@@ -549,8 +618,78 @@ const Apply = () => {
                   </div>
                 )}
 
-                {/* Step 3: Documents and Final Submit */}
+                {/* Step 3: Financial Info */}
                 {step === 3 && (
+                  <div className="space-y-6 animate-fade-in">
+                    <div className="flex items-center gap-3 mb-6">
+                      <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center">
+                        <FileText className="w-5 h-5 text-primary-foreground" />
+                      </div>
+                      <h2 className="text-xl font-semibold text-foreground">البيانات المالية والبنكية</h2>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="bankName"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>اسم البنك</FormLabel>
+                            <FormControl>
+                              <Input placeholder="اسم البنك" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="iban"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>رقم الآيبان (IBAN)</FormLabel>
+                            <FormControl>
+                              <Input placeholder="SA..." {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="accountNumber"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>رقم الحساب</FormLabel>
+                            <FormControl>
+                              <Input placeholder="رقم الحساب" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="swiftCode"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>رمز السويفت (Swift)</FormLabel>
+                            <FormControl>
+                              <Input placeholder="رمز السويفت" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Step 4: Documents and Final Submit */}
+                {step === 4 && (
                   <div className="space-y-6 animate-fade-in">
                     <div className="flex items-center gap-3 mb-6">
                       <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center">
@@ -643,7 +782,7 @@ const Apply = () => {
                     <div />
                   )}
 
-                  {step < 3 ? (
+                  {step < 4 ? (
                     <Button type="button" onClick={nextStep}>
                       التالي
                       <ArrowLeft className="w-4 h-4 mr-2" />
@@ -676,10 +815,10 @@ const Apply = () => {
             </Link>
           </p>
         </div>
-      </main>
+      </main >
 
       <Footer />
-    </div>
+    </div >
   );
 };
 

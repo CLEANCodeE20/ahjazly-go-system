@@ -54,18 +54,8 @@ serve(async (req) => {
             throw new Error("Unauthorized");
         }
 
-        // Get user_id from users table
-        const { data: userData, error: userDataError } = await supabaseClient
-            .from("users")
-            .select("user_id")
-            .eq("auth_id", user.id)
-            .single();
-
-        if (userDataError || !userData) {
-            throw new Error("User not found");
-        }
-
-        const userId = userData.user_id;
+        // User is authenticated, use user.id (auth_id)
+        const userId = user.id;
 
         // Parse request body
         const body: CreateRatingRequest = await req.json();
@@ -99,7 +89,7 @@ serve(async (req) => {
         const { data: ratingData, error: ratingError } = await supabaseClient.rpc(
             "create_rating",
             {
-                p_user_id: userId,
+                p_auth_id: userId, // Updated to p_auth_id
                 p_trip_id: body.trip_id,
                 p_booking_id: body.booking_id,
                 p_driver_id: body.driver_id || null,

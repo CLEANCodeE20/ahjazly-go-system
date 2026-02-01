@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>مساعد الرحلات الذكي | AI Travel Assistant</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <!-- خلفية متحركة -->
+    <div class="background-animation">
+        <div class="shape shape-1"></div>
+        <div class="shape shape-2"></div>
+        <div class="shape shape-3"></div>
+    </div>
+
+    <!-- الحاوية الرئيسية -->
+    <div class="container">
+        <!-- الهيدر -->
+        <header class="header">
+            <div class="logo-container">
+                <div class="logo-icon">
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="currentColor" stroke-width="2"
+                            stroke-linecap="round" stroke-linejoin="round" />
+                        <path d="M2 17L12 22L22 17" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                            stroke-linejoin="round" />
+                        <path d="M2 12L12 17L22 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                            stroke-linejoin="round" />
+                    </svg>
+                </div>
+                <div class="logo-text">
+                    <h1>مساعد الرحلات الذكي</h1>
+                    <p>مدعوم بالذكاء الاصطناعي</p>
+                </div>
+            </div>
+            <div class="status-indicator">
+                <span class="status-dot"></span>
+                <span class="status-text">متصل</span>
+            </div>
+        </header>
+
+        <!-- منطقة المحادثة -->
+        <div class="chat-container">
+            <div class="chat-messages" id="chatMessages">
+                <!-- رسالة الترحيب -->
+                <div class="message bot-message welcome-message">
+                    <div class="message-avatar">
+                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path
+                                d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM12 5C13.66 5 15 6.34 15 8C15 9.66 13.66 11 12 11C10.34 11 9 9.66 9 8C9 6.34 10.34 5 12 5ZM12 19.2C9.5 19.2 7.29 17.92 6 15.98C6.03 13.99 10 12.9 12 12.9C13.99 12.9 17.97 13.99 18 15.98C16.71 17.92 14.5 19.2 12 19.2Z"
+                                fill="currentColor" />
+                        </svg>
+                    </div>
+                    <div class="message-content">
+                        <div class="message-bubble">
+                            <p>مرحباً بك! 👋</p>
+                            <p>أنا مساعدك الذكي لحجز الرحلات. يمكنني مساعدتك في:</p>
+                            <ul>
+                                <li>🚌 البحث عن الرحلات المتاحة</li>
+                                <li>📍 معرفة نقاط الصعود والمسارات</li>
+                                <li>💰 الاستفسار عن الأسعار</li>
+                                <li>📋 سياسات الإلغاء والاسترجاع</li>
+                            </ul>
+                            <p>كيف يمكنني مساعدتك اليوم؟</p>
+                        </div>
+                        <div class="message-time">الآن</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- مؤشر الكتابة -->
+            <div class="typing-indicator" id="typingIndicator" style="display: none;">
+                <div class="message-avatar">
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path
+                            d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM12 5C13.66 5 15 6.34 15 8C15 9.66 13.66 11 12 11C10.34 11 9 9.66 9 8C9 6.34 10.34 5 12 5ZM12 19.2C9.5 19.2 7.29 17.92 6 15.98C6.03 13.99 10 12.9 12 12.9C13.99 12.9 17.97 13.99 18 15.98C16.71 17.92 14.5 19.2 12 19.2Z"
+                            fill="currentColor" />
+                    </svg>
+                </div>
+                <div class="typing-dots">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- أمثلة الأسئلة السريعة -->
+        <div class="quick-questions" id="quickQuestions">
+            <p class="quick-questions-title">أسئلة سريعة:</p>
+            <div class="quick-questions-grid">
+                <button class="quick-question-btn" data-question="ما هي الرحلات المتاحة؟">
+                    🚌 الرحلات المتاحة
+                </button>
+                <button class="quick-question-btn" data-question="ما هي أسعار الرحلات؟">
+                    💰 الأسعار
+                </button>
+                <button class="quick-question-btn" data-question="ما هي سياسة الإلغاء؟">
+                    📋 سياسة الإلغاء
+                </button>
+                <button class="quick-question-btn" data-question="ما هي نقاط الصعود المتاحة؟">
+                    📍 نقاط الصعود
+                </button>
+            </div>
+        </div>
+
+        <!-- منطقة الإدخال -->
+        <div class="input-container">
+            <form id="chatForm" class="chat-form">
+                <button type="button" class="attach-btn" title="إرفاق ملف">
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path
+                            d="M21.44 11.05L12.25 20.24C11.1242 21.3658 9.59723 21.9983 8.005 21.9983C6.41277 21.9983 4.88583 21.3658 3.76 20.24C2.63417 19.1142 2.00166 17.5872 2.00166 15.995C2.00166 14.4028 2.63417 12.8758 3.76 11.75L12.33 3.18C13.0806 2.42944 14.0991 2.00667 15.16 2.00667C16.2209 2.00667 17.2394 2.42944 17.99 3.18C18.7406 3.93056 19.1633 4.94908 19.1633 6.01C19.1633 7.07092 18.7406 8.08944 17.99 8.84L9.41 17.41C9.03472 17.7853 8.52536 17.9967 7.995 17.9967C7.46464 17.9967 6.95528 17.7853 6.58 17.41C6.20472 17.0347 5.99334 16.5254 5.99334 15.995C5.99334 15.4646 6.20472 14.9553 6.58 14.58L15.07 6.1"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                    </svg>
+                </button>
+                <input type="text" id="messageInput" class="message-input" placeholder="اكتب سؤالك هنا..."
+                    autocomplete="off" required>
+                <button type="submit" class="send-btn" id="sendBtn">
+                    <svg class="send-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M22 2L11 13" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                            stroke-linejoin="round" />
+                        <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="currentColor" stroke-width="2"
+                            stroke-linecap="round" stroke-linejoin="round" />
+                    </svg>
+                    <span class="send-text">إرسال</span>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <script src="/static/script.js"></script>
+</body>
+
+</html>

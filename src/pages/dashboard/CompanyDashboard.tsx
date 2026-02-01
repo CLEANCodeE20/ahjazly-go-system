@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,8 +19,11 @@ import {
   Ticket,
   Loader2,
   Calendar,
-  Shield
+  Shield,
+  Star,
+  MessageSquare
 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 import { useSupabaseCRUD } from "@/hooks/useSupabaseCRUD";
 import { usePartner } from "@/hooks/usePartner";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -70,7 +73,9 @@ const CHART_COLORS = {
 };
 
 const CompanyDashboard = () => {
-  const { partner } = usePartner();
+  const { partner, partnerId } = usePartner();
+  const { can } = usePermissions();
+  const [ratingsStats, setRatingsStats] = useState({ average: 0, total: 0, pending: 0 });
 
   const { data: trips, loading: tripsLoading } = useSupabaseCRUD<TripRecord>({
     tableName: 'trips',
@@ -97,6 +102,33 @@ const CompanyDashboard = () => {
   });
 
   const loading = tripsLoading || bookingsLoading;
+
+  useEffect(() => {
+    const fetchRatingsStats = async () => {
+      if (!partnerId) return;
+      try {
+        const { data: statsData, error: statsError } = await supabase.rpc('get_partner_rating_stats', {
+          p_partner_id: partnerId
+        });
+
+        const { count: pendingCount, error: pendingError } = await supabase
+          .from('v_ratings_requiring_attention')
+          .select('*', { count: 'exact', head: true });
+
+        if (!statsError && statsData && statsData.length > 0) {
+          setRatingsStats({
+            average: statsData[0].average_rating || 0,
+            total: statsData[0].total_ratings || 0,
+            pending: pendingCount || 0
+          });
+        }
+      } catch (err) {
+        console.error('Error fetching ratings stats:', err);
+      }
+    };
+
+    fetchRatingsStats();
+  }, [partnerId]);
 
   // Calculate stats
   const stats = useMemo(() => {
@@ -125,7 +157,7 @@ const CompanyDashboard = () => {
       { label: "الرحلات اليوم", value: todayTrips, icon: Route, change: `${tripChange >= 0 ? '+' : ''}${tripChange}%`, trend: tripChange >= 0 ? "up" : "down" },
       { label: "الحجوزات الجديدة", value: newBookings, icon: Ticket, change: `${confirmedBookings} مؤكدة`, trend: "up" },
       { label: "الإيرادات اليوم (ريال)", value: todayRevenue.toLocaleString(), icon: CreditCard, change: `${revenueChange >= 0 ? '+' : ''}${revenueChange}%`, trend: revenueChange >= 0 ? "up" : "down" },
-      { label: "الحافلات النشطة", value: `${activeBuses}/${totalBuses}`, icon: Bus, change: `${Math.round((activeBuses / Math.max(totalBuses, 1)) * 100)}%`, trend: "neutral" }
+      { label: "متوسط التقييم", value: ratingsStats.average.toFixed(1), icon: Star, change: ratingsStats.pending > 0 ? `${ratingsStats.pending} بانتظار الرد` : "لا يوجد معلق", trend: ratingsStats.pending > 0 ? "down" : "up" }
     ];
   }, [trips, bookings, buses]);
 
@@ -235,12 +267,14 @@ const CompanyDashboard = () => {
     <DashboardLayout
       subtitle="إليك نظرة عامة على نشاطك اليوم"
       actions={
-        <Button variant="default" size="sm" asChild>
-          <Link to="/dashboard/trips">
-            <Plus className="w-4 h-4 ml-2" />
-            رحلة جديدة
-          </Link>
-        </Button>
+        can('trips.manage') && (
+          <Button variant="default" size="sm" asChild>
+            <Link to="/dashboard/trips">
+              <Plus className="w-4 h-4 ml-2" />
+              رحلة جديدة
+            </Link>
+          </Button>
+        )
       }
     >
       {loading ? (
@@ -385,30 +419,38 @@ const CompanyDashboard = () => {
 
           {/* Quick Actions */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-            <Link to="/dashboard/trips" className="bg-card rounded-xl border border-border p-4 hover:border-primary/30 hover:shadow-elegant transition-all group">
-              <div className="w-12 h-12 rounded-xl gradient-primary flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                <Route className="w-6 h-6 text-primary-foreground" />
-              </div>
-              <p className="font-medium text-foreground">إضافة رحلة</p>
-            </Link>
-            <Link to="/dashboard/fleet" className="bg-card rounded-xl border border-border p-4 hover:border-primary/30 hover:shadow-elegant transition-all group">
-              <div className="w-12 h-12 rounded-xl gradient-secondary flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                <Bus className="w-6 h-6 text-secondary-foreground" />
-              </div>
-              <p className="font-medium text-foreground">إضافة حافلة</p>
-            </Link>
-            <Link to="/dashboard/employees" className="bg-card rounded-xl border border-border p-4 hover:border-primary/30 hover:shadow-elegant transition-all group">
-              <div className="w-12 h-12 rounded-xl bg-accent flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                <Users className="w-6 h-6 text-accent-foreground" />
-              </div>
-              <p className="font-medium text-foreground">إضافة موظف</p>
-            </Link>
-            <Link to="/dashboard/bookings" className="bg-card rounded-xl border border-border p-4 hover:border-primary/30 hover:shadow-elegant transition-all group">
-              <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                <Ticket className="w-6 h-6 text-foreground" />
-              </div>
-              <p className="font-medium text-foreground">عرض الحجوزات</p>
-            </Link>
+            {can('trips.manage') && (
+              <Link to="/dashboard/trips" className="bg-card rounded-xl border border-border p-4 hover:border-primary/30 hover:shadow-elegant transition-all group">
+                <div className="w-12 h-12 rounded-xl gradient-primary flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                  <Route className="w-6 h-6 text-primary-foreground" />
+                </div>
+                <p className="font-medium text-foreground">إضافة رحلة</p>
+              </Link>
+            )}
+            {can('fleet.manage') && (
+              <Link to="/dashboard/fleet" className="bg-card rounded-xl border border-border p-4 hover:border-primary/30 hover:shadow-elegant transition-all group">
+                <div className="w-12 h-12 rounded-xl gradient-secondary flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                  <Bus className="w-6 h-6 text-secondary-foreground" />
+                </div>
+                <p className="font-medium text-foreground">إضافة حافلة</p>
+              </Link>
+            )}
+            {can('employees.manage') && (
+              <Link to="/dashboard/employees" className="bg-card rounded-xl border border-border p-4 hover:border-primary/30 hover:shadow-elegant transition-all group">
+                <div className="w-12 h-12 rounded-xl bg-accent flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                  <Users className="w-6 h-6 text-accent-foreground" />
+                </div>
+                <p className="font-medium text-foreground">إضافة موظف</p>
+              </Link>
+            )}
+            {can('bookings.view') && (
+              <Link to="/dashboard/bookings" className="bg-card rounded-xl border border-border p-4 hover:border-primary/30 hover:shadow-elegant transition-all group">
+                <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                  <Ticket className="w-6 h-6 text-foreground" />
+                </div>
+                <p className="font-medium text-foreground">عرض الحجوزات</p>
+              </Link>
+            )}
           </div>
 
           {/* Recent Trips */}
