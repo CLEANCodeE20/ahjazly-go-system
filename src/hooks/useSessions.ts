@@ -53,30 +53,27 @@ export const useSessions = () => {
 
     // Stub: Fetch active sessions - tables don't exist yet
     const fetchSessions = async () => {
-        // Tables not implemented yet
         setSessions([]);
     };
 
     // Stub: Fetch login history
-    const fetchLoginHistory = async (limit: number = 20) => {
-        // Tables not implemented yet
+    const fetchLoginHistory = async (_limit: number = 20) => {
         setLoginHistory([]);
     };
 
     // Stub: Fetch activity log
-    const fetchActivityLog = async (limit: number = 50) => {
-        // Tables not implemented yet
+    const fetchActivityLog = async (_limit: number = 50) => {
         setActivityLog([]);
     };
 
     // Stub: Revoke a session
-    const revokeSession = async (sessionId: string): Promise<boolean> => {
+    const revokeSession = async (_sessionId: string): Promise<boolean> => {
         console.warn('Session management tables not implemented yet');
         return false;
     };
 
     // Stub: Revoke all other sessions
-    const revokeAllOtherSessions = async (currentSessionId?: string): Promise<boolean> => {
+    const revokeAllOtherSessions = async (_currentSessionId?: string): Promise<boolean> => {
         console.warn('Session management tables not implemented yet');
         return false;
     };
@@ -84,7 +81,6 @@ export const useSessions = () => {
     useEffect(() => {
         if (user) {
             setLoading(true);
-            // Simulate loading completion
             setTimeout(() => setLoading(false), 100);
         }
     }, [user]);

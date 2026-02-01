@@ -17,7 +17,6 @@ export const useRatings = (tripId?: number) => {
     const [stats, setStats] = useState<PartnerRatingStats | null>(null);
     const { toast } = useToast();
 
-    // Fetch ratings for a trip using direct query instead of RPC
     const fetchTripRatings = useCallback(async (id: number, limit = 10, offset = 0) => {
         setLoading(true);
         try {
@@ -65,7 +64,6 @@ export const useRatings = (tripId?: number) => {
         }
     }, [toast]);
 
-    // Fetch partner rating stats using direct query
     const fetchPartnerStats = useCallback(async (partnerId: number) => {
         try {
             const { data, error } = await supabase
@@ -113,23 +111,20 @@ export const useRatings = (tripId?: number) => {
         }
     }, []);
 
-    // Check if user can rate a trip - simplified check
     const canUserRate = useCallback(async (
         userId: number,
-        tripId: number,
-        bookingId: number
+        checkTripId: number,
+        _bookingId: number
     ): Promise<boolean> => {
         try {
-            // Check if user has already rated this trip
             const { data, error } = await supabase
                 .from('ratings')
                 .select('rating_id')
                 .eq('user_id', userId)
-                .eq('trip_id', tripId)
+                .eq('trip_id', checkTripId)
                 .maybeSingle();
 
             if (error) throw error;
-            // User can rate if no existing rating found
             return data === null;
         } catch (error: any) {
             console.error('Error checking rating eligibility:', error);
@@ -137,7 +132,6 @@ export const useRatings = (tripId?: number) => {
         }
     }, []);
 
-    // Create a new rating
     const createRating = useCallback(async (input: CreateRatingInput) => {
         setLoading(true);
         try {
@@ -153,7 +147,6 @@ export const useRatings = (tripId?: number) => {
                     description: 'تم إضافة التقييم بنجاح',
                 });
 
-                // Refresh ratings if we're viewing this trip
                 if (tripId === input.trip_id) {
                     await fetchTripRatings(input.trip_id);
                 }
@@ -174,7 +167,6 @@ export const useRatings = (tripId?: number) => {
         }
     }, [toast, tripId, fetchTripRatings]);
 
-    // Update an existing rating
     const updateRating = useCallback(async (input: UpdateRatingInput) => {
         setLoading(true);
         try {
@@ -194,7 +186,6 @@ export const useRatings = (tripId?: number) => {
                 description: 'تم تحديث التقييم بنجاح',
             });
 
-            // Refresh ratings
             if (tripId) {
                 await fetchTripRatings(tripId);
             }
@@ -212,7 +203,6 @@ export const useRatings = (tripId?: number) => {
         }
     }, [toast, tripId, fetchTripRatings]);
 
-    // Add a partner response to a rating
     const addResponse = useCallback(async (input: CreateRatingResponseInput) => {
         setLoading(true);
         try {
@@ -228,7 +218,6 @@ export const useRatings = (tripId?: number) => {
                     description: 'تم إضافة الرد بنجاح',
                 });
 
-                // Refresh ratings
                 if (tripId) {
                     await fetchTripRatings(tripId);
                 }
@@ -249,7 +238,6 @@ export const useRatings = (tripId?: number) => {
         }
     }, [toast, tripId, fetchTripRatings]);
 
-    // Mark rating as helpful/not helpful
     const markHelpful = useCallback(async (input: MarkRatingHelpfulInput) => {
         try {
             const { data, error } = await supabase.functions.invoke('mark-rating-helpful', {
@@ -259,7 +247,6 @@ export const useRatings = (tripId?: number) => {
             if (error) throw error;
 
             if (data?.success) {
-                // Update local state
                 setRatings(prev => prev.map(r =>
                     r.rating_id === input.rating_id
                         ? {
@@ -284,7 +271,6 @@ export const useRatings = (tripId?: number) => {
         }
     }, [toast]);
 
-    // Report a rating
     const reportRating = useCallback(async (input: ReportRatingInput) => {
         setLoading(true);
         try {
@@ -315,7 +301,6 @@ export const useRatings = (tripId?: number) => {
         }
     }, [toast]);
 
-    // Load ratings on mount if tripId is provided
     useEffect(() => {
         if (tripId) {
             fetchTripRatings(tripId);
