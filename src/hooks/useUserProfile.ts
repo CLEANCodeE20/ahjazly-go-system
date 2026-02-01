@@ -29,7 +29,6 @@ export const useUserProfile = () => {
     const [loading, setLoading] = useState(true);
     const [updating, setUpdating] = useState(false);
 
-    // Fetch user profile
     const fetchProfile = async () => {
         if (!user) {
             setProfile(null);
@@ -63,7 +62,6 @@ export const useUserProfile = () => {
         fetchProfile();
     }, [user]);
 
-    // Update profile
     const updateProfile = async (updates: ProfileUpdateData): Promise<boolean> => {
         if (!user || !profile) return false;
 
@@ -100,8 +98,7 @@ export const useUserProfile = () => {
         }
     };
 
-    // Upload avatar - placeholder (storage bucket may not exist)
-    const uploadAvatar = async (file: File): Promise<boolean> => {
+    const uploadAvatar = async (_file: File): Promise<boolean> => {
         toast({
             title: 'غير متاح',
             description: 'رفع الصور غير متاح حالياً',
@@ -110,7 +107,6 @@ export const useUserProfile = () => {
         return false;
     };
 
-    // Delete avatar - placeholder
     const deleteAvatar = async (): Promise<boolean> => {
         toast({
             title: 'غير متاح',
@@ -120,19 +116,16 @@ export const useUserProfile = () => {
         return false;
     };
 
-    // Update preferences - placeholder (preferences column doesn't exist)
-    const updatePreferences = async (preferences: Record<string, any>): Promise<boolean> => {
+    const updatePreferences = async (_preferences: Record<string, any>): Promise<boolean> => {
         console.warn('Preferences column not available in users table');
         return false;
     };
 
-    // Mark onboarding as completed - placeholder
     const completeOnboarding = async (): Promise<boolean> => {
         console.warn('Onboarding column not available in users table');
-        return true; // Return true to allow flow to continue
+        return true;
     };
 
-    // Get avatar initials
     const getAvatarInitials = (): string => {
         if (!profile?.full_name) return '؟';
 

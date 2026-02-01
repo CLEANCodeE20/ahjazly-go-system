@@ -39,7 +39,7 @@ export default function TripSeatManager({ isOpen, onClose, tripId, busId, routeI
         setLoading(true);
         setFeatureNotAvailable(false);
         try {
-            // 1. Fetch Bus Capacity (seat_layout column doesn't exist yet)
+            // Fetch Bus Capacity only (seat_layout column doesn't exist)
             const { data: busData, error: busError } = await supabase
                 .from('buses')
                 .select('capacity')
@@ -55,11 +55,10 @@ export default function TripSeatManager({ isOpen, onClose, tripId, busId, routeI
             const defaultLayout = generateDefaultLayout(capacity);
             setLayout(defaultLayout);
 
-            // Note: blocked_seats column doesn't exist on trips table yet
-            // Using empty array as placeholder
+            // blocked_seats column doesn't exist on trips table yet
             setBlockedSeats([]);
 
-            // 3. Fetch Currently Booked Seats
+            // Fetch Currently Booked Seats
             const { data: bookedData, error: bookedError } = await supabase
                 .from('passengers')
                 .select('seat_id, seats(seat_number)')
@@ -86,12 +85,11 @@ export default function TripSeatManager({ isOpen, onClose, tripId, busId, routeI
     };
 
     const generateDefaultLayout = (capacity: number): SeatLayout => {
-        // Standard bus layout: 4 seats per row (2+2 with aisle)
         const seatsPerRow = 4;
         const rows = Math.ceil(capacity / seatsPerRow);
         return {
             rows: rows,
-            cols: 5, // 2 + aisle + 2
+            cols: 5,
             cells: []
         };
     };
@@ -109,7 +107,6 @@ export default function TripSeatManager({ isOpen, onClose, tripId, busId, routeI
     };
 
     const handleSave = async () => {
-        // Feature not fully implemented - show info message
         toast({
             title: "ميزة قيد التطوير",
             description: "حفظ المقاعد المحظورة غير متاح حالياً. يتطلب تحديث قاعدة البيانات.",
@@ -117,7 +114,6 @@ export default function TripSeatManager({ isOpen, onClose, tripId, busId, routeI
         onClose();
     };
 
-    // Helper to render grid
     const renderGrid = () => {
         if (!layout) return null;
 
@@ -133,7 +129,6 @@ export default function TripSeatManager({ isOpen, onClose, tripId, busId, routeI
                 )}
                 {Array.from({ length: rows }).map((_, rowIndex) => (
                     <div key={rowIndex} className="flex gap-4">
-                        {/* Left Side */}
                         <div className="flex gap-2">
                             {['A', 'B'].map(col => {
                                 const label = `${rowIndex + 1}${col}`;
@@ -165,9 +160,7 @@ export default function TripSeatManager({ isOpen, onClose, tripId, busId, routeI
                                 );
                             })}
                         </div>
-                        {/* Aisle */}
                         <div className="w-6" />
-                        {/* Right Side */}
                         <div className="flex gap-2">
                             {['C', 'D'].map(col => {
                                 const label = `${rowIndex + 1}${col}`;
@@ -222,7 +215,6 @@ export default function TripSeatManager({ isOpen, onClose, tripId, busId, routeI
                         </div>
                     ) : (
                         <div className="flex flex-col items-center">
-                            {/* Legend */}
                             <div className="flex gap-4 mb-6">
                                 <div className="flex items-center gap-2">
                                     <div className="w-4 h-4 bg-white border border-gray-300 rounded" />
@@ -242,7 +234,6 @@ export default function TripSeatManager({ isOpen, onClose, tripId, busId, routeI
                                 </div>
                             </div>
 
-                            {/* Grid */}
                             {renderGrid()}
                         </div>
                     )}
