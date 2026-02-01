@@ -88,9 +88,16 @@ const Contact = () => {
         };
 
         try {
+            // Use support_tickets table instead of contact_messages (which doesn't exist)
             const { error } = await supabase
-                .from('contact_messages')
-                .insert([data]);
+                .from('support_tickets')
+                .insert([{
+                    title: data.subject,
+                    description: `الاسم: ${data.name}\nالبريد: ${data.email}\n\n${data.message}`,
+                    issue_type: 'contact',
+                    priority: 'medium',
+                    status: 'open'
+                }]);
 
             if (error) throw error;
 

@@ -70,11 +70,7 @@ export const DashboardLayout = ({ children, title, subtitle, actions }: Dashboar
             <aside className={`fixed top-0 right-0 bottom-0 w-64 bg-sidebar text-sidebar-foreground transition-transform duration-300 z-50 flex flex-col ${isSidebarOpen ? "translate-x-0" : "translate-x-full"} lg:translate-x-0 border-l border-sidebar-border`}>
                 <div className="flex items-center gap-3 p-4 border-b border-sidebar-border shrink-0">
                     <div className="w-10 h-10 rounded-xl bg-white shadow-sm flex items-center justify-center overflow-hidden">
-                        {partner?.logo_url ? (
-                            <img src={partner.logo_url} alt="Logo" className="w-full h-full object-cover" />
-                        ) : (
-                            <img src="/photo_2026-01-09_15-11-39-removebg-preview.png" alt="Logo" className="w-8 h-8 object-contain" />
-                        )}
+                        <img src="/photo_2026-01-09_15-11-39-removebg-preview.png" alt="Logo" className="w-8 h-8 object-contain" />
                     </div>
                     <div className="flex-1 min-w-0">
                         <span className="text-lg font-bold block">احجزلي</span>
@@ -160,11 +156,7 @@ export const DashboardLayout = ({ children, title, subtitle, actions }: Dashboar
                             {actions}
                             <NotificationBell />
                             <div className="w-9 h-9 rounded-full gradient-primary flex items-center justify-center text-primary-foreground font-medium overflow-hidden">
-                                {partner?.logo_url ? (
-                                    <img src={partner.logo_url} alt="Partner Logo" className="w-full h-full object-cover" />
-                                ) : (
-                                    partner?.company_name?.[0] || 'س'
-                                )}
+                                {partner?.company_name?.[0] || 'س'}
                             </div>
                         </div>
                     </div>

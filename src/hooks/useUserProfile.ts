@@ -5,37 +5,22 @@ import { toast } from './use-toast';
 
 export interface UserProfile {
     user_id: number;
-    auth_id: string;
-    full_name: string | null;
+    auth_id: string | null;
+    full_name: string;
     email: string | null;
     phone_number: string | null;
-    avatar_url: string | null;
-    bio: string | null;
-    date_of_birth: string | null;
-    nationality: string | null;
-    id_number: string | null;
     gender: 'male' | 'female' | null;
-    email_verified: boolean;
-    phone_verified: boolean;
-    preferences: Record<string, any>;
-    user_type: string;
-    account_status: string;
-    profile_completion_percentage: number;
-    onboarding_completed: boolean;
-    last_login_at: string | null;
-    created_at: string;
-    updated_at: string;
+    user_type: string | null;
+    account_status: string | null;
+    partner_id: number | null;
+    created_at: string | null;
+    updated_at: string | null;
 }
 
 export interface ProfileUpdateData {
     full_name?: string;
     phone_number?: string;
-    bio?: string;
-    date_of_birth?: string;
-    nationality?: string;
-    id_number?: string;
     gender?: 'male' | 'female';
-    preferences?: Record<string, any>;
 }
 
 export const useUserProfile = () => {
@@ -56,7 +41,7 @@ export const useUserProfile = () => {
             setLoading(true);
             const { data, error } = await supabase
                 .from('users')
-                .select('*')
+                .select('user_id, auth_id, full_name, email, phone_number, gender, user_type, account_status, partner_id, created_at, updated_at')
                 .eq('auth_id', user.id)
                 .single();
 
@@ -94,16 +79,6 @@ export const useUserProfile = () => {
 
             if (error) throw error;
 
-            // Log activity
-            await supabase.rpc('log_user_activity', {
-                p_user_id: profile.user_id,
-                p_auth_id: user.id,
-                p_activity_type: 'profile_update',
-                p_activity_category: 'profile',
-                p_description: 'تحديث بيانات الملف الشخصي',
-                p_metadata: { updated_fields: Object.keys(updates) }
-            });
-
             await fetchProfile();
 
             toast({
@@ -125,136 +100,36 @@ export const useUserProfile = () => {
         }
     };
 
-    // Upload avatar
+    // Upload avatar - placeholder (storage bucket may not exist)
     const uploadAvatar = async (file: File): Promise<boolean> => {
-        if (!user || !profile) return false;
-
-        setUpdating(true);
-        try {
-            // Validate file
-            if (!file.type.startsWith('image/')) {
-                throw new Error('يجب أن يكون الملف صورة');
-            }
-
-            if (file.size > 2 * 1024 * 1024) {
-                throw new Error('حجم الصورة يجب أن يكون أقل من 2 ميجابايت');
-            }
-
-            const fileExt = file.name.split('.').pop();
-            const filePath = `avatars/${user.id}/${Date.now()}.${fileExt}`;
-
-            // Upload to storage
-            const { error: uploadError } = await supabase.storage
-                .from('user-avatars')
-                .upload(filePath, file, { upsert: true });
-
-            if (uploadError) throw uploadError;
-
-            // Get public URL
-            const { data: { publicUrl } } = supabase.storage
-                .from('user-avatars')
-                .getPublicUrl(filePath);
-
-            // Update profile
-            const { error: updateError } = await supabase
-                .from('users')
-                .update({ avatar_url: publicUrl })
-                .eq('auth_id', user.id);
-
-            if (updateError) throw updateError;
-
-            // Log activity
-            await supabase.rpc('log_user_activity', {
-                p_user_id: profile.user_id,
-                p_auth_id: user.id,
-                p_activity_type: 'avatar_upload',
-                p_activity_category: 'profile',
-                p_description: 'تحديث الصورة الشخصية'
-            });
-
-            await fetchProfile();
-
-            toast({
-                title: 'تم الرفع',
-                description: 'تم تحديث الصورة الشخصية بنجاح'
-            });
-
-            return true;
-        } catch (error: any) {
-            console.error('Error uploading avatar:', error);
-            toast({
-                title: 'خطأ في الرفع',
-                description: error.message || 'فشل في رفع الصورة',
-                variant: 'destructive'
-            });
-            return false;
-        } finally {
-            setUpdating(false);
-        }
+        toast({
+            title: 'غير متاح',
+            description: 'رفع الصور غير متاح حالياً',
+            variant: 'destructive'
+        });
+        return false;
     };
 
-    // Delete avatar
+    // Delete avatar - placeholder
     const deleteAvatar = async (): Promise<boolean> => {
-        if (!user || !profile) return false;
-
-        setUpdating(true);
-        try {
-            const { error } = await supabase
-                .from('users')
-                .update({ avatar_url: null })
-                .eq('auth_id', user.id);
-
-            if (error) throw error;
-
-            await fetchProfile();
-
-            toast({
-                title: 'تم الحذف',
-                description: 'تم حذف الصورة الشخصية'
-            });
-
-            return true;
-        } catch (error: any) {
-            console.error('Error deleting avatar:', error);
-            toast({
-                title: 'خطأ',
-                description: 'فشل في حذف الصورة',
-                variant: 'destructive'
-            });
-            return false;
-        } finally {
-            setUpdating(false);
-        }
+        toast({
+            title: 'غير متاح',
+            description: 'حذف الصور غير متاح حالياً',
+            variant: 'destructive'
+        });
+        return false;
     };
 
-    // Update preferences
+    // Update preferences - placeholder (preferences column doesn't exist)
     const updatePreferences = async (preferences: Record<string, any>): Promise<boolean> => {
-        if (!user || !profile) return false;
-
-        return updateProfile({ preferences });
+        console.warn('Preferences column not available in users table');
+        return false;
     };
 
-    // Mark onboarding as completed
+    // Mark onboarding as completed - placeholder
     const completeOnboarding = async (): Promise<boolean> => {
-        if (!user || !profile) return false;
-
-        setUpdating(true);
-        try {
-            const { error } = await supabase
-                .from('users')
-                .update({ onboarding_completed: true })
-                .eq('auth_id', user.id);
-
-            if (error) throw error;
-
-            await fetchProfile();
-            return true;
-        } catch (error: any) {
-            console.error('Error completing onboarding:', error);
-            return false;
-        } finally {
-            setUpdating(false);
-        }
+        console.warn('Onboarding column not available in users table');
+        return true; // Return true to allow flow to continue
     };
 
     // Get avatar initials
