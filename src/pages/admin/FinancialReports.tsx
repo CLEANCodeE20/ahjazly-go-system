@@ -169,14 +169,30 @@ const FinancialReports = () => {
                   "التاريخ": d.formattedDate,
                   "الإيرادات": formatCurrency(d.total_revenue),
                   "العمولة": formatCurrency(d.platform_revenue),
+                  "صافي الشركاء": formatCurrency(d.partner_revenue),
                   "الحجوزات": d.bookings_count
                 }));
+                
+                // Summary data for PDF header
+                const summaryData = stats ? [
+                  { label: "إجمالي الإيرادات", value: formatCurrency(stats.total_revenue || 0) },
+                  { label: "عمولة المنصة", value: formatCurrency(stats.platform_revenue || 0) },
+                  { label: "متوسط الحجز", value: formatCurrency(stats.avg_booking_value || 0) },
+                  { label: "عدد الحجوزات", value: (stats.total_bookings || 0).toLocaleString() }
+                ] : [];
+                
                 exportToPDF(data, [
                   { header: "التاريخ", key: "التاريخ" },
                   { header: "الإيرادات", key: "الإيرادات" },
                   { header: "العمولة", key: "العمولة" },
+                  { header: "صافي الشركاء", key: "صافي الشركاء" },
                   { header: "الحجوزات", key: "الحجوزات" }
-                ], { title: "التقرير المالي" });
+                ], { 
+                  title: "التقرير المالي الشامل",
+                  filename: "financial_report",
+                  landscape: true,
+                  summaryData 
+                });
               }}>
                 <FileText className="w-4 h-4 ml-2 text-red-600" />
                 PDF

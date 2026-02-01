@@ -223,12 +223,25 @@ const ReportsManagement = () => {
       "الحجوزات": b.bookings,
       "النمو": `${b.growth}%`
     }));
+    
+    // Add summary data for the PDF header
+    const summaryData = analyticsData ? [
+      { label: "إجمالي الإيرادات", value: `${(analyticsData.total_revenue || 0).toLocaleString()} ر.س` },
+      { label: "عدد الرحلات", value: (analyticsData.total_trips || 0).toString() },
+      { label: "عدد الحجوزات", value: (analyticsData.total_bookings || 0).toString() },
+      { label: "معدل الإشغال", value: `${analyticsData.occupancy_rate || 0}%` }
+    ] : [];
+    
     exportToPDF(dataToExport, [
       { header: "الفرع", key: "الفرع" },
       { header: "الإيرادات", key: "الإيرادات" },
       { header: "الحجوزات", key: "الحجوزات" },
       { header: "النمو", key: "النمو" }
-    ], { title: "أداء الفروع" });
+    ], { 
+      title: "تقرير أداء الفروع",
+      filename: "branch_performance_report",
+      summaryData
+    });
   };
 
   return (
