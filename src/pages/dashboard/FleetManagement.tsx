@@ -94,12 +94,13 @@ const FleetManagement = () => {
   const [isDesignerOpen, setIsDesignerOpen] = useState(false);
   const [designTarget, setDesignTarget] = useState<'new' | 'edit'>('new');
 
-  // Templates logic
-  const { data: templates, loading: loadingTemplates, create: createTemplate } = useSupabaseCRUD<any>({
-    tableName: 'bus_templates',
-    primaryKey: 'template_id',
-    initialFetch: true
-  });
+  // Templates logic - bus_templates table doesn't exist yet, using empty array
+  const templates: any[] = [];
+  const loadingTemplates = false;
+  const createTemplate = async (data: any) => {
+    console.warn('bus_templates table not available yet');
+    return null;
+  };
 
   const [isSaveTemplateDialogOpen, setIsSaveTemplateDialogOpen] = useState(false);
   const [templateToSave, setTemplateToSave] = useState<SeatLayout | null>(null);

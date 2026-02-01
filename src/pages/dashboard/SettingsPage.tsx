@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import {
   Bus,
@@ -12,7 +11,6 @@ import {
   Palette,
   Mail,
   Phone,
-  Upload,
   Save,
   Lock,
   Eye,
@@ -77,15 +75,6 @@ const SettingsPage = () => {
         address: partner.address || "",
         commission_percentage: partner.commission_percentage || 10
       });
-
-      if (partner.settings) {
-        if (partner.settings.notifications) {
-          setNotifications(prev => ({ ...prev, ...partner.settings.notifications }));
-        }
-        if (partner.settings.appearance) {
-          setAppearanceSettings(prev => ({ ...prev, ...partner.settings.appearance }));
-        }
-      }
     }
   }, [partner]);
 
@@ -122,91 +111,27 @@ const SettingsPage = () => {
   };
 
   const handleSaveNotifications = async () => {
-    if (!partnerId || !partner) return;
-    setIsSaving(true);
-    try {
-      const newSettings = {
-        ...(partner.settings || {}),
-        notifications
-      };
-
-      const { error } = await supabase
-        .from('partners')
-        .update({ settings: newSettings })
-        .eq('partner_id', partnerId);
-
-      if (error) throw error;
-
-      toast({
-        title: "تم الحفظ",
-        description: "تم حفظ إعدادات الإشعارات بنجاح"
-      });
-    } catch (error) {
-      toast({ title: "خطأ", description: "فشل حفظ الإشعارات", variant: "destructive" });
-    } finally {
-      setIsSaving(false);
-    }
+    // Settings column doesn't exist on partners table yet
+    toast({
+      title: "ميزة قيد التطوير",
+      description: "حفظ إعدادات الإشعارات غير متاح حالياً"
+    });
   };
 
   const handleSaveAppearance = async () => {
-    if (!partnerId || !partner) return;
-    setIsSaving(true);
-    try {
-      const newSettings = {
-        ...(partner.settings || {}),
-        appearance: appearanceSettings
-      };
-
-      const { error } = await supabase
-        .from('partners')
-        .update({ settings: newSettings })
-        .eq('partner_id', partnerId);
-
-      if (error) throw error;
-
-      toast({
-        title: "تم الحفظ",
-        description: "تم حفظ إعدادات المظهر بنجاح"
-      });
-    } catch (error) {
-      toast({ title: "خطأ", description: "فشل حفظ المظهر", variant: "destructive" });
-    } finally {
-      setIsSaving(false);
-    }
+    // Settings column doesn't exist on partners table yet
+    toast({
+      title: "ميزة قيد التطوير",
+      description: "حفظ إعدادات المظهر غير متاح حالياً"
+    });
   };
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files || e.target.files.length === 0 || !partnerId) return;
-
-    const file = e.target.files[0];
-    const fileExt = file.name.split('.').pop();
-    const filePath = `partners/${partnerId}/logo.${fileExt}`;
-
-    setIsSaving(true);
-    try {
-      const { error: uploadError } = await supabase.storage
-        .from('partner-assets')
-        .upload(filePath, file, { upsert: true });
-
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('partner-assets')
-        .getPublicUrl(filePath);
-
-      const { error: updateError } = await supabase
-        .from('partners')
-        .update({ logo_url: publicUrl })
-        .eq('partner_id', partnerId);
-
-      if (updateError) throw updateError;
-
-      toast({ title: "تم الرفع", description: "تم تحديث شعار الشركة بنجاح" });
-    } catch (error: any) {
-      toast({ title: "خطأ في الرفع", description: error.message, variant: "destructive" });
-    } finally {
-      setIsSaving(false);
-    }
+    // logo_url column doesn't exist on partners table yet
+    toast({
+      title: "ميزة قيد التطوير",
+      description: "رفع الشعار غير متاح حالياً"
+    });
   };
 
   const handleChangePassword = async () => {
@@ -297,11 +222,7 @@ const SettingsPage = () => {
               <>
                 <div className="flex items-center gap-6 mb-8">
                   <div className="w-24 h-24 rounded-2xl bg-primary/10 flex items-center justify-center overflow-hidden border border-border">
-                    {partner?.logo_url ? (
-                      <img src={partner.logo_url} alt="Logo" className="w-full h-full object-cover" />
-                    ) : (
-                      <Bus className="w-12 h-12 text-primary" />
-                    )}
+                    <Bus className="w-12 h-12 text-primary" />
                   </div>
                   <div className="space-y-3">
                     <div className="relative">
@@ -312,10 +233,9 @@ const SettingsPage = () => {
                         className="hidden"
                         onChange={handleLogoUpload}
                       />
-                      <Button variant="outline" size="sm" asChild>
-                        <Label htmlFor="logo-upload" className="cursor-pointer">
-                          <Upload className="w-4 h-4 ml-2" />
-                          تغيير الشعار
+                      <Button variant="outline" size="sm" asChild disabled>
+                        <Label htmlFor="logo-upload" className="cursor-not-allowed opacity-50">
+                          تغيير الشعار (قريباً)
                         </Label>
                       </Button>
                     </div>
@@ -483,7 +403,7 @@ const SettingsPage = () => {
                 <div className="space-y-2">
                   <Label>تأكيد كلمة المرور</Label>
                   <Input
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     value={security.confirmPassword}
                     onChange={(e) => setSecurity({ ...security, confirmPassword: e.target.value })}
                     placeholder="أعد إدخال كلمة المرور"
@@ -495,42 +415,19 @@ const SettingsPage = () => {
                 </Button>
               </div>
             </div>
-
-            <div className="bg-card rounded-xl border border-border p-6">
-              <h2 className="text-lg font-semibold text-foreground mb-4">معلومات الحساب</h2>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between py-3 border-b border-border">
-                  <span className="text-muted-foreground">نوع الحساب</span>
-                  <span className="font-medium text-foreground">شريك</span>
-                </div>
-                <div className="flex items-center justify-between py-3 border-b border-border">
-                  <span className="text-muted-foreground">حالة الحساب</span>
-                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-secondary/10 text-secondary">
-                    {partner?.status === 'approved' ? 'نشط' : partner?.status || 'غير محدد'}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between py-3">
-                  <span className="text-muted-foreground">رقم الشريك</span>
-                  <span className="font-mono text-foreground">#{partnerId || '-'}</span>
-                </div>
-              </div>
-            </div>
           </div>
         )}
 
         {/* Appearance Settings */}
         {activeTab === "appearance" && (
           <div className="bg-card rounded-xl border border-border p-6">
-            <h2 className="text-lg font-semibold text-foreground mb-6">المظهر والعرض</h2>
+            <h2 className="text-lg font-semibold text-foreground mb-6">إعدادات المظهر</h2>
 
-            <div className="space-y-6">
+            <div className="grid gap-6 max-w-md">
               <div className="space-y-2">
                 <Label>اللغة</Label>
-                <Select
-                  value={appearanceSettings.language}
-                  onValueChange={(v) => setAppearanceSettings({ ...appearanceSettings, language: v })}
-                >
-                  <SelectTrigger className="w-64">
+                <Select value={appearanceSettings.language} onValueChange={(val) => setAppearanceSettings({ ...appearanceSettings, language: val })}>
+                  <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -542,28 +439,22 @@ const SettingsPage = () => {
 
               <div className="space-y-2">
                 <Label>المظهر</Label>
-                <Select
-                  value={appearanceSettings.theme}
-                  onValueChange={(v) => setAppearanceSettings({ ...appearanceSettings, theme: v })}
-                >
-                  <SelectTrigger className="w-64">
+                <Select value={appearanceSettings.theme} onValueChange={(val) => setAppearanceSettings({ ...appearanceSettings, theme: val })}>
+                  <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="light">فاتح</SelectItem>
                     <SelectItem value="dark">داكن</SelectItem>
-                    <SelectItem value="system">تلقائي (حسب النظام)</SelectItem>
+                    <SelectItem value="system">حسب النظام</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <div className="space-y-2">
                 <Label>التقويم</Label>
-                <Select
-                  value={appearanceSettings.calendar}
-                  onValueChange={(v) => setAppearanceSettings({ ...appearanceSettings, calendar: v })}
-                >
-                  <SelectTrigger className="w-64">
+                <Select value={appearanceSettings.calendar} onValueChange={(val) => setAppearanceSettings({ ...appearanceSettings, calendar: val })}>
+                  <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -573,60 +464,45 @@ const SettingsPage = () => {
                 </Select>
               </div>
 
-              <Button onClick={handleSaveAppearance} disabled={isSaving} className="w-fit">
-                {isSaving ? <Loader2 className="w-4 h-4 ml-2 animate-spin" /> : <Save className="w-4 h-4 ml-2" />}
+              <Button onClick={handleSaveAppearance} className="w-fit">
+                <Save className="w-4 h-4 ml-2" />
                 حفظ التغييرات
               </Button>
             </div>
           </div>
         )}
 
-        {/* Data Management Settings */}
+        {/* Data Management */}
         {activeTab === "data" && (
           <div className="bg-card rounded-xl border border-border p-6">
-            <h2 className="text-lg font-semibold text-foreground mb-6">إدارة البيانات والنسخ الاحتياطي</h2>
+            <h2 className="text-lg font-semibold text-foreground mb-6">إدارة البيانات</h2>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="p-4 border rounded-lg bg-muted/20 space-y-4">
-                <div>
-                  <h3 className="font-medium flex items-center gap-2">
-                    <Download className="w-4 h-4 text-primary" />
-                    تصدير بياناتي
-                  </h3>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    يمكنك تنزيل نسخة من جميع بياناتك (الرحلات، السائقين، الأسطول، الحجوزات) بصيغة Excel.
-                  </p>
+            <div className="space-y-6">
+              <div className="p-4 rounded-lg border border-border">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium text-foreground">تصدير بيانات الحجوزات</p>
+                    <p className="text-sm text-muted-foreground">تنزيل جميع بيانات الحجوزات بصيغة Excel</p>
+                  </div>
+                  <Button variant="outline" size="sm">
+                    <Download className="w-4 h-4 ml-2" />
+                    تصدير
+                  </Button>
                 </div>
-                <Button
-                  className="w-full"
-                  onClick={() => partnerId && BackupService.exportPartnerData(partnerId)}
-                  disabled={!partnerId}
-                >
-                  تصدير البيانات الآن
-                </Button>
               </div>
 
-              <div className="p-4 border rounded-lg bg-muted/20 space-y-4 opacity-70">
-                <div>
-                  <h3 className="font-medium flex items-center gap-2">
-                    <Shield className="w-4 h-4 text-primary" />
-                    الأرشفة الآلية
-                  </h3>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    خدمة إرسال نسخة من التقارير الأسبوعية لبريدك الإلكتروني تلقائياً.
-                  </p>
+              <div className="p-4 rounded-lg border border-border">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium text-foreground">تصدير بيانات الرحلات</p>
+                    <p className="text-sm text-muted-foreground">تنزيل جميع بيانات الرحلات بصيغة Excel</p>
+                  </div>
+                  <Button variant="outline" size="sm">
+                    <Download className="w-4 h-4 ml-2" />
+                    تصدير
+                  </Button>
                 </div>
-                <Button variant="outline" className="w-full" disabled>
-                  قريباً
-                </Button>
               </div>
-            </div>
-
-            <div className="mt-8 p-4 bg-primary/5 rounded-lg border border-primary/10">
-              <p className="text-sm text-foreground font-medium">ملاحظة حول أمن البيانات</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                جميع بياناتك مخزنة بشكل آمن ومشفر. ننصح بتصدير بياناتك بشكل دوري والاحتفاظ بها في مكان آمن.
-              </p>
             </div>
           </div>
         )}

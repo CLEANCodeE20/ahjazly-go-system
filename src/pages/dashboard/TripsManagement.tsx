@@ -809,7 +809,7 @@ const TripsManagement = () => {
               <TripManifest
                 ref={manifestRef}
                 companyName={partner?.company_name}
-                logoUrl={partner?.logo_url}
+                logoUrl={undefined}
                 trip={{
                   trip_id: selectedTripForManifest.trip_id,
                   origin: routes.find(r => r.route_id === selectedTripForManifest.route_id)?.origin_city || 'غير محدد',

@@ -839,7 +839,7 @@ const BookingsManagement = () => {
                   gender: 'male'
                 }}
                 companyName={partner?.company_name}
-                logoUrl={partner?.logo_url}
+                logoUrl={undefined}
                 trip={{
                   origin: selectedBooking.trip?.route?.origin_city || 'غير محدد',
                   destination: selectedBooking.trip?.route?.destination_city || 'غير محدد',

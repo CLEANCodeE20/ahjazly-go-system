@@ -257,24 +257,14 @@ const UsersManagement = () => {
     };
 
     const fetchRoleHistory = async (userId: string) => {
-        try {
-            const { data, error } = await supabase
-                .from('role_changes_log')
-                .select('*')
-                .eq('user_id', userId)
-                .order('changed_at', { ascending: false });
-
-            if (error) throw error;
-            setRoleHistory(data || []);
-            setSelectedUserId(userId);
-            setShowHistory(true);
-        } catch (error: any) {
-            toast({
-                title: "خطأ",
-                description: "فشل في تحميل سجل التغييرات",
-                variant: "destructive"
-            });
-        }
+        // role_changes_log table doesn't exist yet - show placeholder
+        toast({
+            title: "ميزة قيد التطوير",
+            description: "سجل تغييرات الأدوار غير متاح حالياً",
+        });
+        setRoleHistory([]);
+        setSelectedUserId(userId);
+        setShowHistory(true);
     };
 
     const getRoleBadge = (role: string) => {
@@ -350,7 +340,7 @@ const UsersManagement = () => {
                 description: editingUserId ? "تم تحديث البيانات بنجاح" : "تم إنشاء المستخدم بنجاح",
             });
             setIsCreateDialogOpen(false);
-            setNewUser({ email: "", password: "", fullName: "", role: "user" });
+            setNewUser({ email: "", password: "", fullName: "", role: "user", partner_id: "" });
             setEditingUserId(null);
             fetchUsers();
         } catch (error: any) {
@@ -625,7 +615,7 @@ const UsersManagement = () => {
             <Dialog open={isCreateDialogOpen} onOpenChange={(open) => {
                 setIsCreateDialogOpen(open);
                 if (!open) {
-                    setNewUser({ email: "", password: "", fullName: "", role: "user" });
+                    setNewUser({ email: "", password: "", fullName: "", role: "user", partner_id: "" });
                     setEditingUserId(null);
                 }
             }}>
@@ -725,7 +715,7 @@ const UsersManagement = () => {
                         <Button variant="outline" onClick={() => setConfirmDialog({ open: false, userId: null, userName: "", newRole: "user" })}>
                             إلغاء
                         </Button>
-                        <Button onClick={() => confirmDialog.userId && updateUserRole(confirmDialog.userId, confirmDialog.newRole)}>
+                        <Button onClick={() => confirmDialog.userId && updateUserRole(confirmDialog.userId, confirmDialog.newRole as any)}>
                             تأكيد التغيير
                         </Button>
                     </DialogFooter>
