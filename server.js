@@ -30,6 +30,12 @@ app.use((req, res, next) => {
     next();
 });
 
+// Log all requests for debugging (only in production to diagnose issues)
+app.use((req, res, next) => {
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
+    next();
+});
+
 // Serve static files from dist directory
 app.use(express.static(path.join(__dirname, 'dist'), {
     maxAge: '1y',
@@ -41,13 +47,19 @@ app.use(express.static(path.join(__dirname, 'dist'), {
     }
 }));
 
-// SPA fallback - only return index.html for non-asset requests
+// SPA fallback - improved asset detection
 app.get('*', (req, res) => {
-    // If the request looks like an asset (has an extension), return 404
-    if (path.extname(req.path)) {
-        res.status(404).end();
-        return;
+    const ext = path.extname(req.path);
+
+    // If it's an asset request (has extension like .js, .css, .png, etc.)
+    // but NOT .html (which should serve index.html for SPA routing)
+    if (ext && ext !== '.html') {
+        console.log(`[404] Asset not found: ${req.path}`);
+        return res.status(404).send('Asset not found');
     }
+
+    // For all other routes (no extension or .html), serve index.html (SPA routing)
+    console.log(`[SPA] Serving index.html for: ${req.path}`);
     res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 
