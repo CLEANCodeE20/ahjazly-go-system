@@ -2,8 +2,25 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
+// Logic to determine Supabase URL
+// If PROXY is enabled, we use the local backend route
+const useProxy = import.meta.env.VITE_USE_PROXY === 'true';
+
+let SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+
+if (useProxy) {
+  // In production (served by server.js), this will be relative to domain
+  // In dev, we can point to the local server if needed, or rely on Vite proxy
+  // We use window.location.origin to make it absolute for the client validation
+  // specific handling for SSR or non-browser environments might be needed, but this is a Client component
+  if (typeof window !== 'undefined') {
+    SUPABASE_URL = `${window.location.origin}/supabase-proxy`;
+  }
+}
+
+console.log(`[Supabase] Initializing client. Proxy Mode: ${useProxy}, URL: ${SUPABASE_URL}`);
 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";

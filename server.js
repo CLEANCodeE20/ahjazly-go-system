@@ -52,7 +52,31 @@ app.get('*', (req, res) => {
 });
 
 const PORT = process.env.PORT || 10000;
+
+// Supabase Proxy Middleware
+// This allows the server to act as a VPN/Proxy for the frontend
+import { createProxyMiddleware } from 'http-proxy-middleware';
+
+const SUPABASE_URL = process.env.VITE_SUPABASE_URL || 'https://kbgbftyvbdgyoeosxlok.supabase.co';
+
+app.use('/supabase-proxy', createProxyMiddleware({
+    target: SUPABASE_URL,
+    changeOrigin: true,
+    pathRewrite: {
+        '^/supabase-proxy': '', // Remove /supabase-proxy base path
+    },
+    onProxyReq: (proxyReq, req, res) => {
+        // Ensure Host header matches the target
+        // proxyReq.setHeader('Host', new URL(SUPABASE_URL).host);
+    },
+    onError: (err, req, res) => {
+        console.error('Proxy Error:', err);
+        res.status(500).send('Proxy Error');
+    }
+}));
+
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`✅ Server running on port ${PORT}`);
     console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`🔌 Supabase Proxy Active at /supabase-proxy`);
 });
