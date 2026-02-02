@@ -62,12 +62,17 @@ const SUPABASE_URL = process.env.VITE_SUPABASE_URL || 'https://kbgbftyvbdgyoeosx
 app.use('/supabase-proxy', createProxyMiddleware({
     target: SUPABASE_URL,
     changeOrigin: true,
+    ws: true, // Enable WebSocket proxying
     pathRewrite: {
         '^/supabase-proxy': '', // Remove /supabase-proxy base path
     },
     onProxyReq: (proxyReq, req, res) => {
         // Ensure Host header matches the target
         // proxyReq.setHeader('Host', new URL(SUPABASE_URL).host);
+    },
+    onProxyReqWs: (proxyReq, req, socket, options, head) => {
+        // Handle WebSocket handshake if needed
+        // console.log('WebSocket proxy connection attempt');
     },
     onError: (err, req, res) => {
         console.error('Proxy Error:', err);
