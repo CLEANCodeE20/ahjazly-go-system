@@ -1,0 +1,7 @@
+project_id = "sktjttaixibcvgkcnjys"
+
+[functions.neon-query]
+verify_jwt = false
+
+[functions.manage-employee]
+verify_jwt = true

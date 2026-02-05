@@ -62,9 +62,9 @@ const DriversManagement = () => {
     // تصفية السائقين
     const filteredDrivers = drivers?.filter((driver) => {
         const matchesSearch =
-            driver.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            driver.phone_number?.includes(searchTerm) ||
-            driver.license_number?.includes(searchTerm);
+            (driver.full_name?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
+            (driver.phone_number || "").includes(searchTerm) ||
+            (driver.license_number || "").includes(searchTerm);
 
         const matchesStatus =
             statusFilter === "all" || driver.status === statusFilter;

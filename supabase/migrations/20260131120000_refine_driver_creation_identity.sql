@@ -40,10 +40,10 @@ BEGIN
 
     -- 2. Sync/Create Driver Record
     INSERT INTO public.drivers (
-        user_id, partner_id, full_name, phone_number,
+        partner_id, full_name, phone_number,
         license_number, license_expiry, hire_date, status, auth_id
     ) VALUES (
-        v_user_id, p_partner_id, p_full_name, p_phone_number,
+        p_partner_id, p_full_name, p_phone_number,
         p_license_number, p_license_expiry, p_hire_date, 'active', p_auth_id
     )
     ON CONFLICT (auth_id) DO UPDATE SET

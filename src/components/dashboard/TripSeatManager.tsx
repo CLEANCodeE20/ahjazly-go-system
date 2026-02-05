@@ -39,24 +39,29 @@ export default function TripSeatManager({ isOpen, onClose, tripId, busId, routeI
         setLoading(true);
         setFeatureNotAvailable(false);
         try {
-            // Fetch Bus Capacity only (seat_layout column doesn't exist)
-            const { data: busData, error: busError } = await supabase
-                .from('buses')
-                .select('capacity')
-                .eq('bus_id', busId)
-                .single();
+            // Fetch Bus Capacity and Trip Blocked Seats
+            const [busRes, tripRes] = await Promise.all([
+                supabase
+                    .from('buses')
+                    .select('capacity')
+                    .eq('bus_id', busId)
+                    .single(),
+                supabase
+                    .from('trips')
+                    .select('blocked_seats')
+                    .eq('trip_id', tripId)
+                    .single()
+            ]);
 
-            if (busError) throw busError;
-            
-            const capacity = busData?.capacity || 44;
+            if (busRes.error) throw busRes.error;
+
+            const capacity = busRes.data?.capacity || 44;
             setBusCapacity(capacity);
+            setBlockedSeats(tripRes.data?.blocked_seats || []);
 
             // Generate a default layout based on capacity
             const defaultLayout = generateDefaultLayout(capacity);
             setLayout(defaultLayout);
-
-            // blocked_seats column doesn't exist on trips table yet
-            setBlockedSeats([]);
 
             // Fetch Currently Booked Seats
             const { data: bookedData, error: bookedError } = await supabase
@@ -69,9 +74,6 @@ export default function TripSeatManager({ isOpen, onClose, tripId, busId, routeI
 
             const bookedList = bookedData?.map((p: any) => p.seats?.seat_number).filter(Boolean) || [];
             setBookedSeats(bookedList);
-
-            // Show warning that full feature needs database updates
-            setFeatureNotAvailable(true);
 
         } catch (error: any) {
             toast({
@@ -107,18 +109,36 @@ export default function TripSeatManager({ isOpen, onClose, tripId, busId, routeI
     };
 
     const handleSave = async () => {
-        toast({
-            title: "ميزة قيد التطوير",
-            description: "حفظ المقاعد المحظورة غير متاح حالياً. يتطلب تحديث قاعدة البيانات.",
-        });
-        onClose();
+        setSaving(true);
+        try {
+            const { error } = await supabase
+                .from('trips')
+                .update({ blocked_seats: blockedSeats } as any)
+                .eq('trip_id', tripId);
+
+            if (error) throw error;
+
+            toast({
+                title: "تم الحفظ",
+                description: "تم تحديث المقاعد المحظورة بنجاح",
+            });
+            onClose();
+        } catch (error: any) {
+            toast({
+                title: "خطأ",
+                description: "فشل حفظ التغييرات: " + error.message,
+                variant: "destructive"
+            });
+        } finally {
+            setSaving(false);
+        }
     };
 
     const renderGrid = () => {
         if (!layout) return null;
 
         const rows = layout.rows || 10;
-        
+
         return (
             <div className="flex flex-col gap-2 items-center">
                 {featureNotAvailable && (

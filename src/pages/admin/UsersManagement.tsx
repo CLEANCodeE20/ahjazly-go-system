@@ -111,6 +111,7 @@ const UsersManagement = () => {
     const fetchUsers = async () => {
         setLoading(true);
         try {
+            // Join with user_roles using the unified auth_id FK
             let query = supabase
                 .from('users')
                 .select(`
@@ -121,14 +122,16 @@ const UsersManagement = () => {
                     created_at, 
                     account_status, 
                     user_type,
-                    user_roles!user_roles_profile_fk(
+                    user_roles!user_roles_auth_id_public_fkey(
+                        role,
                         partner_id,
-                        partners!user_roles_partner_id_fkey(company_name)
+                        partners(company_name)
                     )
                 `, { count: 'exact' });
 
-            // Show all external users using user_type (safe enum)
-            query = query.in('user_type', ['customer', 'driver', 'partner', 'employee']);
+            // REMOVED: query.in('user_type', ...) 
+            // Reason: We want to see ALL users to debug the new roles properly.
+            // Old Code: query = query.in('user_type', ['customer', 'driver', 'partner', 'employee']);
 
             // Server-side Filtering
             if (searchQuery) {
@@ -147,12 +150,60 @@ const UsersManagement = () => {
 
             // Map data
             const mappedUsers = data.map((u: any) => {
+                // Debug: Log the full user object structure for troubleshooting
+                if (u.email === 'qwert12347@gmail.com') console.log('DEBUG USER STRUCT:', u);
+
+                // Handle array or single object response from join
                 const roleData = Array.isArray(u.user_roles) ? u.user_roles[0] : u.user_roles;
-                const role = u.user_type || 'customer';
+
+                // Get role priority: user_roles.role > user_type > 'customer'
+                let rawRole = roleData?.role || u.user_type || 'customer';
+
+                // Normalize string (trim)
+                if (typeof rawRole === 'string') rawRole = rawRole.trim();
+
+                // Comprehensive Role Translation Map
+                const roleTranslations: Record<string, string> = {
+                    // Fallbacks
+                    'user': 'عميل',
+                    'm': 'عميل',
+                    'مستخدم': 'عميل',
+
+                    // Legacy Lowercase
+                    'customer': 'عميل',
+                    'partner': 'شريك',
+                    'admin': 'مشرف (Admin)',
+                    'driver': 'سائق',
+                    'employee': 'موظف',
+                    'manager': 'مدير فرع',
+                    'accountant': 'محاسب',
+                    'support': 'دعم فني',
+                    'supervisor': 'مشرف',
+                    'agent': 'وكيل',
+
+                    // New Uppercase System
+                    'SUPERUSER': 'مدير النظام (Super)',
+                    'PARTNER_ADMIN': 'مدير الشركة (Admin)',
+                    'PARTNER_EMPLOYEE': 'موظف شركة',
+                    'CUSTOMER_SUPPORT': 'دعم عملاء',
+                    'TRAVELER': 'مسافر',
+                    'DRIVER': 'سائق',
+                    'AGENT': 'وكيل'
+                };
+
+                // Try exact match, then lowercase match, or fallback to raw
+                const displayRole = roleTranslations[rawRole]
+                    || roleTranslations[rawRole.toLowerCase()]
+                    || rawRole;
+
+                // Get company name
+                const companyName = roleData?.partners?.company_name
+                    || (displayRole.includes('عميل') ? 'عميل مباشر' : 'غير محدد');
+
                 return {
                     ...u,
-                    role,
-                    company_name: roleData?.partners?.company_name || (role === 'customer' ? 'عميل مباشر' : 'غير محدد')
+                    role: displayRole,
+                    company_name: companyName
                 };
             });
 
@@ -225,29 +276,41 @@ const UsersManagement = () => {
         }
 
         try {
-            // Map 'user' to 'customer' if that's the internal enum name
-            const internalRole = newRole === 'user' ? 'customer' : 'driver';
+            // Map 'user' to 'customer' if that's the internal enum name for legacy support
+            const legacyUserType = newRole === 'user' ? 'customer' : 'driver';
 
-            // Update user_type in users table (Primary role storage)
+            // Map to new Gold Standard Roles (Uppercase)
+            const newAppRole = newRole === 'user' ? 'TRAVELER' : 'DRIVER';
+
+            // 1. Update legacy user_type (Dual Write)
             const { error: userErr } = await supabase
                 .from('users')
-                .update({ user_type: internalRole as any })
+                .update({ user_type: legacyUserType as any })
                 .eq('auth_id', authId);
 
             if (userErr) throw userErr;
 
-            // Optional: If we want to ensure they don't have dashboard roles
-            // We can delete their entry in user_roles if they are set to driver/customer
-            // as these roles are not in the app_role enum.
-            await supabase.from('user_roles').delete().eq('user_id', authId);
+            // 2. CRITICAL FIX: Upsert into user_roles instead of deleting
+            // This ensures they have a valid entry for RLS and permissions
+            const { error: roleErr } = await supabase
+                .from('user_roles')
+                .upsert({
+                    auth_id: authId,
+                    user_id: authId, // Keep legacy user_id for safety if schema demands it
+                    role: newAppRole,
+                    partner_id: null
+                } as any, { onConflict: 'auth_id' });
+
+            if (roleErr) throw roleErr;
 
             toast({
                 title: "تم التحديث",
-                description: "تم تغيير صلاحيات المستخدم بنجاح",
+                description: "تم تغيير صلاحيات المستخدم بنجاح وتحديث سجلات الوصول",
             });
             fetchUsers();
             setConfirmDialog({ open: false, userId: null, userName: "", newRole: "user" });
         } catch (error: any) {
+            console.error('Update Role Error:', error);
             toast({
                 title: "خطأ",
                 description: "فشل في تحديث الصلاحيات",
@@ -268,21 +331,30 @@ const UsersManagement = () => {
     };
 
     const getRoleBadge = (role: string) => {
-        switch (role) {
-            case 'admin':
-                return <span className="px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">مدير نظام</span>;
-            case 'partner':
-                return <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">شريك</span>;
-            case 'employee':
-                return <span className="px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700">موظف</span>;
-            case 'driver':
-                return <span className="px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-700">سائق</span>;
-            case 'customer':
-            case 'user':
-                return <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">عميل</span>;
-            default:
-                return <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">مستخدم</span>;
+        // Role is already translated to Arabic at this point (e.g., "مدير شركة (Admin)")
+        // We match keywords to assign colors
+
+        if (role.includes('مدير') || role.includes('Admin') || role.includes('Super')) {
+            return <span className="px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">{role}</span>;
         }
+        if (role.includes('شريك') || role.includes('Partner')) {
+            return <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">{role}</span>;
+        }
+        if (role.includes('موظف') || role.includes('Employee')) {
+            return <span className="px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700">{role}</span>;
+        }
+        if (role.includes('سائق') || role.includes('Driver')) {
+            return <span className="px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-700">{role}</span>;
+        }
+        if (role.includes('عميل') || role.includes('Customer') || role.includes('User')) {
+            return <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">{role}</span>;
+        }
+        if (role.includes('دعم')) {
+            return <span className="px-2 py-1 rounded-full text-xs font-medium bg-cyan-100 text-cyan-700">{role}</span>;
+        }
+
+        // Default
+        return <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">{role}</span>;
     };
 
     function getRoleName(role: string) {

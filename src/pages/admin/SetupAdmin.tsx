@@ -25,11 +25,11 @@ const SetupAdmin = () => {
 
   const checkForExistingAdmin = async () => {
     const { data, error } = await supabase.rpc('is_first_admin');
-    
+
     if (error) {
       console.error('Error checking admin status:', error);
     }
-    
+
     setHasAdmin(!data);
     setChecking(false);
   };
@@ -63,8 +63,8 @@ const SetupAdmin = () => {
         .from('user_roles')
         .insert({
           user_id: authData.user.id,
-          role: 'admin'
-        });
+          role: 'SUPERUSER'
+        } as any);
 
       if (roleError) throw roleError;
 
@@ -118,7 +118,7 @@ const SetupAdmin = () => {
   return (
     <div className="min-h-screen flex flex-col bg-muted/30">
       <Header />
-      
+
       <main className="flex-1 flex items-center justify-center pt-20 pb-12 px-4">
         <div className="w-full max-w-md">
           {/* Logo */}

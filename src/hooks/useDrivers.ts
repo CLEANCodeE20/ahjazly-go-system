@@ -84,7 +84,7 @@ export const useDrivers = () => {
                 .from("drivers")
                 .select(`
           *,
-          user:users(full_name, email, phone_number, account_status, auth_id),
+          user:users!drivers_auth_id_public_fkey(full_name, email, phone_number, account_status, auth_id),
           partner:partners(company_name)
         `)
                 .order("created_at", { ascending: false });

@@ -134,9 +134,9 @@ const AdminDashboard = () => {
           .from('user_roles')
           .insert({
             auth_id: application.auth_user_id,
-            role: 'partner',
+            role: 'PARTNER_ADMIN',
             partner_id: partner.partner_id
-          });
+          } as any);
 
         if (roleError) {
           console.error('Error assigning role:', roleError);

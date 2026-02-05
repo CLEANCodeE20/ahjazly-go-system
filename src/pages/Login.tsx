@@ -42,8 +42,9 @@ const Login = () => {
   // Redirect if already logged in
   useEffect(() => {
     console.log('[Login] State Check:', { authLoading, user: !!user, userRole: !!userRole, userStatus });
+
     if (!authLoading && user && userRole && !hasNotified) {
-      if (userStatus && userStatus !== 'active' && userRole.role !== 'admin') {
+      if (userStatus && userStatus !== 'active' && userRole.role !== 'SUPERUSER') {
         setHasNotified(true);
         toast({
           title: "الحساب غير نشط",
@@ -61,23 +62,34 @@ const Login = () => {
         description: "مرحباً بك في منصة احجزلي",
       });
 
-      if (userRole.role === 'admin') {
+      if (userRole.role === 'SUPERUSER') {
         navigate("/admin");
       } else {
         navigate("/dashboard");
       }
     } else if (!authLoading && user && !userRole) {
-      const timer = setTimeout(() => {
+      // User has session but no profile - wait then sign out
+      console.warn('[Login] User has session but no profile');
+
+      const timer = setTimeout(async () => {
         if (user && !userRole) {
+          console.error('[Login] No profile found after timeout - signing out');
+
           toast({
-            title: "جاري استرجاع بيانات الحساب",
-            description: "قد يستغرق تهيئة حسابك بضع ثوانٍ في المرة الأولى.",
+            title: "خطأ في تحميل البيانات",
+            description: "لم نتمكن من تحميل بيانات حسابك. يرجى تسجيل الدخول مرة أخرى.",
+            variant: "destructive"
           });
+
+          // Sign out to clear invalid session
+          await signIn('', ''); // This will trigger sign out in useAuth
+          window.location.href = '/login';
         }
-      }, 3000);
+      }, 5000); // Wait 5 seconds for profile to load
+
       return () => clearTimeout(timer);
     }
-  }, [user, userRole, authLoading, navigate, userStatus, hasNotified]);
+  }, [user, userRole, authLoading, navigate, userStatus, hasNotified, signIn]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });

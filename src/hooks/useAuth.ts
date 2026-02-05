@@ -98,7 +98,7 @@ export const useAuth = () => {
 
   const fetchUserRole = async (userId: string, retries = 5, delay = 200) => {
     try {
-      console.log(`[Auth] Resolving identity for ${userId}...`);
+      console.log(`[Auth] Resolving identity for ${userId}... (retries left: ${retries})`);
 
       // 1. JWT Claims Check (The Gold Standard - Instant)
       const { data: { session } } = await supabase.auth.getSession();
@@ -107,7 +107,7 @@ export const useAuth = () => {
       // 2. Database Fetch (Parallel fallback & Extra data)
       const { data: userData, error: userError } = await supabase
         .from('users')
-        .select('account_status, partner_id') // Removed user_id and user_type
+        .select('account_status, partner_id')
         .eq('auth_id', userId)
         .maybeSingle();
 
@@ -121,7 +121,7 @@ export const useAuth = () => {
       const { data: roleData } = await supabase
         .from('user_roles')
         .select('role, partner_id')
-        .eq('auth_id', userId) // Changed from user_id to auth_id
+        .eq('auth_id', userId)
         .maybeSingle();
 
       if (roleData) {
@@ -130,22 +130,51 @@ export const useAuth = () => {
       }
 
       // 4. Identification logic
-      // Priority: users table (profile) -> user_roles table -> null
       let finalPartnerId = userData?.partner_id || rolePartnerId || null;
 
-      // 5. Retry logic if essential data is missing (only if no role found at all)
-      if (!finalRole && !userData && retries > 0) {
+      // 5. Improved Retry Logic
+      const hasSession = !!session;
+      const hasNoData = !finalRole && !userData && !roleData;
+      const shouldRetry = hasSession && hasNoData && retries > 0;
+
+      if (shouldRetry) {
         console.log(`[Auth] Profile not found yet, retrying... (${retries} left)`);
         setTimeout(() => fetchUserRole(userId, retries - 1, delay * 1.5), delay);
         return;
       }
 
+      // 6. CRITICAL: If no profile found after all retries, sign out
+      if (hasSession && hasNoData) {
+        console.error('[Auth] ⛔ CRITICAL: User has session but NO profile after all retries!');
+        console.error('[Auth] ⛔ This will cause infinite loops. Signing out immediately.');
+
+        // Set loading to false first
+        setAuthState({
+          user: null,
+          session: null,
+          userRole: null,
+          userStatus: null,
+          isLoading: false,
+        });
+
+        // Sign out immediately
+        await supabase.auth.signOut();
+
+        // Clear all storage
+        localStorage.clear();
+        sessionStorage.clear();
+
+        console.error('[Auth] ⛔ Session cleared. User must re-register or contact support.');
+        return;
+      }
+
+      // 7. Normal flow - set auth state
       setAuthState(prev => ({
         ...prev,
         userRole: finalRole ? {
           role: finalRole,
           partner_id: finalPartnerId,
-          auth_id: userId // Renamed from user_id to auth_id
+          auth_id: userId
         } : null,
         userStatus: userData?.account_status || 'active',
         isLoading: false,

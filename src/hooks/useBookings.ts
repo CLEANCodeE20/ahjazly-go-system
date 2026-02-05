@@ -37,6 +37,7 @@ export interface Booking {
         } | null;
     } | null;
     passengers?: Array<{
+        passenger_id: number;
         full_name: string;
         seat_id: number;
         seat_number?: string;
@@ -44,6 +45,8 @@ export interface Booking {
         id_image?: string;
         birth_date?: string;
         gender?: string;
+        passenger_status?: string;
+        checked_in_at?: string;
     }>;
     ledger?: Array<{
         ledger_id: number;
@@ -81,7 +84,7 @@ export const useBookings = ({ page, pageSize, searchQuery, statusFilter }: UseBo
 
                 const { data: passengers } = await supabase
                     .from('passengers')
-                    .select('booking_id, full_name, seat_id, id_number, id_image, birth_date, gender')
+                    .select('passenger_id, booking_id, full_name, seat_id, id_number, id_image, birth_date, gender, passenger_status, checked_in_at')
                     .in('booking_id', bookingIds);
 
                 const { data: ledger } = await supabase
@@ -237,5 +240,83 @@ export const useConfirmPayment = () => {
         onError: (error: any) => {
             toast({ title: "خطأ", description: error.message, variant: "destructive" });
         },
+    });
+};
+export const useUpdatePassengerDetails = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async ({ id, fullName, idNumber, gender, birthDate, phone }: any) => {
+            const { data, error } = await supabase.rpc('update_passenger_details_v1' as any, {
+                p_passenger_id: id,
+                p_full_name: fullName,
+                p_id_number: idNumber,
+                p_gender: gender,
+                p_birth_date: birthDate,
+                p_phone_number: phone
+            });
+            if (error) throw error;
+            return data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["bookings"] });
+            toast({ title: "تم التعديل", description: "تم تحديث بيانات المسافر بنجاح" });
+        },
+        onError: (err: any) => toast({ title: "خطأ", description: err.message, variant: "destructive" })
+    });
+};
+
+export const useCheckInPassenger = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async ({ id, isCheckedIn }: { id: number; isCheckedIn: boolean }) => {
+            const { data, error } = await supabase.rpc('toggle_passenger_checkin_v1' as any, {
+                p_passenger_id: id,
+                p_is_checked_in: isCheckedIn
+            });
+            if (error) throw error;
+            return data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["bookings"] });
+        },
+        onError: (err: any) => toast({ title: "خطأ", description: err.message, variant: "destructive" })
+    });
+};
+
+export const usePartialCancelBooking = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async ({ bookingId, passengerIds }: { bookingId: number; passengerIds: number[] }) => {
+            const { data, error } = await supabase.rpc('partial_cancel_booking_v1' as any, {
+                p_booking_id: bookingId,
+                p_passenger_ids: passengerIds
+            });
+            if (error) throw error;
+            return data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["bookings"] });
+            toast({ title: "تم الإلغاء الجزئي", description: "تم إلغاء المقاعد المحددة بنجاح" });
+        },
+        onError: (err: any) => toast({ title: "خطأ", description: err.message, variant: "destructive" })
+    });
+};
+
+export const useTransferBooking = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async ({ bookingId, newTripId }: { bookingId: number; newTripId: number }) => {
+            const { data, error } = await supabase.rpc('transfer_booking_v1' as any, {
+                p_booking_id: bookingId,
+                p_new_trip_id: newTripId
+            });
+            if (error) throw error;
+            return data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["bookings"] });
+            toast({ title: "تم النقل", description: "تم نقل الحجز إلى الرحلة الجديدة بنجاح" });
+        },
+        onError: (err: any) => toast({ title: "خطأ", description: err.message, variant: "destructive" })
     });
 };

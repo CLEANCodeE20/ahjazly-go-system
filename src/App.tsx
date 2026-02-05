@@ -53,6 +53,7 @@ const CityManagement = lazy(() => import("./pages/admin/CityManagement"));
 const SupportManager = lazy(() => import("./pages/admin/SupportManager"));
 const FAQManager = lazy(() => import("./pages/admin/FAQManager"));
 const BannerManager = lazy(() => import("./pages/admin/BannerManager"));
+const CancellationApprovals = lazy(() => import("./pages/admin/CancellationApprovals"));
 
 // Dashboard Pages
 const CompanyDashboard = lazy(() => import("./pages/dashboard/CompanyDashboard"));
@@ -218,6 +219,11 @@ const App = () => {
                     <BannerManager />
                   </ProtectedRoute>
                 } />
+                <Route path="/admin/cancellation-approvals" element={
+                  <ProtectedRoute allowedRoles={['SUPERUSER']}>
+                    <CancellationApprovals />
+                  </ProtectedRoute>
+                } />
 
                 {/* Dashboard & User Routes */}
                 <Route path="/notifications" element={
@@ -333,6 +339,11 @@ const App = () => {
                 <Route path="/dashboard/cancellation-policies" element={
                   <ProtectedRoute allowedRoles={['PARTNER_ADMIN', 'manager', 'accountant', 'support', 'supervisor']}>
                     <CancellationPolicies />
+                  </ProtectedRoute>
+                } />
+                <Route path="/dashboard/cancellation-approvals" element={
+                  <ProtectedRoute allowedRoles={['PARTNER_ADMIN', 'manager', 'accountant', 'support', 'supervisor']}>
+                    <CancellationApprovals />
                   </ProtectedRoute>
                 } />
                 <Route path="/dashboard/ratings" element={

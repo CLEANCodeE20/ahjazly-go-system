@@ -40,26 +40,5 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
   },
 });
 
-// Monitor auth state changes for better session management
-supabase.auth.onAuthStateChange((event, session) => {
-  console.log('[Supabase] Auth event:', event);
-
-  if (event === 'SIGNED_OUT') {
-    // Clear all auth-related storage
-    try {
-      localStorage.removeItem('supabase.auth.token');
-      sessionStorage.clear();
-      console.log('[Supabase] Cleared storage on sign out');
-    } catch (error) {
-      console.error('[Supabase] Error clearing storage:', error);
-    }
-  }
-
-  if (event === 'TOKEN_REFRESHED') {
-    console.log('[Supabase] Token refreshed successfully');
-  }
-
-  if (event === 'SIGNED_IN') {
-    console.log('[Supabase] User signed in successfully');
-  }
-});
+// Note: Auth state monitoring is handled in useAuth.ts hook
+// Removed duplicate listener here to prevent infinite loops

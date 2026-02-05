@@ -1,0 +1,382 @@
+import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import '../../booking/controller/BookingController.dart';
+import '../controllers/booking_controller.dart';
+import '../widgets/rate_trip_button.dart';
+
+// =============================================
+// EXAMPLE 1: في صفحة الحجوزات المكتملة
+// =============================================
+
+class CompletedBookingsPage extends StatelessWidget {
+  const CompletedBookingsPage({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = Get.find<BookingController>();
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('الحجوزات المكتملة'),
+      ),
+      body: Obx(() {
+        final completedBookings = controller.bookings
+            .where((b) => b.bookingStatus == 'completed')
+            .toList();
+
+        return ListView.builder(
+          padding: const EdgeInsets.all(16),
+          itemCount: completedBookings.length,
+          itemBuilder: (context, index) {
+            final booking = completedBookings[index];
+
+            return Card(
+              margin: const EdgeInsets.only(bottom: 16),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // معلومات الحجز
+                    Text(
+                      booking.routeName ?? 'الرحلة',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'رقم الحجز: ${booking.bookingId}',
+                      style: TextStyle(color: Colors.grey[600]),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // زر التقييم
+                    RateTripButton(
+                      booking: booking,
+                      onRated: () {
+                        // تحديث القائمة بعد التقييم
+                        controller.refreshBookings();
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      }),
+    );
+  }
+}
+
+// =============================================
+// EXAMPLE 2: في صفحة تفاصيل الحجز
+// =============================================
+
+class BookingDetailsPage extends StatelessWidget {
+  final Booking booking;
+
+  const BookingDetailsPage({
+    Key? key,
+    required this.booking,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('تفاصيل الحجز'),
+      ),
+      body: SingleChildScrollView(
+        child: Column(
+          children: [
+            // بطاقة تذكير بالتقييم (تظهر في الأعلى)
+            RatingPromptCard(
+              booking: booking,
+              onRated: () {
+                Get.back(result: true);
+              },
+            ),
+
+            // تفاصيل الحجز
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildDetailRow('رقم الحجز', '${booking.bookingId}'),
+                  _buildDetailRow('المسار', booking.routeName ?? '-'),
+                  _buildDetailRow('التاريخ', booking.tripDate ?? '-'),
+                  _buildDetailRow('الحالة', booking.bookingStatus),
+                  
+                  const SizedBox(height: 24),
+                  
+                  // مؤشر حالة التقييم
+                  RatingStatusIndicator(booking: booking),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+      // زر ثابت في الأسفل
+      bottomNavigationBar: booking.bookingStatus == 'completed' && 
+                          booking.hasRating != true
+          ? Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, -2),
+                  ),
+                ],
+              ),
+              child: SafeArea(
+                child: RateTripButton(
+                  booking: booking,
+                  onRated: () => Get.back(result: true),
+                ),
+              ),
+            )
+          : null,
+    );
+  }
+
+  Widget _buildDetailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey[600],
+            ),
+          ),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// =============================================
+// EXAMPLE 3: في صفحة تاريخ الرحلات
+// =============================================
+
+class TripHistoryPage extends StatelessWidget {
+  const TripHistoryPage({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = Get.find<BookingController>();
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('تاريخ الرحلات'),
+      ),
+      body: Obx(() {
+        return ListView.builder(
+          padding: const EdgeInsets.all(16),
+          itemCount: controller.bookings.length,
+          itemBuilder: (context, index) {
+            final booking = controller.bookings[index];
+
+            return Card(
+              margin: const EdgeInsets.only(bottom: 16),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                booking.routeName ?? 'الرحلة',
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                booking.tripDate ?? '-',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        _buildStatusBadge(booking.bookingStatus),
+                      ],
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    // زر مصغر للتقييم
+                    Row(
+                      children: [
+                        RatingStatusIndicator(booking: booking),
+                        const Spacer(),
+                        CompactRateTripButton(
+                          booking: booking,
+                          onRated: () {
+                            controller.refreshBookings();
+                          },
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      }),
+    );
+  }
+
+  Widget _buildStatusBadge(String status) {
+    Color color;
+    String label;
+
+    switch (status) {
+      case 'completed':
+        color = Colors.green;
+        label = 'مكتمل';
+        break;
+      case 'pending':
+        color = Colors.orange;
+        label = 'قيد الانتظار';
+        break;
+      case 'cancelled':
+        color = Colors.red;
+        label = 'ملغي';
+        break;
+      default:
+        color = Colors.grey;
+        label = status;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.bold,
+          color: color,
+        ),
+      ),
+    );
+  }
+}
+
+// =============================================
+// EXAMPLE 4: في بطاقة الحجز (Widget قابل لإعادة الاستخدام)
+// =============================================
+
+class BookingCard extends StatelessWidget {
+  final Booking booking;
+  final VoidCallback? onTap;
+  final bool showRatingButton;
+
+  const BookingCard({
+    Key? key,
+    required this.booking,
+    this.onTap,
+    this.showRatingButton = true,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      booking.routeName ?? 'الرحلة',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  RatingStatusIndicator(booking: booking),
+                ],
+              ),
+
+              const SizedBox(height: 12),
+
+              // Details
+              Row(
+                children: [
+                  Icon(Icons.calendar_today, size: 16, color: Colors.grey[600]),
+                  const SizedBox(width: 8),
+                  Text(
+                    booking.tripDate ?? '-',
+                    style: TextStyle(color: Colors.grey[600]),
+                  ),
+                  const SizedBox(width: 16),
+                  Icon(Icons.confirmation_number, size: 16, color: Colors.grey[600]),
+                  const SizedBox(width: 8),
+                  Text(
+                    '#${booking.bookingId}',
+                    style: TextStyle(color: Colors.grey[600]),
+                  ),
+                ],
+              ),
+
+              // Rating Button
+              if (showRatingButton) ...[
+                const SizedBox(height: 16),
+                CompactRateTripButton(
+                  booking: booking,
+                  onRated: () {
+                    // يمكن تمرير callback من الصفحة الأم
+                  },
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}

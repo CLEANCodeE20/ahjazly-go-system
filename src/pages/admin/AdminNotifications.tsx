@@ -78,7 +78,7 @@ export const AdminNotifications = () => {
                 const { data } = await supabase
                     .from("user_roles")
                     .select("user_id")
-                    .eq("role", "PARTNER_ADMIN");
+                    .eq("role", "PARTNER_ADMIN" as any);
 
                 // user_id in user_roles is actually auth_id (UUID)
                 targetUsers = (data || []).map(r => ({ auth_id: r.user_id }));

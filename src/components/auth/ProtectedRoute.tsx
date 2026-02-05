@@ -19,16 +19,28 @@ const ProtectedRoute = ({
 
   useEffect(() => {
     if (!isLoading) {
+      // Prevent infinite redirect loops
+      const lastRedirect = sessionStorage.getItem('last_redirect');
+      const currentPath = window.location.pathname;
+
       if (!user) {
         console.log("ProtectedRoute: No user, redirecting to", redirectTo);
-        navigate(redirectTo);
+
+        // Only redirect if we haven't just redirected from this path
+        if (lastRedirect !== currentPath) {
+          sessionStorage.setItem('last_redirect', currentPath);
+          navigate(redirectTo, { replace: true });
+        }
         return;
       }
+
+      // Clear redirect tracking when user is authenticated
+      sessionStorage.removeItem('last_redirect');
 
       // Check account status
       if (userStatus && userStatus !== 'active' && userRole?.role !== 'SUPERUSER') {
         console.log("ProtectedRoute: Inactive user", userStatus);
-        navigate('/login');
+        navigate('/login', { replace: true });
         return;
       }
 
@@ -40,11 +52,11 @@ const ProtectedRoute = ({
           console.log("ProtectedRoute: Role mismatch or missing");
           // Redirect based on user's actual role
           if (userRole?.role === 'SUPERUSER') {
-            navigate('/admin');
+            navigate('/admin', { replace: true });
           } else if (userRole?.role === 'PARTNER_ADMIN' || ['manager', 'accountant', 'support', 'supervisor', 'driver', 'assistant'].includes(userRole?.role || '')) {
-            navigate('/dashboard');
+            navigate('/dashboard', { replace: true });
           } else {
-            navigate('/login');
+            navigate('/login', { replace: true });
           }
         }
       }

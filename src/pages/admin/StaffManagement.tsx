@@ -106,7 +106,7 @@ const StaffManagement = () => {
                     *,
                     user_roles!user_roles_auth_id_public_fkey!inner(role, partner_id, partners(company_name))
                 `)
-                .filter('user_roles.role', 'in', '("SUPERUSER","manager","accountant","support","supervisor")')
+                .filter('user_roles.role', 'in', '("SUPERUSER","PARTNER_ADMIN","PARTNER_EMPLOYEE","CUSTOMER_SUPPORT","AGENT")')
                 .is('user_roles.partner_id', null);
 
             if (error) throw error;
@@ -209,10 +209,10 @@ const StaffManagement = () => {
     const getRoleBadge = (role: string) => {
         const roleMap: Record<string, { label: string, color: string }> = {
             'SUPERUSER': { label: 'مدير نظام', color: 'bg-red-100 text-red-700' },
-            'manager': { label: 'مدير فرع', color: 'bg-indigo-100 text-indigo-700' },
-            'accountant': { label: 'محاسب', color: 'bg-green-100 text-green-700' },
-            'support': { label: 'دعم فني', color: 'bg-blue-100 text-blue-700' },
-            'supervisor': { label: 'مشرف', color: 'bg-orange-100 text-orange-700' }
+            'PARTNER_ADMIN': { label: 'مدير شركة', color: 'bg-indigo-100 text-indigo-700' },
+            'PARTNER_EMPLOYEE': { label: 'موظف شركة', color: 'bg-green-100 text-green-700' },
+            'CUSTOMER_SUPPORT': { label: 'دعم فني', color: 'bg-blue-100 text-blue-700' },
+            'AGENT': { label: 'وكيل مندوب', color: 'bg-orange-100 text-orange-700' }
         };
         const config = roleMap[role] || { label: 'عضو طاقم', color: 'bg-gray-100 text-gray-700' };
         return <span className={`px-2 py-1 rounded-full text-xs font-medium ${config.color}`}>{config.label}</span>;
@@ -366,8 +366,9 @@ const StaffManagement = () => {
                                 >
                                     <SelectTrigger><SelectValue /></SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="admin">مدير نظام (Platform Admin)</SelectItem>
-                                        <SelectItem value="employee">موظف منصة (Platform Employee)</SelectItem>
+                                        <SelectItem value="SUPERUSER">مدير نظام (Platform Admin)</SelectItem>
+                                        <SelectItem value="CUSTOMER_SUPPORT">موظف دعم (Platform Support)</SelectItem>
+                                        <SelectItem value="AGENT">وكيل منصة (Platform Agent)</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>

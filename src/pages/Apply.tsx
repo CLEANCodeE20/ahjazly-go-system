@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -30,37 +30,115 @@ import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { WhatsAppButton } from "@/components/ui/WhatsAppButton";
 
-// 1. Define Zod Schema
+// 1. Define Enhanced Zod Schema with Best Practices
 const applyFormSchema = z.object({
   // Owner Info
-  ownerName: z.string().min(3, "الاسم يجب أن يكون 3 أحرف على الأقل"),
-  ownerPhone: z.string().regex(/^05\d{8}$/, "رقم الجوال يجب أن يبدأ بـ 05 ويتكون من 10 أرقام"),
-  ownerEmail: z.string().email("البريد الإلكتروني غير صحيح"),
-  ownerIdNumber: z.string().optional(),
-  password: z.string().min(6, "كلمة المرور يجب أن تكون 6 أحرف على الأقل"),
+  ownerName: z.string()
+    .min(3, "الاسم يجب أن يكون 3 أحرف على الأقل")
+    .max(100, "الاسم طويل جداً")
+    .trim(),
+
+  ownerPhone: z.string()
+    .regex(/^(05|5)\d{8}$/, "رقم الجوال يجب أن يبدأ بـ 05 ويتكون من 10 أرقام")
+    .transform(val => val.startsWith('5') ? '0' + val : val), // تطبيع الرقم
+
+  ownerEmail: z.string()
+    .email("البريد الإلكتروني غير صحيح")
+    .toLowerCase()
+    .trim()
+    .max(255, "البريد الإلكتروني طويل جداً"),
+
+  ownerIdNumber: z.string()
+    .regex(/^\d{10}$/, "رقم الهوية يجب أن يكون 10 أرقام")
+    .optional()
+    .or(z.literal("")),
+
+  password: z.string()
+    .min(8, "كلمة المرور يجب أن تكون 8 أحرف على الأقل")
+    .regex(/[A-Z]/, "يجب أن تحتوي على حرف كبير واحد على الأقل")
+    .regex(/[a-z]/, "يجب أن تحتوي على حرف صغير واحد على الأقل")
+    .regex(/[0-9]/, "يجب أن تحتوي على رقم واحد على الأقل"),
+
   confirmPassword: z.string(),
 
   // Company Info
-  companyName: z.string().min(2, "اسم الشركة مطلوب"),
-  companyEmail: z.string().email("بريد الشركة غير صحيح").optional().or(z.literal("")),
-  companyPhone: z.string().optional(),
-  companyAddress: z.string().optional(),
-  companyCity: z.string().min(2, "المدينة مطلوبة"),
-  commercialRegistration: z.string().min(1, "رقم السجل التجاري مطلوب"),
-  fleetSize: z.preprocess((val) => Number(val), z.number().min(1, "يجب أن يكون لديك حافلة واحدة على الأقل").optional()),
-  website: z.string().url("رابط الموقع غير صحيح").optional().or(z.literal("")),
-  taxNumber: z.string().optional(),
+  companyName: z.string()
+    .min(2, "اسم الشركة مطلوب")
+    .max(200, "اسم الشركة طويل جداً")
+    .trim(),
 
-  // Financial Info (Optional for now)
-  bankName: z.string().optional(),
-  iban: z.string().optional(),
-  accountNumber: z.string().optional(),
-  swiftCode: z.string().optional(),
+  companyEmail: z.string()
+    .email("بريد الشركة غير صحيح")
+    .toLowerCase()
+    .trim()
+    .optional()
+    .or(z.literal("")),
 
-  // Documents (We handle files manually or via custom validation, simplified here to "any" for file objects)
+  companyPhone: z.string()
+    .regex(/^(05|5)\d{8}$/, "رقم الهاتف غير صحيح")
+    .transform(val => val.startsWith('5') ? '0' + val : val)
+    .optional()
+    .or(z.literal("")),
+
+  companyAddress: z.string()
+    .max(500, "العنوان طويل جداً")
+    .optional(),
+
+  companyCity: z.string()
+    .min(2, "المدينة مطلوبة")
+    .max(100, "اسم المدينة طويل جداً")
+    .trim(),
+
+  commercialRegistration: z.string()
+    .min(1, "رقم السجل التجاري مطلوب")
+    .regex(/^\d{10}$/, "رقم السجل التجاري يجب أن يكون 10 أرقام")
+    .trim(),
+
+  fleetSize: z.preprocess(
+    (val) => (val === "" || val === null || val === undefined) ? undefined : Number(val),
+    z.number()
+      .min(1, "يجب أن يكون لديك حافلة واحدة على الأقل")
+      .max(1000, "العدد كبير جداً")
+      .optional()
+  ),
+
+  website: z.string()
+    .url("رابط الموقع غير صحيح")
+    .trim()
+    .optional()
+    .or(z.literal("")),
+
+  taxNumber: z.string()
+    .regex(/^\d{15}$/, "الرقم الضريبي يجب أن يكون 15 رقم")
+    .optional()
+    .or(z.literal("")),
+
+  // Financial Info
+  bankName: z.string()
+    .max(100, "اسم البنك طويل جداً")
+    .optional(),
+
+  iban: z.string()
+    .regex(/^SA\d{22}$/, "رقم الآيبان غير صحيح (يجب أن يبدأ بـ SA ويتكون من 24 حرف)")
+    .optional()
+    .or(z.literal("")),
+
+  accountNumber: z.string()
+    .max(50, "رقم الحساب طويل جداً")
+    .optional(),
+
+  swiftCode: z.string()
+    .regex(/^[A-Z]{6}[A-Z0-9]{2}([A-Z0-9]{3})?$/, "رمز السويفت غير صحيح")
+    .optional()
+    .or(z.literal("")),
+
+  // Documents (handled separately with file validation)
   commercialRegister: z.any().optional(),
   taxCertificate: z.any().optional(),
-  description: z.string().optional(),
+
+  description: z.string()
+    .max(1000, "الوصف طويل جداً")
+    .optional(),
 
   // Terms
   acceptTerms: z.boolean().refine(val => val === true, "يجب الموافقة على الشروط"),
@@ -71,6 +149,76 @@ const applyFormSchema = z.object({
 
 type ApplyFormValues = z.infer<typeof applyFormSchema>;
 
+// 2. File Validation Helper
+const validateFile = (file: File | null): { valid: boolean; error?: string } => {
+  if (!file) return { valid: true };
+
+  const maxSize = 5 * 1024 * 1024; // 5MB
+  const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf'];
+
+  if (file.size > maxSize) {
+    return { valid: false, error: 'حجم الملف يجب أن يكون أقل من 5 ميجابايت' };
+  }
+
+  if (!allowedTypes.includes(file.type)) {
+    return { valid: false, error: 'نوع الملف غير مدعوم. الأنواع المسموحة: JPG, PNG, PDF' };
+  }
+
+  return { valid: true };
+};
+
+// 3. Rate Limiting Helper
+const MAX_ATTEMPTS = 3;
+const LOCKOUT_TIME = 15 * 60 * 1000; // 15 minutes
+
+const checkRateLimit = (email: string): { allowed: boolean; minutesLeft?: number } => {
+  const key = `apply_attempts_${email}`;
+  const stored = localStorage.getItem(key);
+
+  if (stored) {
+    const { count, timestamp } = JSON.parse(stored);
+    const timePassed = Date.now() - timestamp;
+
+    if (count >= MAX_ATTEMPTS && timePassed < LOCKOUT_TIME) {
+      const minutesLeft = Math.ceil((LOCKOUT_TIME - timePassed) / 60000);
+      return { allowed: false, minutesLeft };
+    }
+
+    if (timePassed >= LOCKOUT_TIME) {
+      localStorage.removeItem(key);
+      return { allowed: true };
+    }
+  }
+
+  return { allowed: true };
+};
+
+const recordAttempt = (email: string) => {
+  const key = `apply_attempts_${email}`;
+  const stored = localStorage.getItem(key);
+
+  if (stored) {
+    const { count, timestamp } = JSON.parse(stored);
+    const timePassed = Date.now() - timestamp;
+
+    if (timePassed >= LOCKOUT_TIME) {
+      localStorage.setItem(key, JSON.stringify({ count: 1, timestamp: Date.now() }));
+    } else {
+      localStorage.setItem(key, JSON.stringify({ count: count + 1, timestamp }));
+    }
+  } else {
+    localStorage.setItem(key, JSON.stringify({ count: 1, timestamp: Date.now() }));
+  }
+};
+
+// 4. Input Sanitization
+const sanitizeInput = (input: string): string => {
+  return input
+    .trim()
+    .replace(/[<>]/g, '') // Remove HTML tags
+    .substring(0, 1000); // Limit length
+};
+
 const Apply = () => {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
@@ -78,7 +226,7 @@ const Apply = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
-  // 2. Initialize Form
+  // 5. Initialize Form
   const form = useForm<ApplyFormValues>({
     resolver: zodResolver(applyFormSchema),
     mode: "onChange",
@@ -107,6 +255,62 @@ const Apply = () => {
       acceptTerms: false,
     }
   });
+
+  // 6. Auto-save functionality
+  useEffect(() => {
+    const saveFormData = () => {
+      const formData = form.getValues();
+      // Don't save sensitive data
+      const { password, confirmPassword, ...safeData } = formData;
+      localStorage.setItem('partner_application_draft', JSON.stringify({
+        ...safeData,
+        savedAt: new Date().toISOString()
+      }));
+    };
+
+    const interval = setInterval(saveFormData, 60000); // Every 60 seconds
+    return () => clearInterval(interval);
+  }, [form]);
+
+  // 7. Restore saved data on mount
+  useEffect(() => {
+    const savedData = localStorage.getItem('partner_application_draft');
+    if (savedData) {
+      try {
+        const parsed = JSON.parse(savedData);
+        const savedDate = new Date(parsed.savedAt);
+        const hoursSince = (Date.now() - savedDate.getTime()) / (1000 * 60 * 60);
+
+        if (hoursSince < 24) {
+          const { savedAt, ...formData } = parsed;
+          form.reset(formData);
+          toast({
+            title: "تم استعادة البيانات المحفوظة",
+            description: `آخر حفظ: ${savedDate.toLocaleString('ar-SA')}`,
+            duration: 5000
+          });
+        } else {
+          localStorage.removeItem('partner_application_draft');
+        }
+      } catch (error) {
+        console.error('Error restoring saved data:', error);
+        localStorage.removeItem('partner_application_draft');
+      }
+    }
+  }, [form]);
+
+  // 8. Warn before leaving with unsaved changes
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (form.formState.isDirty && !submitted) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [form.formState.isDirty, submitted]);
 
   // Helper for file upload
   const uploadFile = async (file: File, path: string): Promise<string | null> => {
@@ -155,11 +359,80 @@ const Apply = () => {
 
   const prevStep = () => setStep(prev => prev - 1);
 
-  // 4. Submit Handler (Zod Verified Data)
+  // 9. Submit Handler with Best Practices
   const onSubmit = async (values: ApplyFormValues) => {
     setIsSubmitting(true);
+
+    // Track uploaded files for rollback
+    let uploadedFiles: string[] = [];
+    let authUserId: string | null = null;
+
     try {
-      // Create auth user
+      // 1. Rate Limiting Check
+      const rateLimit = checkRateLimit(values.ownerEmail);
+      if (!rateLimit.allowed) {
+        toast({
+          title: "تم تجاوز عدد المحاولات",
+          description: `يرجى المحاولة مرة أخرى بعد ${rateLimit.minutesLeft} دقيقة`,
+          variant: "destructive",
+          duration: 10000
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
+      // 2. Validate Files
+      const commercialRegFile = values.commercialRegister as File | null;
+      const taxCertFile = values.taxCertificate as File | null;
+
+      const commercialValidation = validateFile(commercialRegFile);
+      if (!commercialValidation.valid) {
+        toast({
+          title: "خطأ في ملف السجل التجاري",
+          description: commercialValidation.error,
+          variant: "destructive"
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
+      const taxValidation = validateFile(taxCertFile);
+      if (!taxValidation.valid) {
+        toast({
+          title: "خطأ في ملف شهادة الزكاة",
+          description: taxValidation.error,
+          variant: "destructive"
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
+      // 3. Check if email already exists
+      const { data: existingUser } = await supabase
+        .from('users')
+        .select('email')
+        .eq('email', values.ownerEmail)
+        .single();
+
+      if (existingUser) {
+        toast({
+          title: "البريد الإلكتروني مستخدم",
+          description: (
+            <div className="space-y-2">
+              <p>هذا البريد الإلكتروني مسجل مسبقاً في النظام.</p>
+              <p className="text-sm">إذا كنت قد قدمت طلباً سابقاً، يرجى انتظار المراجعة.</p>
+              <p className="text-sm">أو يمكنك <a href="/login" className="underline font-medium">تسجيل الدخول</a> إذا كان لديك حساب.</p>
+            </div>
+          ),
+          variant: "destructive",
+          duration: 8000
+        });
+        recordAttempt(values.ownerEmail);
+        setIsSubmitting(false);
+        return;
+      }
+
+      // 4. Create auth user
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: values.ownerEmail,
         password: values.password,
@@ -172,67 +445,145 @@ const Apply = () => {
         }
       });
 
-      if (authError) throw authError;
+      if (authError) {
+        console.error('Auth signup error:', {
+          message: authError.message,
+          status: authError.status,
+          timestamp: new Date().toISOString()
+        });
 
-      const userId = authData.user?.id;
+        // Handle specific auth errors
+        if (authError.message.includes('already registered') || authError.message.includes('User already registered')) {
+          toast({
+            title: "البريد الإلكتروني مستخدم",
+            description: "هذا البريد الإلكتروني مسجل مسبقاً في نظام المصادقة.",
+            variant: "destructive"
+          });
+        } else if (authError.message.includes('network')) {
+          toast({
+            title: "خطأ في الاتصال",
+            description: "يرجى التحقق من اتصالك بالإنترنت والمحاولة مرة أخرى",
+            variant: "destructive"
+          });
+        } else {
+          toast({
+            title: "خطأ في إنشاء الحساب",
+            description: authError.message || "حدث خطأ غير متوقع",
+            variant: "destructive"
+          });
+        }
 
-      // Upload files
+        recordAttempt(values.ownerEmail);
+        throw authError;
+      }
+
+      authUserId = authData.user?.id || null;
+
+      // 5. Upload files
       let commercialRegisterUrl = null;
       let taxCertificateUrl = null;
 
-      if (values.commercialRegister instanceof File) {
-        commercialRegisterUrl = await uploadFile(values.commercialRegister, `applications/${userId || 'anonymous'}/commercial`);
-      }
-      if (values.taxCertificate instanceof File) {
-        taxCertificateUrl = await uploadFile(values.taxCertificate, `applications/${userId || 'anonymous'}/tax`);
+      if (commercialRegFile instanceof File) {
+        commercialRegisterUrl = await uploadFile(commercialRegFile, `applications/${authUserId || 'anonymous'}/commercial`);
+        if (commercialRegisterUrl) {
+          uploadedFiles.push(commercialRegisterUrl);
+        } else {
+          throw new Error('فشل رفع ملف السجل التجاري');
+        }
       }
 
-      // Create application
+      if (taxCertFile instanceof File) {
+        taxCertificateUrl = await uploadFile(taxCertFile, `applications/${authUserId || 'anonymous'}/tax`);
+        if (taxCertificateUrl) {
+          uploadedFiles.push(taxCertificateUrl);
+        } else {
+          throw new Error('فشل رفع ملف شهادة الزكاة');
+        }
+      }
+
+      // 6. Create application with sanitized data
+      const applicationData = {
+        owner_name: sanitizeInput(values.ownerName),
+        owner_phone: values.ownerPhone,
+        owner_email: values.ownerEmail.toLowerCase(),
+        owner_id_number: values.ownerIdNumber || null,
+        company_name: sanitizeInput(values.companyName),
+        company_email: values.companyEmail?.toLowerCase() || null,
+        company_phone: values.companyPhone || null,
+        company_address: values.companyAddress ? sanitizeInput(values.companyAddress) : null,
+        company_city: sanitizeInput(values.companyCity),
+        fleet_size: values.fleetSize || null,
+        commercial_registration: values.commercialRegistration,
+        website: values.website || null,
+        tax_number: values.taxNumber || null,
+        bank_name: values.bankName || null,
+        iban: values.iban || null,
+        account_number: values.accountNumber || null,
+        swift_code: values.swiftCode || null,
+        commercial_register_url: commercialRegisterUrl,
+        tax_certificate_url: taxCertificateUrl,
+        description: values.description ? sanitizeInput(values.description) : null,
+        auth_user_id: authUserId,
+        status: 'pending'
+      };
+
+      console.log('Submitting application:', { ...applicationData, auth_user_id: '***' });
+
       const { error: appError } = await supabase
         .from('partner_applications')
-        .insert({
-          owner_name: values.ownerName,
-          owner_phone: values.ownerPhone,
-          owner_email: values.ownerEmail,
-          owner_id_number: values.ownerIdNumber || null,
-          company_name: values.companyName,
-          company_email: values.companyEmail || null,
-          company_phone: values.companyPhone || null,
-          company_address: values.companyAddress || null,
-          company_city: values.companyCity,
-          fleet_size: values.fleetSize || null,
-          commercial_registration: values.commercialRegistration,
-          website: values.website || null,
-          tax_number: values.taxNumber || null,
+        .insert(applicationData);
 
-          bank_name: values.bankName || null,
-          iban: values.iban || null,
-          account_number: values.accountNumber || null,
-          swift_code: values.swiftCode || null,
-
-          commercial_register_url: commercialRegisterUrl,
-          tax_certificate_url: taxCertificateUrl,
-          description: values.description || null,
-          auth_user_id: userId || null,
-          status: 'pending'
+      if (appError) {
+        console.error('Application insert error:', {
+          message: appError.message,
+          code: appError.code,
+          details: appError.details,
+          timestamp: new Date().toISOString()
         });
 
-      if (appError) throw appError;
+        // Handle specific database errors
+        if (appError.code === '23505') {
+          toast({
+            title: "بيانات مكررة",
+            description: "يبدو أن هناك طلب مسجل بنفس البيانات",
+            variant: "destructive"
+          });
+        } else if (appError.code === '23503') {
+          toast({
+            title: "خطأ في البيانات",
+            description: "هناك مشكلة في الربط بين البيانات",
+            variant: "destructive"
+          });
+        } else {
+          toast({
+            title: "خطأ في حفظ الطلب",
+            description: appError.message || "حدث خطأ غير متوقع",
+            variant: "destructive"
+          });
+        }
 
-      // Create profile if user exists
-      if (userId) {
-        await supabase.from('users').insert({
-          auth_id: userId,
-          full_name: values.ownerName,
-          email: values.ownerEmail,
+        throw appError;
+      }
+
+      // 7. Create user profile
+      if (authUserId) {
+        const { error: userError } = await supabase.from('users').insert({
+          auth_id: authUserId,
+          full_name: sanitizeInput(values.ownerName),
+          email: values.ownerEmail.toLowerCase(),
           phone_number: values.ownerPhone,
           account_status: 'pending'
         });
 
-        // Insert into centralized documents table
+        if (userError) {
+          console.error('User profile creation error:', userError);
+          // Don't throw here, application is already created
+        }
+
+        // 8. Insert documents
         if (commercialRegisterUrl) {
           await supabase.from('documents').insert({
-            auth_id: userId,
+            auth_id: authUserId,
             document_type: 'registration',
             document_url: commercialRegisterUrl,
             verification_status: 'pending'
@@ -241,7 +592,7 @@ const Apply = () => {
 
         if (taxCertificateUrl) {
           await supabase.from('documents').insert({
-            auth_id: userId,
+            auth_id: authUserId,
             document_type: 'tax_certificate',
             document_url: taxCertificateUrl,
             verification_status: 'pending'
@@ -249,16 +600,50 @@ const Apply = () => {
         }
       }
 
+      // 9. Sign out and clear saved data
       await supabase.auth.signOut();
+      localStorage.removeItem('partner_application_draft');
+      localStorage.removeItem(`apply_attempts_${values.ownerEmail}`);
+
       setSubmitted(true);
 
     } catch (error: any) {
-      console.error('Submission Error:', error);
-      toast({
-        title: "حدث خطأ",
-        description: error.message || "فشل إرسال الطلب",
-        variant: "destructive"
+      console.error('Submission Error:', {
+        message: error.message,
+        stack: error.stack,
+        timestamp: new Date().toISOString()
       });
+
+      // Rollback: Delete uploaded files
+      if (uploadedFiles.length > 0) {
+        console.log('Rolling back uploaded files:', uploadedFiles);
+        for (const fileUrl of uploadedFiles) {
+          try {
+            const filePath = fileUrl.split('/partner-documents/')[1];
+            if (filePath) {
+              await supabase.storage.from('partner-documents').remove([filePath]);
+            }
+          } catch (rollbackError) {
+            console.error('Rollback error:', rollbackError);
+          }
+        }
+      }
+
+      // Note: Cannot delete auth user from client side
+      if (authUserId) {
+        console.warn('Auth user created but application failed. User ID:', authUserId);
+      }
+
+      // Show generic error if not already shown
+      if (!error.message.includes('البريد')) {
+        toast({
+          title: "حدث خطأ",
+          description: error.message || "فشل إرسال الطلب. يرجى المحاولة مرة أخرى",
+          variant: "destructive"
+        });
+      }
+
+      recordAttempt(values.ownerEmail);
     } finally {
       setIsSubmitting(false);
     }

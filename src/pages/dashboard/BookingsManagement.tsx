@@ -42,6 +42,10 @@ import {
   useUpdateBookingStatus,
   useCancelBooking,
   useConfirmPayment,
+  useUpdatePassengerDetails,
+  useCheckInPassenger,
+  usePartialCancelBooking,
+  useTransferBooking,
   Booking
 } from "@/hooks/useBookings";
 import { useRealtimeBookings } from "@/hooks/useRealtimeBookings";
@@ -84,6 +88,11 @@ const BookingsManagement = () => {
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
+  const [showEditPassengerDialog, setShowEditPassengerDialog] = useState(false);
+  const [showTransferDialog, setShowTransferDialog] = useState(false);
+  const [selectedPassenger, setSelectedPassenger] = useState<any>(null);
+  const [selectedPassengerIds, setSelectedPassengerIds] = useState<number[]>([]);
+  const [newTripId, setNewTripId] = useState<string>("");
 
   // Payment Form State
   const [paymentMethod, setPaymentMethod] = useState("cash");
@@ -103,6 +112,10 @@ const BookingsManagement = () => {
   const { mutate: updateStatus } = useUpdateBookingStatus();
   const { mutateAsync: cancelBooking, isPending: isCancelling } = useCancelBooking();
   const { mutate: confirmPayment, isPending: isConfirmingPayment } = useConfirmPayment();
+  const { mutate: updatePassenger } = useUpdatePassengerDetails();
+  const { mutate: checkInPassenger } = useCheckInPassenger();
+  const { mutate: partialCancel } = usePartialCancelBooking();
+  const { mutate: transferBooking } = useTransferBooking();
 
   useRealtimeBookings(() => {
     refetch();
@@ -154,6 +167,54 @@ const BookingsManagement = () => {
       onSuccess: () => {
         setShowPaymentDialog(false);
         setTransactionId("");
+      }
+    });
+  };
+
+  const handleUpdatePassenger = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedPassenger) return;
+    updatePassenger({
+      id: selectedPassenger.passenger_id,
+      fullName: selectedPassenger.full_name,
+      idNumber: selectedPassenger.id_number,
+      gender: selectedPassenger.gender,
+      birthDate: selectedPassenger.birth_date,
+      phone: selectedPassenger.phone_number
+    }, {
+      onSuccess: () => setShowEditPassengerDialog(false)
+    });
+  };
+
+  const handleToggleCheckIn = (passenger: any) => {
+    checkInPassenger({
+      id: passenger.passenger_id,
+      isCheckedIn: passenger.passenger_status !== 'checked_in'
+    });
+  };
+
+  const handleConfirmPartialCancel = () => {
+    if (!selectedBooking || selectedPassengerIds.length === 0) return;
+    partialCancel({
+      bookingId: selectedBooking.booking_id,
+      passengerIds: selectedPassengerIds
+    }, {
+      onSuccess: () => {
+        setShowCancelDialog(false);
+        setSelectedPassengerIds([]);
+      }
+    });
+  };
+
+  const handleConfirmTransfer = () => {
+    if (!selectedBooking || !newTripId) return;
+    transferBooking({
+      bookingId: selectedBooking.booking_id,
+      newTripId: parseInt(newTripId)
+    }, {
+      onSuccess: () => {
+        setShowTransferDialog(false);
+        setNewTripId("");
       }
     });
   };
@@ -461,6 +522,12 @@ const BookingsManagement = () => {
                             </Button>
                           )}
 
+                          <Button size="icon" variant="ghost" title="نقل لرحلة أخرى" onClick={() => {
+                            setSelectedBooking(booking);
+                            setShowTransferDialog(true);
+                          }}>
+                            <Navigation className="w-4 h-4 text-purple-600" />
+                          </Button>
                           <Button size="icon" variant="ghost" title="طباعة" onClick={() => {
                             setSelectedBooking(booking);
                             setSelectedPassengerIndex(0);
@@ -529,9 +596,9 @@ const BookingsManagement = () => {
                 <TabsContent value="passengers" className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {selectedBooking.passengers?.map((p, i) => (
-                      <div key={i} className="p-4 bg-muted/20 rounded-2xl border border-border/50 hover:border-primary/30 transition-all hover:bg-muted/40 relative overflow-hidden group">
-                        {p.id_number && (
-                          <div className="absolute -left-6 -top-6 w-12 h-12 bg-green-500/10 rotate-45 flex items-center justify-center pt-6 pl-6 text-green-600">
+                      <div key={i} className={`p-4 rounded-2xl border border-border/50 hover:border-primary/30 transition-all relative overflow-hidden group ${p.passenger_status === 'cancelled' ? 'bg-red-50 opacity-60' : p.passenger_status === 'checked_in' ? 'bg-green-50' : 'bg-muted/20'}`}>
+                        {p.passenger_status === 'checked_in' && (
+                          <div className="absolute -left-6 -top-6 w-12 h-12 bg-green-500/20 rotate-45 flex items-center justify-center pt-6 pl-6 text-green-600">
                             <ShieldCheck className="w-3 h-3 -rotate-45" />
                           </div>
                         )}
@@ -547,7 +614,24 @@ const BookingsManagement = () => {
                               <span className="text-[10px] text-muted-foreground font-mono">{p.gender === 'male' ? 'ذكر' : p.gender === 'female' ? 'أنثى' : 'غير محدد'}</span>
                             </div>
                           </div>
-                          <Badge variant="secondary" className="font-mono bg-primary/10 text-primary border-primary/20 shadow-sm">مقعد: {p.seat_number || p.seat_id}</Badge>
+                          <div className="flex flex-col items-end gap-1">
+                            <Badge variant="secondary" className="font-mono bg-primary/10 text-primary border-primary/20 shadow-sm">مقعد: {p.seat_number || p.seat_id}</Badge>
+                            {p.passenger_status === 'cancelled' ? (
+                              <Badge variant="destructive" className="text-[8px]">ملغي</Badge>
+                            ) : (
+                              <div className="flex gap-1 mt-1">
+                                <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => {
+                                  setSelectedPassenger(p);
+                                  setShowEditPassengerDialog(true);
+                                }}>
+                                  <History className="w-3 h-3 text-blue-600" />
+                                </Button>
+                                <Button size="icon" variant={p.passenger_status === 'checked_in' ? "default" : "outline"} className={`h-6 w-6 ${p.passenger_status === 'checked_in' ? "bg-green-600" : ""}`} onClick={() => handleToggleCheckIn(p)}>
+                                  <CheckCircle2 className="w-3 h-3" />
+                                </Button>
+                              </div>
+                            )}
+                          </div>
                         </div>
                         <div className="grid grid-cols-2 gap-3 pt-2 border-t border-border/30">
                           <div className="space-y-0.5">
@@ -771,19 +855,43 @@ const BookingsManagement = () => {
           </DialogHeader>
           {refundPreview && (
             <div className="space-y-4 py-4">
+              {/* Partial Selection */}
+              <div className="space-y-2">
+                <Label className="text-xs">اختر الركاب المراد إلغاء حجوزاتهم (إلغاء جزئي):</Label>
+                <div className="grid grid-cols-1 gap-2 border p-3 rounded-lg bg-muted/20">
+                  {selectedBooking?.passengers?.filter(p => p.passenger_status !== 'cancelled').map((p) => (
+                    <div key={p.passenger_id} className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={selectedPassengerIds.includes(p.passenger_id)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedPassengerIds([...selectedPassengerIds, p.passenger_id]);
+                          } else {
+                            setSelectedPassengerIds(selectedPassengerIds.filter(id => id !== p.passenger_id));
+                          }
+                        }}
+                        className="w-4 h-4"
+                      />
+                      <span className="text-sm">{p.full_name} (مقعد {p.seat_number || p.seat_id})</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
               <div className="p-4 bg-muted rounded-xl space-y-3">
                 <div className="flex justify-between text-sm">
                   <span>إجمالي المبلغ الأصلي:</span>
                   <span className="font-bold">{refundPreview.total_price} ر.س</span>
                 </div>
                 <div className="flex justify-between text-sm text-destructive">
-                  <span>رسوم الإلغاء ({100 - refundPreview.refund_percentage}%):</span>
+                  <span>رسوم الإلغاء المتوقعة:</span>
                   <span className="font-bold">-{refundPreview.cancellation_fee} ر.س</span>
                 </div>
                 <Separator />
                 <div className="flex justify-between text-lg font-black text-green-700">
-                  <span>المبلغ المسترد للعميل:</span>
-                  <span>{refundPreview.refund_amount} ر.س</span>
+                  <span>المبلغ التقريبي المسترد:</span>
+                  <span>{selectedPassengerIds.length > 0 ? (refundPreview.refund_amount / (selectedBooking?.passengers?.length || 1) * selectedPassengerIds.length).toFixed(2) : refundPreview.refund_amount} ر.س</span>
                 </div>
               </div>
 
@@ -794,17 +902,22 @@ const BookingsManagement = () => {
                   onChange={(e) => setCancelReason(e.target.value)}
                 />
               </div>
-
-              <p className="text-[10px] text-muted-foreground bg-amber-50 p-2 rounded border border-amber-100">
-                * سيتم إنشاء طلب استرداد مالي تلقائياً في قسم المحاسبة. سيتم أيضاً فك حجز المقاعد المخصصة لهذا الطلب فوراً.
-              </p>
             </div>
           )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowCancelDialog(false)}>تراجع</Button>
-            <Button variant="destructive" onClick={handleConfirmCancel} disabled={isCancelling}>
-              {isCancelling ? 'جاري الإلغاء...' : 'تأكيد الإلغاء النهائي'}
-            </Button>
+            <Button variant="outline" onClick={() => {
+              setShowCancelDialog(false);
+              setSelectedPassengerIds([]);
+            }}>تراجع</Button>
+            {selectedPassengerIds.length > 0 ? (
+              <Button variant="destructive" onClick={handleConfirmPartialCancel} disabled={isCancelling}>
+                {isCancelling ? 'جاري الإلغاء...' : 'تأكيد الإلغاء الجزئي'}
+              </Button>
+            ) : (
+              <Button variant="destructive" onClick={handleConfirmCancel} disabled={isCancelling}>
+                {isCancelling ? 'جاري الإلغاء...' : 'تأكيد الإلغاء النهائي (للكل)'}
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -876,6 +989,86 @@ const BookingsManagement = () => {
               </div>
             </>
           )}
+        </DialogContent>
+      </Dialog>
+      {/* Edit Passenger Dialog */}
+      <Dialog open={showEditPassengerDialog} onOpenChange={setShowEditPassengerDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>تعديل بيانات المسافر</DialogTitle>
+          </DialogHeader>
+          {selectedPassenger && (
+            <form onSubmit={handleUpdatePassenger} className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label>الاسم الكامل</Label>
+                <Input
+                  value={selectedPassenger.full_name}
+                  onChange={(e) => setSelectedPassenger({ ...selectedPassenger, full_name: e.target.value })}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>رقم الهوية</Label>
+                  <Input
+                    value={selectedPassenger.id_number || ''}
+                    onChange={(e) => setSelectedPassenger({ ...selectedPassenger, id_number: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>الجنس</Label>
+                  <Select
+                    value={selectedPassenger.gender}
+                    onValueChange={(v) => setSelectedPassenger({ ...selectedPassenger, gender: v })}
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="male">ذكر</SelectItem>
+                      <SelectItem value="female">أنثى</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>تاريخ الميلاد</Label>
+                <Input
+                  type="date"
+                  value={selectedPassenger.birth_date || ''}
+                  onChange={(e) => setSelectedPassenger({ ...selectedPassenger, birth_date: e.target.value })}
+                />
+              </div>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setShowEditPassengerDialog(false)}>إلغاء</Button>
+                <Button type="submit">حفظ التغييرات</Button>
+              </DialogFooter>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Transfer Booking Dialog */}
+      <Dialog open={showTransferDialog} onOpenChange={setShowTransferDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>نقل الحجز لرحلة أخرى</DialogTitle>
+            <DialogDescription>سيتم نقل جميع الركاب المتبقين إلى رحلة بديلة.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>رقم الرحلة الجديدة (Trip ID)</Label>
+              <Input
+                placeholder="أدخل رقم الرحلة البديلة..."
+                value={newTripId}
+                onChange={(e) => setNewTripId(e.target.value)}
+              />
+              <p className="text-[10px] text-muted-foreground">
+                * ملاحظة: يجب أن تكون الرحلة البديلة تابعة لنفس الشركة وبها سعة كافية.
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowTransferDialog(false)}>تراجع</Button>
+            <Button onClick={handleConfirmTransfer} disabled={!newTripId}>تأكيد النقل</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </DashboardLayout >

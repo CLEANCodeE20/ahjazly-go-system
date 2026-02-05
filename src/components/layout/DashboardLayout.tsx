@@ -30,7 +30,8 @@ import {
     TrendingUp,
     ArrowRightLeft,
     Plus,
-    DollarSign
+    DollarSign,
+    XCircle
 } from "lucide-react";
 import { usePartner } from "@/hooks/usePartner";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -83,6 +84,7 @@ const sidebarSections = [
             { href: "/dashboard/employees", label: "الموظفين", icon: Users },
             { href: "/dashboard/permissions", label: "الصلاحيات", icon: Shield },
             { href: "/dashboard/cancellation-policies", label: "سياسات الإلغاء", icon: Shield },
+            { href: "/dashboard/cancellation-approvals", label: "طلبات الإلغاء", icon: XCircle },
             { href: "/dashboard/settings", label: "الإعدادات", icon: Settings }
         ]
     }
@@ -184,6 +186,7 @@ export const DashboardLayout = ({ children, title, subtitle, actions }: Dashboar
                                     if (link.href === "/dashboard/reports" && !isOwner && !can('reports.view')) return null;
                                     if (link.href === "/dashboard/settings" && !isOwner && !can('settings.manage')) return null;
                                     if (link.href === "/dashboard/cancellation-policies" && !isOwner && !can('settings.manage')) return null;
+                                    if (link.href === "/dashboard/cancellation-approvals" && !isOwner) return null;
                                     if (link.href === "/dashboard/branches" && !isOwner && !can('fleet.view')) return null;
                                     if (link.href === "/dashboard/payments" && !isOwner && !can('finance.view')) return null;
                                     if (link.href === "/dashboard/withdrawals" && !isAdmin) return null;
