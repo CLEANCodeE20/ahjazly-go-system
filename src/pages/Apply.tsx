@@ -113,28 +113,15 @@ const applyFormSchema = z.object({
     .optional()
     .or(z.literal("")),
 
-  // Financial Info
-  bankName: z.string()
-    .max(100, "اسم البنك طويل جداً")
-    .optional(),
 
-  iban: z.string()
-    .regex(/^SA\d{22}$/, "رقم الآيبان غير صحيح (يجب أن يبدأ بـ SA ويتكون من 24 حرف)")
-    .optional()
-    .or(z.literal("")),
-
-  accountNumber: z.string()
-    .max(50, "رقم الحساب طويل جداً")
-    .optional(),
-
-  swiftCode: z.string()
-    .regex(/^[A-Z]{6}[A-Z0-9]{2}([A-Z0-9]{3})?$/, "رمز السويفت غير صحيح")
-    .optional()
-    .or(z.literal("")),
+  // Financial Info - Removed (will be collected after approval)
 
   // Documents (handled separately with file validation)
-  commercialRegister: z.any().optional(),
-  taxCertificate: z.any().optional(),
+  // Documents (handled separately with file validation)
+  commercialRegister: z.any()
+    .refine((file) => file instanceof File, "يرجى إرفاق السجل التجاري كملف"),
+  taxCertificate: z.any()
+    .refine((file) => file instanceof File, "يرجى إرفاق شهادة الزكاة كملف"),
 
   description: z.string()
     .max(1000, "الوصف طويل جداً")
@@ -167,49 +154,7 @@ const validateFile = (file: File | null): { valid: boolean; error?: string } => 
   return { valid: true };
 };
 
-// 3. Rate Limiting Helper
-const MAX_ATTEMPTS = 3;
-const LOCKOUT_TIME = 15 * 60 * 1000; // 15 minutes
-
-const checkRateLimit = (email: string): { allowed: boolean; minutesLeft?: number } => {
-  const key = `apply_attempts_${email}`;
-  const stored = localStorage.getItem(key);
-
-  if (stored) {
-    const { count, timestamp } = JSON.parse(stored);
-    const timePassed = Date.now() - timestamp;
-
-    if (count >= MAX_ATTEMPTS && timePassed < LOCKOUT_TIME) {
-      const minutesLeft = Math.ceil((LOCKOUT_TIME - timePassed) / 60000);
-      return { allowed: false, minutesLeft };
-    }
-
-    if (timePassed >= LOCKOUT_TIME) {
-      localStorage.removeItem(key);
-      return { allowed: true };
-    }
-  }
-
-  return { allowed: true };
-};
-
-const recordAttempt = (email: string) => {
-  const key = `apply_attempts_${email}`;
-  const stored = localStorage.getItem(key);
-
-  if (stored) {
-    const { count, timestamp } = JSON.parse(stored);
-    const timePassed = Date.now() - timestamp;
-
-    if (timePassed >= LOCKOUT_TIME) {
-      localStorage.setItem(key, JSON.stringify({ count: 1, timestamp: Date.now() }));
-    } else {
-      localStorage.setItem(key, JSON.stringify({ count: count + 1, timestamp }));
-    }
-  } else {
-    localStorage.setItem(key, JSON.stringify({ count: 1, timestamp: Date.now() }));
-  }
-};
+// Rate limiting removed as per user request
 
 // 4. Input Sanitization
 const sanitizeInput = (input: string): string => {
@@ -247,10 +192,7 @@ const Apply = () => {
       website: "",
       commercialRegistration: "",
       taxNumber: "",
-      bankName: "",
-      iban: "",
-      accountNumber: "",
-      swiftCode: "",
+      // Bank fields removed - will be collected after approval
       // Checkbox
       acceptTerms: false,
     }
@@ -341,8 +283,7 @@ const Apply = () => {
       fieldsToValidate = ['ownerName', 'ownerPhone', 'ownerEmail', 'password', 'confirmPassword'];
     } else if (step === 2) {
       fieldsToValidate = ['companyName', 'companyCity', 'commercialRegistration', 'website', 'taxNumber'];
-    } else if (step === 3) {
-      fieldsToValidate = ['bankName', 'iban', 'accountNumber'];
+      // Step 3 removed - bank fields will be collected after approval
     }
 
     const isValid = await form.trigger(fieldsToValidate);
@@ -368,20 +309,9 @@ const Apply = () => {
     let authUserId: string | null = null;
 
     try {
-      // 1. Rate Limiting Check
-      const rateLimit = checkRateLimit(values.ownerEmail);
-      if (!rateLimit.allowed) {
-        toast({
-          title: "تم تجاوز عدد المحاولات",
-          description: `يرجى المحاولة مرة أخرى بعد ${rateLimit.minutesLeft} دقيقة`,
-          variant: "destructive",
-          duration: 10000
-        });
-        setIsSubmitting(false);
-        return;
-      }
+      // Rate limiting check removed
 
-      // 2. Validate Files
+      // 1. Validate Files
       const commercialRegFile = values.commercialRegister as File | null;
       const taxCertFile = values.taxCertificate as File | null;
 
@@ -427,7 +357,7 @@ const Apply = () => {
           variant: "destructive",
           duration: 8000
         });
-        recordAttempt(values.ownerEmail);
+
         setIsSubmitting(false);
         return;
       }
@@ -452,29 +382,57 @@ const Apply = () => {
           timestamp: new Date().toISOString()
         });
 
-        // Handle specific auth errors
+        // Smart Auth Recovery: Check if user already exists
         if (authError.message.includes('already registered') || authError.message.includes('User already registered')) {
-          toast({
-            title: "البريد الإلكتروني مستخدم",
-            description: "هذا البريد الإلكتروني مسجل مسبقاً في نظام المصادقة.",
-            variant: "destructive"
-          });
+          console.log('[Apply] User exists, attempting to sign in...');
+
+          try {
+            // Attempt to sign in with the provided password
+            const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+              email: values.ownerEmail,
+              password: values.password
+            });
+
+            if (signInData.user && !signInError) {
+              console.log('[Apply] Sign in successful, proceeding with existing user');
+              authData.user = signInData.user;
+              // Clear error to allow flow to continue
+            } else {
+              console.error('[Apply] Auto-sign in failed:', signInError);
+              toast({
+                title: "الحساب موجود مسبقاً",
+                description: "البريد الإلكتروني مسجل لكن كلمة المرور غير صحيحة. يرجى تسجيل الدخول أو استعادة كلمة المرور.",
+                variant: "destructive",
+                duration: 6000
+              });
+              setIsSubmitting(false);
+              return;
+            }
+          } catch (loginErr) {
+            console.error('[Apply] Login attempt error:', loginErr);
+            toast({
+              title: "لم نتمكن من تسجيل الدخول",
+              description: "البريد مسجل مسبقاً. يرجى المحاولة من صفحة تسجيل الدخول.",
+              variant: "destructive"
+            });
+            setIsSubmitting(false);
+            return;
+          }
         } else if (authError.message.includes('network')) {
           toast({
             title: "خطأ في الاتصال",
             description: "يرجى التحقق من اتصالك بالإنترنت والمحاولة مرة أخرى",
             variant: "destructive"
           });
+          throw authError; // Stop execution for network errors
         } else {
           toast({
             title: "خطأ في إنشاء الحساب",
             description: authError.message || "حدث خطأ غير متوقع",
             variant: "destructive"
           });
+          throw authError; // Stop execution for other errors
         }
-
-        recordAttempt(values.ownerEmail);
-        throw authError;
       }
 
       authUserId = authData.user?.id || null;
@@ -516,10 +474,7 @@ const Apply = () => {
         commercial_registration: values.commercialRegistration,
         website: values.website || null,
         tax_number: values.taxNumber || null,
-        bank_name: values.bankName || null,
-        iban: values.iban || null,
-        account_number: values.accountNumber || null,
-        swift_code: values.swiftCode || null,
+        // Bank fields removed - will be collected after approval
         commercial_register_url: commercialRegisterUrl,
         tax_certificate_url: taxCertificateUrl,
         description: values.description ? sanitizeInput(values.description) : null,
@@ -643,7 +598,7 @@ const Apply = () => {
         });
       }
 
-      recordAttempt(values.ownerEmail);
+
     } finally {
       setIsSubmitting(false);
     }
@@ -694,8 +649,7 @@ const Apply = () => {
               {[
                 { num: 1, label: "معلومات المالك" },
                 { num: 2, label: "بيانات الشركة" },
-                { num: 3, label: "البيانات المالية" },
-                { num: 4, label: "الوثائق" }
+                { num: 3, label: "الوثائق" }
               ].map((s, index) => (
                 <div key={s.num} className="flex items-center">
                   <div className="flex flex-col items-center">
@@ -709,7 +663,7 @@ const Apply = () => {
                       {s.label}
                     </span>
                   </div>
-                  {index < 3 && (
+                  {index < 2 && (
                     <div className={`w-16 md:w-24 h-1 mx-2 rounded-full transition-all ${step > s.num ? "bg-primary" : "bg-muted"
                       }`} />
                   )}
@@ -1003,78 +957,11 @@ const Apply = () => {
                   </div>
                 )}
 
-                {/* Step 3: Financial Info */}
+
+                {/* Step 3: Financial Info - Removed (will be collected after approval) */}
+
+                {/* Step 3: Documents and Final Submit */}
                 {step === 3 && (
-                  <div className="space-y-6 animate-fade-in">
-                    <div className="flex items-center gap-3 mb-6">
-                      <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center">
-                        <FileText className="w-5 h-5 text-primary-foreground" />
-                      </div>
-                      <h2 className="text-xl font-semibold text-foreground">البيانات المالية والبنكية</h2>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="bankName"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>اسم البنك</FormLabel>
-                            <FormControl>
-                              <Input placeholder="اسم البنك" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="iban"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>رقم الآيبان (IBAN)</FormLabel>
-                            <FormControl>
-                              <Input placeholder="SA..." {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="accountNumber"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>رقم الحساب</FormLabel>
-                            <FormControl>
-                              <Input placeholder="رقم الحساب" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="swiftCode"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>رمز السويفت (Swift)</FormLabel>
-                            <FormControl>
-                              <Input placeholder="رمز السويفت" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {/* Step 4: Documents and Final Submit */}
-                {step === 4 && (
                   <div className="space-y-6 animate-fade-in">
                     <div className="flex items-center gap-3 mb-6">
                       <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center">

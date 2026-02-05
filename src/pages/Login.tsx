@@ -46,11 +46,13 @@ const Login = () => {
     if (!authLoading && user && userRole && !hasNotified) {
       if (userStatus && userStatus !== 'active' && userRole.role !== 'SUPERUSER') {
         setHasNotified(true);
+        if (userStatus === 'pending') {
+          navigate("/application-status");
+          return;
+        }
         toast({
           title: "الحساب غير نشط",
-          description: userStatus === 'pending'
-            ? "حسابك قيد المراجعة حالياً، يرجى الانتظار حتى يتم تفعيله من قبل الإدارة."
-            : "هذا الحساب معطل حالياً، يرجى التواصل مع الدعم الفني.",
+          description: "هذا الحساب معطل حالياً، يرجى التواصل مع الدعم الفني.",
           variant: "destructive"
         });
         return;

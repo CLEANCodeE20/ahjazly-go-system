@@ -131,10 +131,28 @@ export const useAuth = () => {
 
       // 4. Identification logic
       let finalPartnerId = userData?.partner_id || rolePartnerId || null;
+      let finalStatus = userData?.account_status || null;
+
+      // 4.5 Check for Pending Partner Application if no role/profile found
+      // This is crucial for users who just applied and are waiting for approval
+      if (!finalRole && !userData && !roleData) {
+        const { data: appData } = await supabase
+          .from('partner_applications')
+          .select('status')
+          .eq('auth_user_id', userId)
+          .eq('status', 'pending')
+          .maybeSingle();
+
+        if (appData) {
+          console.log('[Auth] Found pending partner application');
+          finalRole = 'PARTNER_ADMIN'; // Assign tentative role so they don't get signed out
+          finalStatus = 'pending';     // This triggers the Login.tsx toast
+        }
+      }
 
       // 5. Improved Retry Logic
       const hasSession = !!session;
-      const hasNoData = !finalRole && !userData && !roleData;
+      const hasNoData = !finalRole && !userData && !roleData && !finalStatus; // Updated check
       const shouldRetry = hasSession && hasNoData && retries > 0;
 
       if (shouldRetry) {

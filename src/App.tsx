@@ -21,6 +21,7 @@ import Login from "./pages/Login";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import { MaintenanceGuard } from "./components/auth/MaintenanceGuard";
 import { TwoFactorGuard } from "./components/auth/TwoFactorGuard";
+import { AdminLayout } from "./components/layout/AdminLayout";
 
 // Eagerly Load Public Pages for SPA stability
 import Index from "./pages/Index";
@@ -28,6 +29,8 @@ import Apply from "./pages/Apply";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import VerifyEmail from "./pages/VerifyEmail";
+// Lazy load ApplicationStatus as it's not critical for FCP
+const ApplicationStatus = lazy(() => import("./pages/partner/ApplicationStatus"));
 import Features from "./pages/features";
 import About from "./pages/About";
 import Contact from "./pages/Contact";
@@ -80,6 +83,7 @@ const AdminWalletManagement = lazy(() => import("./pages/dashboard/AdminWalletMa
 const DepositsManagement = lazy(() => import("./pages/dashboard/DepositsManagement"));
 const FinancialAnalytics = lazy(() => import("./pages/dashboard/FinancialAnalytics"));
 const FinancialStatement = lazy(() => import("./pages/dashboard/FinancialStatement"));
+const BankDetails = lazy(() => import("./pages/partner/BankDetails"));
 
 // User Management Pages
 const UserProfile = lazy(() => import("./pages/UserProfile"));
@@ -133,6 +137,8 @@ const App = () => {
               <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/verify-email" element={<VerifyEmail />} />
+              <Route path="/application-status" element={<ApplicationStatus />} />
+
 
               <Route path="/" element={<Index />} />
               <Route path="/apply" element={<Apply />} />
@@ -289,6 +295,13 @@ const App = () => {
                 <Route path="/dashboard/settings" element={
                   <ProtectedRoute allowedRoles={['PARTNER_ADMIN', 'manager', 'accountant', 'support', 'supervisor']}>
                     <SettingsPage />
+                  </ProtectedRoute>
+                } />
+                <Route path="/partner/bank-details" element={
+                  <ProtectedRoute allowedRoles={['PARTNER_ADMIN', 'manager']}>
+                    <AdminLayout title="البيانات البنكية">
+                      <BankDetails />
+                    </AdminLayout>
                   </ProtectedRoute>
                 } />
                 <Route path="/dashboard/permissions" element={

@@ -54,10 +54,7 @@ interface PartnerApplication {
   auth_user_id: string | null;
   tax_number: string | null;
   website: string | null;
-  bank_name: string | null;
-  iban: string | null;
-  account_number: string | null;
-  swift_code: string | null;
+  // Bank fields removed
   commercial_registration: string | null;
 }
 
@@ -116,10 +113,7 @@ const AdminDashboard = () => {
           commercial_registration: application.commercial_registration,
           tax_number: application.tax_number,
           website: application.website,
-          bank_name: application.bank_name,
-          iban: application.iban,
-          account_number: application.account_number,
-          swift_code: application.swift_code,
+          // Bank details removed - collected after approval
           commercial_register_url: application.commercial_register_url,
           tax_certificate_url: application.tax_certificate_url
         })
