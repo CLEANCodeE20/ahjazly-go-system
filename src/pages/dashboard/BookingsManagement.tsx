@@ -73,7 +73,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useWallet } from "@/hooks/useWallet";
 
 const BookingsManagement = () => {
-  const { partner } = usePartner();
+  const { partner, partnerId } = usePartner();
   const { isAdmin } = useAuth();
   const { can } = usePermissions();
   const { wallet } = useWallet();
@@ -106,7 +106,8 @@ const BookingsManagement = () => {
     page,
     pageSize,
     searchQuery,
-    statusFilter: filterStatus
+    statusFilter: filterStatus,
+    partnerId
   });
 
   const { mutate: updateStatus } = useUpdateBookingStatus();

@@ -40,12 +40,33 @@ export const useUserProfile = () => {
             setLoading(true);
             const { data, error } = await supabase
                 .from('users')
-                .select('user_id, auth_id, full_name, email, phone_number, gender, user_type, account_status, partner_id, created_at, updated_at')
+                .select(`
+                    user_id, 
+                    auth_id, 
+                    full_name, 
+                    email, 
+                    phone_number, 
+                    gender, 
+                    account_status, 
+                    partner_id, 
+                    created_at, 
+                    updated_at,
+                    user_roles (role)
+                `)
                 .eq('auth_id', user.id)
                 .single();
 
             if (error) throw error;
-            setProfile(data as UserProfile);
+
+            // Map user_roles to user_type for backward compatibility in the UI
+            // Cast data to any to handle the joined user_roles property
+            const rawData = data as any;
+            const profileData = {
+                ...rawData,
+                user_type: rawData.user_roles?.[0]?.role || 'customer'
+            };
+
+            setProfile(profileData as any);
         } catch (error: any) {
             console.error('Error fetching profile:', error);
             toast({

@@ -32,7 +32,9 @@ const PlatformSettings = () => {
         allow_new_registrations: true,
         notify_on_new_application: true,
         platform_name: "احجزلي لخدمات النقل",
-        support_email: "support@ahjazly.com"
+        support_email: "support@ahjazly.com",
+        maintenance_scheduled_start: "",
+        maintenance_scheduled_end: "",
     });
 
     useEffect(() => {
@@ -58,6 +60,12 @@ const PlatformSettings = () => {
                     case 'default_commission':
                         newSettings.default_commission = s.setting_value || "10";
                         break;
+                    case 'maintenance_scheduled_start':
+                        newSettings.maintenance_scheduled_start = s.setting_value || "";
+                        break;
+                    case 'maintenance_scheduled_end':
+                        newSettings.maintenance_scheduled_end = s.setting_value || "";
+                        break;
                 }
             });
             setSettings(newSettings);
@@ -75,6 +83,9 @@ const PlatformSettings = () => {
                 updateSetting.mutateAsync({ key: 'allow_new_registrations', value: settings.allow_new_registrations.toString() }),
                 updateSetting.mutateAsync({ key: 'notify_on_new_application', value: settings.notify_on_new_application.toString() }),
                 updateSetting.mutateAsync({ key: 'default_commission', value: settings.default_commission }),
+                // Scheduled Maintenance
+                updateSetting.mutateAsync({ key: 'maintenance_scheduled_start', value: settings.maintenance_scheduled_start }),
+                updateSetting.mutateAsync({ key: 'maintenance_scheduled_end', value: settings.maintenance_scheduled_end }),
             ]);
 
             toast({
@@ -86,6 +97,14 @@ const PlatformSettings = () => {
         } finally {
             setLoading(false);
         }
+    };
+
+    const clearSchedule = async () => {
+        setSettings({
+            ...settings,
+            maintenance_scheduled_start: "",
+            maintenance_scheduled_end: ""
+        });
     };
 
     if (fetchingSettings) {
@@ -157,24 +176,57 @@ const PlatformSettings = () => {
                     </div>
                 </section>
 
-                {/* System Status */}
+                {/* System Status & Maintenance Scheduling */}
                 <section className="bg-card rounded-xl border border-border p-6">
                     <h2 className="text-lg font-semibold mb-6 flex items-center gap-2">
                         <Shield className="w-5 h-5 text-primary" />
-                        حالة النظام
+                        حالة النظام والجدولة
                     </h2>
-                    <div className="space-y-4">
-                        <div className="flex items-center justify-between">
+                    <div className="space-y-6">
+                        {/* Manual Toggle */}
+                        <div className="flex items-center justify-between p-4 bg-muted/20 rounded-lg">
                             <div>
-                                <p className="font-medium">وضع الصيانة</p>
-                                <p className="text-sm text-muted-foreground">إيقاف المنصة مؤقتاً لجميع المستخدمين عدا المسؤولين</p>
+                                <p className="font-medium">وضع الصيانة (فوري)</p>
+                                <p className="text-sm text-muted-foreground">إيقاف المنصة حالاً لجميع المستخدمين</p>
                             </div>
                             <Switch
                                 checked={settings.maintenance_mode}
                                 onCheckedChange={(checked) => setSettings({ ...settings, maintenance_mode: checked })}
                             />
                         </div>
-                        <div className="flex items-center justify-between">
+
+                        {/* Scheduled Maintenance */}
+                        <div className="p-4 border rounded-lg space-y-4">
+                            <div className="flex items-center justify-between">
+                                <h3 className="font-medium">الصيانة المجدولة (Smart Maintenance)</h3>
+                                <Button variant="ghost" size="sm" onClick={clearSchedule} className="text-muted-foreground hover:text-destructive">
+                                    مسح الجدولة
+                                </Button>
+                            </div>
+                            <p className="text-sm text-muted-foreground">
+                                سيظهر شريط تنبيه للمستخدمين قبل 30 دقيقة من الموعد، وسيتحول النظام تلقائياً لوضع الصيانة عند البدء.
+                            </p>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label>وقت البدء (Start)</Label>
+                                    <Input
+                                        type="datetime-local"
+                                        value={settings.maintenance_scheduled_start}
+                                        onChange={(e) => setSettings({ ...settings, maintenance_scheduled_start: e.target.value })}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>وقت الانتهاء (End - تقديري)</Label>
+                                    <Input
+                                        type="datetime-local"
+                                        value={settings.maintenance_scheduled_end}
+                                        onChange={(e) => setSettings({ ...settings, maintenance_scheduled_end: e.target.value })}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center justify-between pt-4 border-t">
                             <div>
                                 <p className="font-medium">تفعيل تسجيل الشركاء</p>
                                 <p className="text-sm text-muted-foreground">السماح لشركات النقل الجديدة بتقديم طلبات انضمام</p>

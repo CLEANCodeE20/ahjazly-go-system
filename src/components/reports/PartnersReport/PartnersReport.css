@@ -1,0 +1,101 @@
+/**
+ * CSS لتقرير الشركاء - النسخة النهائية المستقرة
+ */
+
+@media print {
+
+    /* تصفير العداد لترقيم الصفحات */
+    body {
+        counter-reset: page;
+        margin: 0 !important;
+        padding: 0 !important;
+        background: white !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+
+    /* إخفاء العناصر غير الضرورية */
+    #root>*:not(.partners-report-wrapper),
+    .no-print,
+    #sonner-toaster,
+    [data-radix-portal] {
+        display: none !important;
+    }
+
+    /* ضمان ظهور التقرير */
+    .partners-report-wrapper {
+        display: block !important;
+        position: static !important;
+        background: white !important;
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: visible !important;
+    }
+
+    @page {
+        size: A4 portrait;
+        margin: 0;
+    }
+
+    .document-sheet {
+        box-shadow: none !important;
+        margin: 0 !important;
+        width: 210mm !important;
+        min-height: 297mm !important;
+        padding: 15mm !important;
+    }
+
+    .official-data-table thead {
+        display: table-header-group !important;
+    }
+
+    .official-data-table tr {
+        page-break-inside: avoid !important;
+    }
+
+    .page-number-val::after {
+        counter-increment: page;
+        content: counter(page);
+    }
+
+    /* ضمان ظهور الألوان */
+    .bg-slate-800 {
+        background-color: #1e293b !important;
+        color: white !important;
+    }
+
+    .bg-blue-600 {
+        background-color: #2563eb !important;
+    }
+}
+
+/* تنسيق العرض على الشاشة */
+.partners-report-wrapper {
+    background: #f1f5f9;
+}
+
+.document-sheet {
+    background: white;
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.15);
+    transition: all 0.3s ease;
+}
+
+.official-data-table {
+    border: 1px solid #e2e8f0;
+}
+
+.official-data-table th {
+    background-color: #1e293b !important;
+    color: white !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+}
+
+.official-data-table tr:nth-child(even) {
+    background-color: #f8fafc;
+}
+
+.official-data-table td {
+    border-bottom: 1px solid #f1f5f9;
+}

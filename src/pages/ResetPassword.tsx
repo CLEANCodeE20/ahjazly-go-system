@@ -16,22 +16,46 @@ const ResetPassword = () => {
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [isValidToken, setIsValidToken] = useState(false);
+    const [isSuccess, setIsSuccess] = useState(false);
 
     useEffect(() => {
-        // Check if we have a valid session (from the reset link)
-        supabase.auth.getSession().then(({ data: { session } }) => {
+        // Handle the session check more robustly with a listener
+        // This is important because the session might be established from the URL fragment
+        const checkSession = async () => {
+            const { data: { session } } = await supabase.auth.getSession();
             if (session) {
+                console.log('[ResetPassword] Valid session found');
                 setIsValidToken(true);
-            } else {
-                toast({
-                    title: "رابط غير صالح",
-                    description: "الرابط منتهي الصلاحية أو غير صحيح",
-                    variant: "destructive",
-                });
-                setTimeout(() => navigate("/forgot-password"), 2000);
+            }
+        };
+
+        checkSession();
+
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+            console.log('[ResetPassword] Auth event:', event);
+            if (event === 'PASSWORD_RECOVERY' || (event === 'SIGNED_IN' && !isSuccess)) {
+                setIsValidToken(true);
             }
         });
-    }, [navigate]);
+
+        // Safety timeout: if no session found after 3 seconds, show error
+        const timer = setTimeout(async () => {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session && !isValidToken) {
+                toast({
+                    title: "رابط غير صالح أو منتهي",
+                    description: "الرابط الخاص بإعادة تعيين كلمة المرور لم يعد صالحاً. يرجى طلب رابط جديد.",
+                    variant: "destructive",
+                });
+                navigate("/forgot-password");
+            }
+        }, 5000);
+
+        return () => {
+            subscription.unsubscribe();
+            clearTimeout(timer);
+        };
+    }, [navigate, isValidToken, isSuccess]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -70,12 +94,17 @@ const ResetPassword = () => {
                 return;
             }
 
+            setIsSuccess(true);
             toast({
                 title: "تم تغيير كلمة المرور",
-                description: "تم تغيير كلمة المرور بنجاح، يمكنك الآن تسجيل الدخول",
+                description: "تم تغيير كلمة المرور بنجاح",
             });
 
-            setTimeout(() => navigate("/login"), 2000);
+            // Sign out after reset for clean state
+            await supabase.auth.signOut();
+
+            // Redirect after a short delay
+            setTimeout(() => navigate("/login"), 3000);
         } catch (err) {
             toast({
                 title: "خطأ",
@@ -87,12 +116,35 @@ const ResetPassword = () => {
         }
     };
 
+    if (isSuccess) {
+        return (
+            <div className="min-h-screen flex flex-col bg-muted/30" dir="rtl">
+                <Header />
+                <main className="flex-1 flex items-center justify-center pt-20 pb-12 px-4">
+                    <div className="w-full max-w-md bg-card rounded-2xl border border-border p-8 shadow-elegant text-center">
+                        <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-6">
+                            <CheckCircle2 className="w-8 h-8 text-green-600" />
+                        </div>
+                        <h1 className="text-2xl font-bold mb-4">تم التحديث بنجاح!</h1>
+                        <p className="text-muted-foreground mb-8">
+                            تم تغيير كلمة مرور حسابك بنجاح. سيتم توجيهك الآن لصفحة تسجيل الدخول...
+                        </p>
+                        <Button onClick={() => navigate('/login')} className="w-full">
+                            تسجيل الدخول الآن
+                        </Button>
+                    </div>
+                </main>
+            </div>
+        );
+    }
+
     if (!isValidToken) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-muted/30">
-                <div className="text-center">
-                    <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-                    <p className="text-muted-foreground">جاري التحقق...</p>
+            <div className="min-h-screen flex items-center justify-center bg-muted/30" dir="rtl">
+                <div className="text-center p-8 bg-card rounded-2xl border border-border shadow-soft">
+                    <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+                    <p className="text-muted-foreground font-medium">جاري التحقق من الرابط...</p>
+                    <p className="text-xs text-muted-foreground mt-2">يرجى الانتظار للحظات</p>
                 </div>
             </div>
         );

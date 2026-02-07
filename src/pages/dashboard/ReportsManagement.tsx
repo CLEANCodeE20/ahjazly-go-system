@@ -20,7 +20,7 @@ import {
   ClipboardList
 } from "lucide-react";
 import {
-  Select,
+  Select as UISelect,
   SelectContent,
   SelectItem,
   SelectTrigger,
@@ -198,49 +198,68 @@ const ReportsManagement = () => {
 
   const maxRevenue = Math.max(...monthlyRevenue.map(m => m.revenue), 1);
 
-  const branchPerformance = useMemo(() => {
-    return branches.map(branch => ({
-      branch: branch.branch_name,
-      revenue: Math.floor(Math.random() * 50000) + 10000,
-      bookings: Math.floor(Math.random() * 500) + 100,
-      growth: Math.floor(Math.random() * 30) - 5
-    }));
-  }, [branches]);
+  const cityPerformance = useMemo(() => {
+    // Group metrics by Origin City (serving as Branch proxy)
+    const cityStats: { [key: string]: { revenue: number; bookings: number } } = {};
+
+    bookings.forEach(booking => {
+      if (booking.booking_status === 'cancelled') return;
+
+      const trip = trips.find(t => t.trip_id === booking.trip_id);
+      if (trip) {
+        const route = routes.find(r => r.route_id === trip.route_id);
+        if (route) {
+          const city = route.origin_city || "غير محدد";
+          if (!cityStats[city]) cityStats[city] = { revenue: 0, bookings: 0 };
+
+          cityStats[city].bookings += 1;
+          cityStats[city].revenue += (booking.total_price || 0);
+        }
+      }
+    });
+
+    return Object.entries(cityStats).map(([city, stats]) => ({
+      city,
+      revenue: stats.revenue,
+      bookings: stats.bookings,
+      // Growth/Performance requires historical comparison, for now we show current
+      avgBookingValue: stats.bookings > 0 ? Math.round(stats.revenue / stats.bookings) : 0
+    })).sort((a, b) => b.revenue - a.revenue);
+  }, [bookings, trips, routes]);
 
   const handleExportExcel = () => {
-    const dataToExport = branchPerformance.map(b => ({
-      "الفرع": b.branch,
-      "الإيرادات (ر.س)": b.revenue,
-      "الحجوزات": b.bookings,
-      "النمو %": b.growth
+    const dataToExport = cityPerformance.map(c => ({
+      "المدينة/الفرع": c.city,
+      "الإيرادات (ر.س)": c.revenue,
+      "الحجوزات": c.bookings,
+      "متوسط الحجز": c.avgBookingValue
     }));
-    exportToExcel(dataToExport, "performance_report");
+    exportToExcel(dataToExport, "location_performance_report");
   };
 
   const handleExportPDF = () => {
-    const dataToExport = branchPerformance.map(b => ({
-      "الفرع": b.branch,
-      "الإيرادات": b.revenue.toLocaleString(),
-      "الحجوزات": b.bookings,
-      "النمو": `${b.growth}%`
+    const dataToExport = cityPerformance.map(c => ({
+      "المدينة": c.city,
+      "الإيرادات": c.revenue.toLocaleString(),
+      "الحجوزات": c.bookings,
+      "متوسط الحجز": c.avgBookingValue.toLocaleString()
     }));
-    
-    // Add summary data for the PDF header
+
     const summaryData = analyticsData ? [
       { label: "إجمالي الإيرادات", value: `${(analyticsData.total_revenue || 0).toLocaleString()} ر.س` },
       { label: "عدد الرحلات", value: (analyticsData.total_trips || 0).toString() },
       { label: "عدد الحجوزات", value: (analyticsData.total_bookings || 0).toString() },
       { label: "معدل الإشغال", value: `${analyticsData.occupancy_rate || 0}%` }
     ] : [];
-    
+
     exportToPDF(dataToExport, [
-      { header: "الفرع", key: "الفرع" },
+      { header: "المدينة", key: "المدينة" },
       { header: "الإيرادات", key: "الإيرادات" },
       { header: "الحجوزات", key: "الحجوزات" },
-      { header: "النمو", key: "النمو" }
-    ], { 
-      title: "تقرير أداء الفروع",
-      filename: "branch_performance_report",
+      { header: "متوسط الحجز", key: "متوسط الحجز" }
+    ], {
+      title: "تقرير أداء المدن والفروع",
+      filename: "city_performance_report",
       summaryData
     });
   };
@@ -255,7 +274,7 @@ const ReportsManagement = () => {
             <ClipboardList className="w-4 h-4 ml-2" />
             التقارير التفصيلية
           </Button>
-          <Select value={period} onValueChange={setPeriod}>
+          <UISelect value={period} onValueChange={setPeriod}>
             <SelectTrigger className="w-40">
               <SelectValue />
             </SelectTrigger>
@@ -265,7 +284,7 @@ const ReportsManagement = () => {
               <SelectItem value="quarter">آخر 3 أشهر</SelectItem>
               <SelectItem value="year">آخر سنة</SelectItem>
             </SelectContent>
-          </Select>
+          </UISelect>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline">
@@ -376,50 +395,45 @@ const ReportsManagement = () => {
               </div>
             </div>
 
-            {/* Branch Performance */}
+            {/* City/Branch Performance */}
             <div className="bg-card rounded-xl border border-border p-5">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="font-semibold text-foreground">أداء الفروع</h2>
+                <h2 className="font-semibold text-foreground">أداء المدن (الفروع)</h2>
                 <Building2 className="w-5 h-5 text-muted-foreground" />
               </div>
-              {branchPerformance.length === 0 ? (
-                <p className="text-center text-muted-foreground py-8">لا توجد فروع</p>
+              {cityPerformance.length === 0 ? (
+                <p className="text-center text-muted-foreground py-8">لا توجد بيانات</p>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead className="bg-muted/50">
                       <tr>
-                        <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">الفرع</th>
+                        <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">المدينة</th>
                         <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">الإيرادات</th>
                         <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">الحجوزات</th>
-                        <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">النمو</th>
-                        <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">الأداء</th>
+                        <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">متوسط الحجز</th>
+                        <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">مؤشر الأداء</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {branchPerformance.map((branch, index) => (
+                      {cityPerformance.map((city, index) => (
                         <tr key={index} className="border-b border-border last:border-0">
                           <td className="py-4 px-4">
                             <div className="flex items-center gap-3">
                               <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
                                 <Building2 className="w-5 h-5 text-primary" />
                               </div>
-                              <span className="font-medium text-foreground">{branch.branch}</span>
+                              <span className="font-medium text-foreground">{city.city}</span>
                             </div>
                           </td>
-                          <td className="py-4 px-4 font-bold text-foreground">{branch.revenue.toLocaleString()} ر.س</td>
-                          <td className="py-4 px-4 text-muted-foreground">{branch.bookings}</td>
-                          <td className="py-4 px-4">
-                            <span className={`flex items-center gap-1 text-sm font-medium ${branch.growth >= 0 ? "text-secondary" : "text-destructive"}`}>
-                              {branch.growth >= 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
-                              {branch.growth >= 0 ? "+" : ""}{branch.growth}%
-                            </span>
-                          </td>
+                          <td className="py-4 px-4 font-bold text-foreground">{city.revenue.toLocaleString()} ر.س</td>
+                          <td className="py-4 px-4 text-muted-foreground">{city.bookings}</td>
+                          <td className="py-4 px-4 text-sm">{city.avgBookingValue.toLocaleString()} ر.س</td>
                           <td className="py-4 px-4">
                             <div className="w-24 h-2 bg-muted rounded-full overflow-hidden">
                               <div
-                                className={`h-full rounded-full ${branch.growth >= 0 ? "bg-secondary" : "bg-destructive"}`}
-                                style={{ width: `${Math.min(Math.abs(branch.growth) * 4, 100)}%` }}
+                                className="h-full bg-secondary rounded-full"
+                                style={{ width: `${Math.min((city.revenue / (cityPerformance[0]?.revenue || 1)) * 100, 100)}%` }}
                               />
                             </div>
                           </td>

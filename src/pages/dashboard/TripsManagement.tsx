@@ -22,8 +22,11 @@ import {
   FileText,
   Users,
   Printer,
-  Ban
+  Ban,
+  ShieldAlert
 } from "lucide-react";
+import DisruptionModal from "@/components/dashboard/DisruptionModal";
+import { TripsReport } from "@/components/reports";
 import { useExport } from "@/hooks/useExport";
 import {
   Dialog,
@@ -86,6 +89,9 @@ interface TripRecord {
   cancel_policy_id?: number | null;
   linked_trip_id?: number | null;
   created_at: string;
+  delay_minutes?: number | null;
+  is_diverted?: boolean | null;
+  cancellation_reason?: string | null;
 }
 
 interface RouteRecord {
@@ -105,6 +111,16 @@ interface DriverRecord {
   driver_id: number;
   full_name: string;
   phone_number: string | null;
+}
+
+interface TripMetrics {
+  trip_id: number;
+  partner_id: number;
+  confirmed_bookings: number;
+  cancelled_bookings: number;
+  collected_revenue: number;
+  pending_revenue: number;
+  net_income: number;
 }
 
 const TripsManagement = () => {
@@ -131,6 +147,9 @@ const TripsManagement = () => {
   const [selectedTripForSeats, setSelectedTripForSeats] = useState<TripRecord | null>(null);
   const [isDataLoading, setIsDataLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("trips");
+  const [tripMetrics, setTripMetrics] = useState<Record<number, TripMetrics>>({});
+  const [showDisruptionModal, setShowDisruptionModal] = useState(false);
+  const [selectedTripForDisruption, setSelectedTripForDisruption] = useState<TripRecord | null>(null);
   const [formData, setFormData] = useState({
     route_id: "",
     bus_id: "",
@@ -150,7 +169,7 @@ const TripsManagement = () => {
     if (!partnerId) return;
     setLoading(true);
 
-    const [tripsRes, routesRes, busesRes, driversRes] = await Promise.all([
+    const [tripsRes, routesRes, busesRes, driversRes, metricsRes] = await Promise.all([
       supabase.from('trips')
         .select('*')
         .eq('partner_id', partnerId)
@@ -163,6 +182,9 @@ const TripsManagement = () => {
         .eq('partner_id', partnerId),
       supabase.from('drivers')
         .select('driver_id, full_name, phone_number')
+        .eq('partner_id', partnerId),
+      supabase.from('v_trip_metrics')
+        .select('*')
         .eq('partner_id', partnerId)
     ]);
 
@@ -170,6 +192,14 @@ const TripsManagement = () => {
     if (!routesRes.error) setRoutes(routesRes.data || []);
     if (!busesRes.error) setBuses(busesRes.data || []);
     if (!driversRes.error) setDrivers(driversRes.data || []);
+
+    if (!metricsRes.error && metricsRes.data) {
+      const metricsMap = (metricsRes.data as any[]).reduce((acc, curr) => ({
+        ...acc,
+        [curr.trip_id]: curr
+      }), {});
+      setTripMetrics(metricsMap);
+    }
 
     setLoading(false);
   };
@@ -448,455 +478,513 @@ const TripsManagement = () => {
   const inProgressCount = trips.filter(t => t.status === 'in_progress').length;
   const completedCount = trips.filter(t => t.status === 'completed').length;
 
+  // Prepare Report Data
+  const reportData = {
+    generatedDate: new Date(),
+    partner: {
+      name: partner?.contact_person || '',
+      companyName: partner?.company_name || 'الشركة الناقلة',
+      logoUrl: partner?.logo_url || null,
+    },
+    trips: filteredTrips.map(t => {
+      const bus = buses.find(b => b.bus_id === t.bus_id);
+      return {
+        trip_id: t.trip_id,
+        route: getRouteInfo(t.route_id),
+        departure: t.departure_time,
+        bus: getBusInfo(t.bus_id),
+        busCapacity: bus?.capacity || 0,
+        driver: getDriverInfo(t.driver_id),
+        price: t.base_price,
+        status: t.status || 'scheduled',
+        metrics: tripMetrics[t.trip_id] || {
+          confirmed_bookings: 0,
+          cancelled_bookings: 0,
+          collected_revenue: 0
+        }
+      };
+    })
+  };
+
+  const handlePrintReport = () => {
+    // Add a small delay to allow the dropdown to close and the DOM to update
+    setTimeout(() => {
+      window.print();
+    }, 100);
+  };
+
   return (
-    <DashboardLayout
-      title="إدارة الرحلات"
-      subtitle="إنشاء وإدارة رحلات الشركة"
-      actions={
-        <div className="flex items-center gap-2">
-          <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) resetForm(); }}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="w-4 h-4 ml-2" />
-                رحلة جديدة
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[600px]">
-              <DialogHeader>
-                <DialogTitle>{editingTrip ? "تعديل الرحلة" : "إنشاء رحلة جديدة"}</DialogTitle>
-                <DialogDescription>أدخل تفاصيل الرحلة</DialogDescription>
-              </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div className="space-y-2">
-                  <Label>المسار *</Label>
-                  <Select value={formData.route_id} onValueChange={(v) => setFormData({ ...formData, route_id: v })}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="اختر المسار" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {routes.map((route) => (
-                        <SelectItem key={route.route_id} value={route.route_id.toString()}>
-                          {route.origin_city} - {route.destination_city}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+    <>
+      <div className="visible-on-print">
+        <TripsReport data={reportData} />
+      </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>وقت المغادرة *</Label>
+      <div className="hidden-on-print">
+        <DashboardLayout
+          title="إدارة الرحلات"
+          subtitle="إنشاء وإدارة رحلات الشركة"
+          actions={
+            <div className="flex items-center gap-2">
+              <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) resetForm(); }}>
+                <DialogTrigger asChild>
+                  <Button>
+                    <Plus className="w-4 h-4 ml-2" />
+                    رحلة جديدة
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[600px]">
+                  <DialogHeader>
+                    <DialogTitle>{editingTrip ? "تعديل الرحلة" : "إنشاء رحلة جديدة"}</DialogTitle>
+                    <DialogDescription>أدخل تفاصيل الرحلة</DialogDescription>
+                  </DialogHeader>
+                  <div className="grid gap-4 py-4">
+                    <div className="space-y-2">
+                      <Label>المسار *</Label>
+                      <Select value={formData.route_id} onValueChange={(v) => setFormData({ ...formData, route_id: v })}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="اختر المسار" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {routes.map((route) => (
+                            <SelectItem key={route.route_id} value={route.route_id.toString()}>
+                              {route.origin_city} - {route.destination_city}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>وقت المغادرة *</Label>
+                        <Input
+                          type="datetime-local"
+                          value={formData.departure_time}
+                          onChange={(e) => setFormData({ ...formData, departure_time: e.target.value })}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>وقت الوصول المتوقع</Label>
+                        <Input
+                          type="datetime-local"
+                          value={formData.arrival_time}
+                          onChange={(e) => setFormData({ ...formData, arrival_time: e.target.value })}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>الحافلة</Label>
+                        <Select value={formData.bus_id} onValueChange={(v) => setFormData({ ...formData, bus_id: v })}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="اختر الحافلة" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {buses.map((bus) => (
+                              <SelectItem key={bus.bus_id} value={bus.bus_id.toString()}>
+                                {bus.license_plate} {bus.model && `(${bus.model})`}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>السعر (ريال) *</Label>
+                        <Input
+                          type="number"
+                          value={formData.base_price}
+                          onChange={(e) => setFormData({ ...formData, base_price: e.target.value })}
+                          placeholder="150"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>السائق</Label>
+                      <Select value={formData.driver_id} onValueChange={(v) => setFormData({ ...formData, driver_id: v })}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="اختر السائق" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {drivers.map((driver) => (
+                            <SelectItem key={driver.driver_id} value={driver.driver_id.toString()}>
+                              {driver.full_name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>سياسة الإلغاء</Label>
+                      <Select value={formData.cancel_policy_id} onValueChange={(v) => setFormData({ ...formData, cancel_policy_id: v })}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="اختر سياسة الإلغاء" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">بدون سياسة (استرداد كامل)</SelectItem>
+                          {policies.map((policy) => (
+                            <SelectItem key={policy.cancel_policy_id} value={policy.cancel_policy_id.toString()}>
+                              {policy.policy_name} {policy.is_default && "(الافتراضية)"}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>ربط مع رحلة أخرى (اختياري)</Label>
+                      <Select value={formData.linked_trip_id} onValueChange={(v) => setFormData({ ...formData, linked_trip_id: v })}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="اختر رحلة للربط" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">بدون ربط</SelectItem>
+                          {trips.filter(t => t.trip_id !== editingTrip?.trip_id).map((trip) => (
+                            <SelectItem key={trip.trip_id} value={trip.trip_id.toString()}>
+                              #{trip.trip_id} - {getRouteInfo(trip.route_id)} ({formatDate(trip.departure_time)})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setIsDialogOpen(false)}>إلغاء</Button>
+                    <Button onClick={handleSubmit} disabled={isSubmitting}>
+                      {isSubmitting && <Loader2 className="w-4 h-4 ml-2 animate-spin" />}
+                      {editingTrip ? "حفظ التغييرات" : "إنشاء الرحلة"}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="gap-2">
+                    <Download className="w-4 h-4 ml-2" />
+                    تصدير
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => handleExport('excel')}>
+                    <FileSpreadsheet className="w-4 h-4 ml-2 text-green-600" />
+                    Excel
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleExport('pdf')}>
+                    <FileText className="w-4 h-4 ml-2 text-red-600" />
+                    PDF
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handlePrintReport}>
+                    <Printer className="w-4 h-4 ml-2 text-blue-600" />
+                    طباعة التقرير
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          }
+        >
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+            <TabsList className="grid w-full max-w-md grid-cols-2">
+              <TabsTrigger value="trips" className="gap-2">
+                <Route className="w-4 h-4" />
+                إدارة الرحلات
+              </TabsTrigger>
+              <TabsTrigger value="monitoring" className="gap-2">
+                <Activity className="w-4 h-4" />
+                المراقبة التلقائية
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="trips" className="space-y-6">
+              {/* Stats */}
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                <div className="bg-card rounded-xl border border-border p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <Route className="w-5 h-5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold text-foreground">{trips.length}</p>
+                      <p className="text-sm text-muted-foreground">إجمالي الرحلات</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="bg-card rounded-xl border border-border p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
+                      <Clock className="w-5 h-5 text-muted-foreground" />
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold text-foreground">{scheduledCount}</p>
+                      <p className="text-sm text-muted-foreground">مجدولة</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="bg-card rounded-xl border border-border p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <PlayCircle className="w-5 h-5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold text-foreground">{inProgressCount}</p>
+                      <p className="text-sm text-muted-foreground">جارية</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="bg-card rounded-xl border border-border p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-secondary/10 flex items-center justify-center">
+                      <CheckCircle2 className="w-5 h-5 text-secondary" />
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold text-foreground">{completedCount}</p>
+                      <p className="text-sm text-muted-foreground">مكتملة</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Search and Filter */}
+              <div className="bg-card rounded-xl border border-border p-4">
+                <div className="flex flex-col md:flex-row gap-4">
+                  <div className="flex-1 relative">
+                    <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                     <Input
-                      type="datetime-local"
-                      value={formData.departure_time}
-                      onChange={(e) => setFormData({ ...formData, departure_time: e.target.value })}
+                      placeholder="بحث بالمسار أو الحافلة..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pr-10"
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label>وقت الوصول المتوقع</Label>
-                    <Input
-                      type="datetime-local"
-                      value={formData.arrival_time}
-                      onChange={(e) => setFormData({ ...formData, arrival_time: e.target.value })}
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>الحافلة</Label>
-                    <Select value={formData.bus_id} onValueChange={(v) => setFormData({ ...formData, bus_id: v })}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="اختر الحافلة" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {buses.map((bus) => (
-                          <SelectItem key={bus.bus_id} value={bus.bus_id.toString()}>
-                            {bus.license_plate} {bus.model && `(${bus.model})`}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>السعر (ريال) *</Label>
-                    <Input
-                      type="number"
-                      value={formData.base_price}
-                      onChange={(e) => setFormData({ ...formData, base_price: e.target.value })}
-                      placeholder="150"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>السائق</Label>
-                  <Select value={formData.driver_id} onValueChange={(v) => setFormData({ ...formData, driver_id: v })}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="اختر السائق" />
+                  <Select value={filterStatus} onValueChange={setFilterStatus}>
+                    <SelectTrigger className="w-40">
+                      <SelectValue placeholder="الحالة" />
                     </SelectTrigger>
                     <SelectContent>
-                      {drivers.map((driver) => (
-                        <SelectItem key={driver.driver_id} value={driver.driver_id.toString()}>
-                          {driver.full_name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>سياسة الإلغاء</Label>
-                  <Select value={formData.cancel_policy_id} onValueChange={(v) => setFormData({ ...formData, cancel_policy_id: v })}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="اختر سياسة الإلغاء" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">بدون سياسة (استرداد كامل)</SelectItem>
-                      {policies.map((policy) => (
-                        <SelectItem key={policy.cancel_policy_id} value={policy.cancel_policy_id.toString()}>
-                          {policy.policy_name} {policy.is_default && "(الافتراضية)"}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>ربط مع رحلة أخرى (اختياري)</Label>
-                  <Select value={formData.linked_trip_id} onValueChange={(v) => setFormData({ ...formData, linked_trip_id: v })}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="اختر رحلة للربط" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">بدون ربط</SelectItem>
-                      {trips.filter(t => t.trip_id !== editingTrip?.trip_id).map((trip) => (
-                        <SelectItem key={trip.trip_id} value={trip.trip_id.toString()}>
-                          #{trip.trip_id} - {getRouteInfo(trip.route_id)} ({formatDate(trip.departure_time)})
-                        </SelectItem>
-                      ))}
+                      <SelectItem value="all">كل الحالات</SelectItem>
+                      <SelectItem value="scheduled">مجدولة</SelectItem>
+                      <SelectItem value="in_progress">جارية</SelectItem>
+                      <SelectItem value="completed">مكتملة</SelectItem>
+                      <SelectItem value="cancelled">ملغية</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setIsDialogOpen(false)}>إلغاء</Button>
-                <Button onClick={handleSubmit} disabled={isSubmitting}>
-                  {isSubmitting && <Loader2 className="w-4 h-4 ml-2 animate-spin" />}
-                  {editingTrip ? "حفظ التغييرات" : "إنشاء الرحلة"}
-                </Button>
-              </DialogFooter>
+
+              {/* Loading State */}
+              {loading && <TripsSkeleton />}
+
+              {/* Empty State */}
+              {!loading && trips.length === 0 && (
+                <EmptyState
+                  icon={Route}
+                  title="لا توجد رحلات"
+                  description="لم تقم بإضافة أي رحلات بعد. ابدأ بإنشاء جدول رحلاتك الآن."
+                  actionLabel="رحلة جديدة"
+                  onAction={() => setIsDialogOpen(true)}
+                />
+              )}
+
+              {/* Trips List */}
+              <div className="space-y-4">
+                {filteredTrips.map((trip) => (
+                  <div key={trip.trip_id} className="bg-card rounded-xl border border-border p-5 hover:shadow-elegant transition-shadow">
+                    <div className="flex flex-col lg:flex-row lg:items-center gap-4">
+                      {/* Route Info */}
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <div className="w-10 h-10 rounded-lg gradient-primary flex items-center justify-center">
+                            <Route className="w-5 h-5 text-primary-foreground" />
+                          </div>
+                          <div>
+                            <h3 className="font-bold text-foreground text-lg">{getRouteInfo(trip.route_id)}</h3>
+                            <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                              <span className="flex items-center gap-1">
+                                <Calendar className="w-4 h-4" />
+                                {formatDate(trip.departure_time)}
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <Clock className="w-4 h-4" />
+                                {formatTime(trip.departure_time)}
+                                {trip.arrival_time && ` - ${formatTime(trip.arrival_time)}`}
+                              </span>
+                              {trip.linked_trip_id && (
+                                <span className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-100 text-blue-700 text-[10px] font-bold">
+                                  رحلة مترابطة #{trip.linked_trip_id}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Trip Details */}
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 lg:gap-6">
+                        <div className="text-center">
+                          <p className="text-xs text-muted-foreground mb-1">الحافلة</p>
+                          <p className="font-medium text-foreground text-sm">{getBusInfo(trip.bus_id)}</p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-xs text-muted-foreground mb-1">السائق</p>
+                          <p className="font-medium text-foreground text-sm">{getDriverInfo(trip.driver_id)}</p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-xs text-muted-foreground mb-1">السعر</p>
+                          <p className="font-bold text-secondary">{trip.base_price} ر.س</p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-xs text-muted-foreground mb-1">سياسة الإلغاء</p>
+                          <p className="font-medium text-foreground text-sm truncate max-w-[120px]">{getPolicyInfo(trip.cancel_policy_id)}</p>
+                        </div>
+                        <div className="text-center">
+                          {getStatusBadge(trip.status)}
+                        </div>
+                      </div>
+
+                      {/* Actions */}
+                      <div className="flex items-center gap-2">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <MoreVertical className="w-5 h-5" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleEdit(trip)}>
+                              <Edit className="w-4 h-4 ml-2" />
+                              تعديل
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleOpenManifest(trip)}>
+                              <Users className="w-4 h-4 ml-2" />
+                              كشف الركاب
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleOpenDisruption(trip)} className="text-orange-600 focus:text-orange-700">
+                              <ShieldAlert className="w-4 h-4 ml-2" />
+                              إدارة الاضطراب
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleOpenSeatManager(trip)}>
+                              <Ban className="w-4 h-4 ml-2 text-red-600" />
+                              إدارة المقاعد
+                            </DropdownMenuItem>
+                            {trip.status === 'scheduled' && (
+                              <>
+                                <DropdownMenuItem onClick={() => handleStatusChange(trip.trip_id, 'in_progress')}>
+                                  <PlayCircle className="w-4 h-4 ml-2" />
+                                  بدء الرحلة
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleStatusChange(trip.trip_id, 'completed')} className="text-green-600">
+                                  <CheckCircle2 className="w-4 h-4 ml-2" />
+                                  إكمال الرحلة مباشرة
+                                </DropdownMenuItem>
+                              </>
+                            )}
+                            {trip.status === 'in_progress' && (
+                              <DropdownMenuItem onClick={() => handleStatusChange(trip.trip_id, 'completed')}>
+                                <CheckCircle2 className="w-4 h-4 ml-2" />
+                                إنهاء الرحلة
+                              </DropdownMenuItem>
+                            )}
+                            {trip.status === 'scheduled' && (
+                              <DropdownMenuItem onClick={() => handleStatusChange(trip.trip_id, 'cancelled')} className="text-destructive">
+                                <XCircle className="w-4 h-4 ml-2" />
+                                إلغاء الرحلة
+                              </DropdownMenuItem>
+                            )}
+                            <DropdownMenuItem onClick={() => setDeleteId(trip.trip_id)} className="text-destructive">
+                              <Trash2 className="w-4 h-4 ml-2" />
+                              حذف
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </TabsContent>
+
+            <TabsContent value="monitoring">
+              <TripAutomationMonitor />
+            </TabsContent>
+          </Tabs>
+
+          {/* Delete Confirmation */}
+          <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>تأكيد الحذف</AlertDialogTitle>
+                <AlertDialogDescription>هل أنت متأكد من حذف هذه الرحلة؟</AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>إلغاء</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground">حذف</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+
+          {/* Manifest Dialog */}
+          <Dialog open={showManifestDialog} onOpenChange={setShowManifestDialog}>
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-auto">
+              <DialogHeader>
+                <DialogTitle>كشف ركاب الرحلة</DialogTitle>
+              </DialogHeader>
+              {isDataLoading ? (
+                <div className="flex justify-center py-12">
+                  <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                </div>
+              ) : selectedTripForManifest && (
+                <>
+                  <TripManifest
+                    ref={manifestRef}
+                    companyName={partner?.company_name}
+                    logoUrl={partner?.logo_url || undefined}
+                    trip={{
+                      trip_id: selectedTripForManifest.trip_id,
+                      origin: routes.find(r => r.route_id === selectedTripForManifest.route_id)?.origin_city || 'غير محدد',
+                      destination: routes.find(r => r.route_id === selectedTripForManifest.route_id)?.destination_city || 'غير محدد',
+                      date: formatDate(selectedTripForManifest.departure_time),
+                      time: formatTime(selectedTripForManifest.departure_time),
+                      bus: getBusInfo(selectedTripForManifest.bus_id),
+                      driver: getDriverInfo(selectedTripForManifest.driver_id)
+                    }}
+                    passengers={tripPassengers}
+                  />
+                  <div className="flex gap-2 mt-4">
+                    <Button className="flex-1" onClick={() => handlePrintManifest()}>
+                      <Printer className="w-4 h-4 ml-2" />
+                      طباعة الكشف
+                    </Button>
+                    <Button variant="outline" onClick={() => setShowManifestDialog(false)}>
+                      إغلاق
+                    </Button>
+                  </div>
+                </>
+              )}
             </DialogContent>
           </Dialog>
 
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="gap-2">
-                <Download className="w-4 h-4 ml-2" />
-                تصدير
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => handleExport('excel')}>
-                <FileSpreadsheet className="w-4 h-4 ml-2 text-green-600" />
-                Excel
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleExport('pdf')}>
-                <FileText className="w-4 h-4 ml-2 text-red-600" />
-                PDF
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      }
-    >
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full max-w-md grid-cols-2">
-          <TabsTrigger value="trips" className="gap-2">
-            <Route className="w-4 h-4" />
-            إدارة الرحلات
-          </TabsTrigger>
-          <TabsTrigger value="monitoring" className="gap-2">
-            <Activity className="w-4 h-4" />
-            المراقبة التلقائية
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="trips" className="space-y-6">
-          {/* Stats */}
-          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-            <div className="bg-card rounded-xl border border-border p-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <Route className="w-5 h-5 text-primary" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-foreground">{trips.length}</p>
-                  <p className="text-sm text-muted-foreground">إجمالي الرحلات</p>
-                </div>
-              </div>
-            </div>
-            <div className="bg-card rounded-xl border border-border p-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
-                  <Clock className="w-5 h-5 text-muted-foreground" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-foreground">{scheduledCount}</p>
-                  <p className="text-sm text-muted-foreground">مجدولة</p>
-                </div>
-              </div>
-            </div>
-            <div className="bg-card rounded-xl border border-border p-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <PlayCircle className="w-5 h-5 text-primary" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-foreground">{inProgressCount}</p>
-                  <p className="text-sm text-muted-foreground">جارية</p>
-                </div>
-              </div>
-            </div>
-            <div className="bg-card rounded-xl border border-border p-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-secondary/10 flex items-center justify-center">
-                  <CheckCircle2 className="w-5 h-5 text-secondary" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-foreground">{completedCount}</p>
-                  <p className="text-sm text-muted-foreground">مكتملة</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Search and Filter */}
-          <div className="bg-card rounded-xl border border-border p-4">
-            <div className="flex flex-col md:flex-row gap-4">
-              <div className="flex-1 relative">
-                <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                <Input
-                  placeholder="بحث بالمسار أو الحافلة..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pr-10"
-                />
-              </div>
-              <Select value={filterStatus} onValueChange={setFilterStatus}>
-                <SelectTrigger className="w-40">
-                  <SelectValue placeholder="الحالة" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">كل الحالات</SelectItem>
-                  <SelectItem value="scheduled">مجدولة</SelectItem>
-                  <SelectItem value="in_progress">جارية</SelectItem>
-                  <SelectItem value="completed">مكتملة</SelectItem>
-                  <SelectItem value="cancelled">ملغية</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {/* Loading State */}
-          {loading && <TripsSkeleton />}
-
-          {/* Empty State */}
-          {!loading && trips.length === 0 && (
-            <EmptyState
-              icon={Route}
-              title="لا توجد رحلات"
-              description="لم تقم بإضافة أي رحلات بعد. ابدأ بإنشاء جدول رحلاتك الآن."
-              actionLabel="رحلة جديدة"
-              onAction={() => setIsDialogOpen(true)}
+          {/* Seat Manager Dialog */}
+          {selectedTripForSeats && (
+            <TripSeatManager
+              isOpen={showSeatManager}
+              onClose={() => setShowSeatManager(false)}
+              tripId={selectedTripForSeats.trip_id}
+              busId={selectedTripForSeats.bus_id}
+              routeInfo={getRouteInfo(selectedTripForSeats.route_id) + " - " + calculateDate(selectedTripForSeats.departure_time)}
             />
           )}
 
-          {/* Trips List */}
-          <div className="space-y-4">
-            {filteredTrips.map((trip) => (
-              <div key={trip.trip_id} className="bg-card rounded-xl border border-border p-5 hover:shadow-elegant transition-shadow">
-                <div className="flex flex-col lg:flex-row lg:items-center gap-4">
-                  {/* Route Info */}
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="w-10 h-10 rounded-lg gradient-primary flex items-center justify-center">
-                        <Route className="w-5 h-5 text-primary-foreground" />
-                      </div>
-                      <div>
-                        <h3 className="font-bold text-foreground text-lg">{getRouteInfo(trip.route_id)}</h3>
-                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                          <span className="flex items-center gap-1">
-                            <Calendar className="w-4 h-4" />
-                            {formatDate(trip.departure_time)}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <Clock className="w-4 h-4" />
-                            {formatTime(trip.departure_time)}
-                            {trip.arrival_time && ` - ${formatTime(trip.arrival_time)}`}
-                          </span>
-                          {trip.linked_trip_id && (
-                            <span className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-100 text-blue-700 text-[10px] font-bold">
-                              رحلة مترابطة #{trip.linked_trip_id}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Trip Details */}
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 lg:gap-6">
-                    <div className="text-center">
-                      <p className="text-xs text-muted-foreground mb-1">الحافلة</p>
-                      <p className="font-medium text-foreground text-sm">{getBusInfo(trip.bus_id)}</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-xs text-muted-foreground mb-1">السائق</p>
-                      <p className="font-medium text-foreground text-sm">{getDriverInfo(trip.driver_id)}</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-xs text-muted-foreground mb-1">السعر</p>
-                      <p className="font-bold text-secondary">{trip.base_price} ر.س</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-xs text-muted-foreground mb-1">سياسة الإلغاء</p>
-                      <p className="font-medium text-foreground text-sm truncate max-w-[120px]">{getPolicyInfo(trip.cancel_policy_id)}</p>
-                    </div>
-                    <div className="text-center">
-                      {getStatusBadge(trip.status)}
-                    </div>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="flex items-center gap-2">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <MoreVertical className="w-5 h-5" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleEdit(trip)}>
-                          <Edit className="w-4 h-4 ml-2" />
-                          تعديل
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleOpenManifest(trip)}>
-                          <Users className="w-4 h-4 ml-2" />
-                          كشف الركاب
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleOpenSeatManager(trip)}>
-                          <Ban className="w-4 h-4 ml-2 text-red-600" />
-                          إدارة المقاعد
-                        </DropdownMenuItem>
-                        {trip.status === 'scheduled' && (
-                          <>
-                            <DropdownMenuItem onClick={() => handleStatusChange(trip.trip_id, 'in_progress')}>
-                              <PlayCircle className="w-4 h-4 ml-2" />
-                              بدء الرحلة
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleStatusChange(trip.trip_id, 'completed')} className="text-green-600">
-                              <CheckCircle2 className="w-4 h-4 ml-2" />
-                              إكمال الرحلة مباشرة
-                            </DropdownMenuItem>
-                          </>
-                        )}
-                        {trip.status === 'in_progress' && (
-                          <DropdownMenuItem onClick={() => handleStatusChange(trip.trip_id, 'completed')}>
-                            <CheckCircle2 className="w-4 h-4 ml-2" />
-                            إنهاء الرحلة
-                          </DropdownMenuItem>
-                        )}
-                        {trip.status === 'scheduled' && (
-                          <DropdownMenuItem onClick={() => handleStatusChange(trip.trip_id, 'cancelled')} className="text-destructive">
-                            <XCircle className="w-4 h-4 ml-2" />
-                            إلغاء الرحلة
-                          </DropdownMenuItem>
-                        )}
-                        <DropdownMenuItem onClick={() => setDeleteId(trip.trip_id)} className="text-destructive">
-                          <Trash2 className="w-4 h-4 ml-2" />
-                          حذف
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </TabsContent>
-
-        <TabsContent value="monitoring">
-          <TripAutomationMonitor />
-        </TabsContent>
-      </Tabs>
-
-      {/* Delete Confirmation */}
-      <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>تأكيد الحذف</AlertDialogTitle>
-            <AlertDialogDescription>هل أنت متأكد من حذف هذه الرحلة؟</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>إلغاء</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground">حذف</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Manifest Dialog */}
-      <Dialog open={showManifestDialog} onOpenChange={setShowManifestDialog}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-auto">
-          <DialogHeader>
-            <DialogTitle>كشف ركاب الرحلة</DialogTitle>
-          </DialogHeader>
-          {isDataLoading ? (
-            <div className="flex justify-center py-12">
-              <Loader2 className="w-8 h-8 animate-spin text-primary" />
-            </div>
-          ) : selectedTripForManifest && (
-            <>
-              <TripManifest
-                ref={manifestRef}
-                companyName={partner?.company_name}
-                logoUrl={undefined}
-                trip={{
-                  trip_id: selectedTripForManifest.trip_id,
-                  origin: routes.find(r => r.route_id === selectedTripForManifest.route_id)?.origin_city || 'غير محدد',
-                  destination: routes.find(r => r.route_id === selectedTripForManifest.route_id)?.destination_city || 'غير محدد',
-                  date: formatDate(selectedTripForManifest.departure_time),
-                  time: formatTime(selectedTripForManifest.departure_time),
-                  bus: getBusInfo(selectedTripForManifest.bus_id),
-                  driver: getDriverInfo(selectedTripForManifest.driver_id)
-                }}
-                passengers={tripPassengers}
-              />
-              <div className="flex gap-2 mt-4">
-                <Button className="flex-1" onClick={() => handlePrintManifest()}>
-                  <Printer className="w-4 h-4 ml-2" />
-                  طباعة الكشف
-                </Button>
-                <Button variant="outline" onClick={() => setShowManifestDialog(false)}>
-                  إغلاق
-                </Button>
-              </div>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Seat Manager Dialog */}
-      {selectedTripForSeats && (
-        <TripSeatManager
-          isOpen={showSeatManager}
-          onClose={() => setShowSeatManager(false)}
-          tripId={selectedTripForSeats.trip_id}
-          busId={selectedTripForSeats.bus_id}
-          routeInfo={getRouteInfo(selectedTripForSeats.route_id) + " - " + calculateDate(selectedTripForSeats.departure_time)}
-        />
-      )}
-    </DashboardLayout>
+          <DisruptionModal
+            isOpen={showDisruptionModal}
+            onClose={() => setShowDisruptionModal(false)}
+            trip={selectedTripForDisruption}
+            onSuccess={fetchData}
+          />
+        </DashboardLayout>
+      </div>
+    </>
   );
 };
 

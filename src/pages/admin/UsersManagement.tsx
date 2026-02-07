@@ -3,11 +3,9 @@ import {
     Search,
     MoreVertical,
     Shield,
-    UserCog,
     Ban,
     Loader2,
     User,
-    History,
     Download,
     FileSpreadsheet,
     FileText,
@@ -77,16 +75,7 @@ const UsersManagement = () => {
     const [totalUsers, setTotalUsers] = useState(0);
     const itemsPerPage = 10;
 
-    // Action State
-    const [confirmDialog, setConfirmDialog] = useState<{
-        open: boolean;
-        userId: string | null;
-        userName: string;
-        newRole: "admin" | "partner" | "employee" | "driver" | "user";
-    }>({ open: false, userId: null, userName: "", newRole: "user" });
-    const [roleHistory, setRoleHistory] = useState<any[]>([]);
-    const [showHistory, setShowHistory] = useState(false);
-    const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+    // Export functionality
     const { exportToExcel, exportToPDF } = useExport();
 
     // Initial Load
@@ -115,21 +104,20 @@ const UsersManagement = () => {
             let query = supabase
                 .from('users')
                 .select(`
-                    user_id, 
-                    auth_id, 
-                    full_name, 
-                    email, 
-                    created_at, 
-                    account_status, 
-                    user_type,
-                    user_roles!user_roles_auth_id_public_fkey(
+                    user_id,
+                    auth_id,
+                    full_name,
+                    email,
+                    created_at,
+                    account_status,
+                    user_roles!inner(
                         role,
                         partner_id,
                         partners(company_name)
                     )
                 `, { count: 'exact' });
 
-            // REMOVED: query.in('user_type', ...) 
+            // REMOVED: query.in('user_type', ...)
             // Reason: We want to see ALL users to debug the new roles properly.
             // Old Code: query = query.in('user_type', ['customer', 'driver', 'partner', 'employee']);
 
@@ -156,8 +144,8 @@ const UsersManagement = () => {
                 // Handle array or single object response from join
                 const roleData = Array.isArray(u.user_roles) ? u.user_roles[0] : u.user_roles;
 
-                // Get role priority: user_roles.role > user_type > 'customer'
-                let rawRole = roleData?.role || u.user_type || 'customer';
+                // Get role priority: user_roles.role > 'customer'
+                let rawRole = roleData?.role || 'customer';
 
                 // Normalize string (trim)
                 if (typeof rawRole === 'string') rawRole = rawRole.trim();
@@ -196,9 +184,15 @@ const UsersManagement = () => {
                     || roleTranslations[rawRole.toLowerCase()]
                     || rawRole;
 
-                // Get company name
-                const companyName = roleData?.partners?.company_name
-                    || (displayRole.includes('عميل') ? 'عميل مباشر' : 'غير محدد');
+                // Get company name - improved logic
+                let companyName = roleData?.partners?.company_name || 'غير محدد';
+
+                // Only show "عميل مباشر" for actual customers/travelers
+                if (!roleData?.partners?.company_name) {
+                    if (displayRole.includes('عميل') || displayRole.includes('مسافر')) {
+                        companyName = 'عميل مباشر';
+                    }
+                }
 
                 return {
                     ...u,
@@ -265,70 +259,7 @@ const UsersManagement = () => {
         }
     };
 
-    const updateUserRole = async (authId: string | null, newRole: "driver" | "user") => {
-        if (!authId) {
-            toast({
-                title: "خطأ",
-                description: "لا يمكن تحديث صلاحيات مستخدم غير مسجل في الهوية",
-                variant: "destructive"
-            });
-            return;
-        }
 
-        try {
-            // Map 'user' to 'customer' if that's the internal enum name for legacy support
-            const legacyUserType = newRole === 'user' ? 'customer' : 'driver';
-
-            // Map to new Gold Standard Roles (Uppercase)
-            const newAppRole = newRole === 'user' ? 'TRAVELER' : 'DRIVER';
-
-            // 1. Update legacy user_type (Dual Write)
-            const { error: userErr } = await supabase
-                .from('users')
-                .update({ user_type: legacyUserType as any })
-                .eq('auth_id', authId);
-
-            if (userErr) throw userErr;
-
-            // 2. CRITICAL FIX: Upsert into user_roles instead of deleting
-            // This ensures they have a valid entry for RLS and permissions
-            const { error: roleErr } = await supabase
-                .from('user_roles')
-                .upsert({
-                    auth_id: authId,
-                    user_id: authId, // Keep legacy user_id for safety if schema demands it
-                    role: newAppRole,
-                    partner_id: null
-                } as any, { onConflict: 'auth_id' });
-
-            if (roleErr) throw roleErr;
-
-            toast({
-                title: "تم التحديث",
-                description: "تم تغيير صلاحيات المستخدم بنجاح وتحديث سجلات الوصول",
-            });
-            fetchUsers();
-            setConfirmDialog({ open: false, userId: null, userName: "", newRole: "user" });
-        } catch (error: any) {
-            console.error('Update Role Error:', error);
-            toast({
-                title: "خطأ",
-                description: "فشل في تحديث الصلاحيات",
-                variant: "destructive"
-            });
-        }
-    };
-
-    const fetchRoleHistory = async (userId: string) => {
-        // role_changes_log table doesn't exist yet - show placeholder
-        toast({
-            title: "ميزة قيد التطوير",
-            description: "سجل تغييرات الأدوار غير متاح حالياً",
-        });
-        setRoleHistory([]);
-        setSelectedUserId(userId);
-        setShowHistory(true);
-    };
 
     const getRoleBadge = (role: string) => {
         // Role is already translated to Arabic at this point (e.g., "مدير شركة (Admin)")
@@ -414,7 +345,9 @@ const UsersManagement = () => {
             setIsCreateDialogOpen(false);
             setNewUser({ email: "", password: "", fullName: "", role: "user", partner_id: "" });
             setEditingUserId(null);
-            fetchUsers();
+
+            // إضافة تأخير بسيط للتأكد من استقرار البيانات في قاعدة البيانات قبل الجلب
+            setTimeout(() => fetchUsers(), 1000);
         } catch (error: any) {
             console.error('Error saving user:', error);
             toast({
@@ -433,55 +366,36 @@ const UsersManagement = () => {
 
         if (!confirm(`هل أنت متأكد من ${action} هذا المستخدم؟`)) return;
 
+        setLoading(true);
         try {
-            // 1. Primary: Direct Database Update (requires RLS policy for admins)
-            const { error: dbError } = await supabase
-                .from('users')
-                .update({ account_status: newStatus })
-                .eq('auth_id', user.auth_id);
+            // استخدام الـ Edge Function حصراً لضمان تحديث الـ Auth والـ DB معاً بشكل صحيح
+            const { data, error } = await supabase.functions.invoke('admin-users', {
+                body: {
+                    userId: user.auth_id,
+                    account_status: newStatus
+                },
+                method: 'PUT'
+            });
 
-            if (dbError) {
-                console.error('DB Status Update Error:', dbError);
-                throw new Error(`فشل تحديث قاعدة البيانات: ${dbError.message}`);
+            if (error || (data && data.success === false)) {
+                throw new Error(error?.message || data?.error || 'فشل تحديث الحالة');
             }
 
-            // 2. Secondary: Edge Function for Global Auth Ban (Attempt)
-            try {
-                const { data, error: edgeInvokeError } = await supabase.functions.invoke('admin-users', {
-                    body: { userId: user.auth_id, account_status: newStatus },
-                    method: 'POST'
-                });
+            toast({
+                title: "نجاح كامل",
+                description: `تم ${action} المستخدم بنجاح في كافة طبقات النظام.`,
+            });
 
-                if (edgeInvokeError || (data && data.success === false)) {
-                    console.warn('Authentication Ban (Edge Function) failed/unreachable:', edgeInvokeError || data?.error);
-                    // Silently succeed for the UI since DB is updated
-                    toast({
-                        title: "تم التحسين",
-                        description: `تم ${action} المستخدم في النظام بنجاح. (ملاحظة: التغيير لم يشمل نظام الهوية الأساسي بعد)`,
-                    });
-                } else {
-                    toast({
-                        title: "نجاح كامل",
-                        description: `تم ${action} المستخدم بنجاح في قاعدة البيانات ونظام الهوية.`,
-                    });
-                }
-            } catch (err) {
-                console.warn('Edge Function unreachable:', err);
-                toast({
-                    title: "تم التحديث",
-                    description: `تم ${action} المستخدم في النظام بنجاح.`,
-                });
-            }
-
-            fetchUsers();
-        } catch (error: any) {
-            console.error('Error updating status:', error);
-            const errorMessage = error?.message || (error?.error) || "فشل في تحديث حالة المستخدم";
+            // تحديث الواجهة بعد ثانية
+            setTimeout(() => fetchUsers(), 1000);
+        } catch (err: any) {
+            console.error('Status Update Error:', err);
             toast({
                 title: "خطأ",
-                description: errorMessage,
+                description: err.message || "فشل في تحديث حالة المستخدم",
                 variant: "destructive"
             });
+            setLoading(false);
         }
     };
 
@@ -511,7 +425,7 @@ const UsersManagement = () => {
                     </DropdownMenu>
 
                     <Button onClick={() => setIsCreateDialogOpen(true)}>
-                        <UserCog className="w-4 h-4 ml-2" />
+                        <User className="w-4 h-4 ml-2" />
                         <span className="hidden sm:inline">مستخدم جديد</span>
                         <span className="sm:hidden">إضافة</span>
                     </Button>
@@ -597,21 +511,7 @@ const UsersManagement = () => {
                                                                 </Button>
                                                             </DropdownMenuTrigger>
                                                             <DropdownMenuContent align="end">
-                                                                <DropdownMenuItem onClick={() => setConfirmDialog({
-                                                                    open: true,
-                                                                    userId: user.auth_id,
-                                                                    userName: user.full_name || "مستخدم غير معروف",
-                                                                    newRole: user.role === 'driver' ? 'user' : 'driver'
-                                                                })}>
-                                                                    <UserCog className="w-4 h-4 ml-2" />
-                                                                    {user.role === 'driver' ? 'تحويل لعميل' : 'تعيين كسائق'}
-                                                                </DropdownMenuItem>
-                                                                <DropdownMenuItem
-                                                                    className="text-amber-600"
-                                                                    onClick={() => handleReset2FA(user.auth_id, user.full_name || "")}
-                                                                >
-                                                                    <Shield className="w-4 h-4 ml-2" /> إعادة تعيين 2FA
-                                                                </DropdownMenuItem>
+                                                                {/* 1. تعديل البيانات - الأكثر استخداماً */}
                                                                 <DropdownMenuItem onClick={() => {
                                                                     setNewUser({
                                                                         email: user.email || "",
@@ -625,9 +525,8 @@ const UsersManagement = () => {
                                                                 }}>
                                                                     <Edit className="w-4 h-4 ml-2" /> تعديل البيانات
                                                                 </DropdownMenuItem>
-                                                                <DropdownMenuItem onClick={() => user.auth_id && fetchRoleHistory(user.auth_id)}>
-                                                                    <History className="w-4 h-4 ml-2" /> عرض السجل
-                                                                </DropdownMenuItem>
+
+                                                                {/* 2. إيقاف/تفعيل الحساب */}
                                                                 <DropdownMenuItem
                                                                     className={user.account_status === 'suspended' ? "text-green-600" : "text-orange-600"}
                                                                     onClick={() => toggleUserStatus(user, user.account_status)}
@@ -638,6 +537,16 @@ const UsersManagement = () => {
                                                                         <><Ban className="w-4 h-4 ml-2" /> إيقاف الحساب</>
                                                                     )}
                                                                 </DropdownMenuItem>
+
+                                                                {/* 3. إعادة تعيين 2FA */}
+                                                                <DropdownMenuItem
+                                                                    className="text-amber-600"
+                                                                    onClick={() => handleReset2FA(user.auth_id, user.full_name || "")}
+                                                                >
+                                                                    <Shield className="w-4 h-4 ml-2" /> إعادة تعيين 2FA
+                                                                </DropdownMenuItem>
+
+                                                                {/* 4. حذف نهائي - الأخطر */}
                                                                 <DropdownMenuItem
                                                                     className="text-destructive"
                                                                     onClick={() => {
@@ -774,60 +683,6 @@ const UsersManagement = () => {
                 </DialogContent>
             </Dialog>
 
-            {/* Confirmation Dialog */}
-            <Dialog open={confirmDialog.open} onOpenChange={(open) => !open && setConfirmDialog({ open: false, userId: null, userName: "", newRole: "user" })}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>تأكيد تغيير الصلاحيات</DialogTitle>
-                        <DialogDescription>
-                            هل أنت متأكد من تغيير صلاحيات <span className="font-semibold">{confirmDialog.userName}</span> إلى <span className="font-semibold">{getRoleName(confirmDialog.newRole)}</span>؟
-                        </DialogDescription>
-                    </DialogHeader>
-                    <DialogFooter className="gap-2">
-                        <Button variant="outline" onClick={() => setConfirmDialog({ open: false, userId: null, userName: "", newRole: "user" })}>
-                            إلغاء
-                        </Button>
-                        <Button onClick={() => confirmDialog.userId && updateUserRole(confirmDialog.userId, confirmDialog.newRole as any)}>
-                            تأكيد التغيير
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-
-            {/* Role History Dialog */}
-            <Dialog open={showHistory} onOpenChange={setShowHistory}>
-                <DialogContent className="max-w-2xl">
-                    <DialogHeader>
-                        <DialogTitle>سجل تغييرات الصلاحيات</DialogTitle>
-                        <DialogDescription>
-                            تاريخ جميع التغييرات التي حدثت على صلاحيات هذا المستخدم
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="max-h-96 overflow-y-auto">
-                        {roleHistory.length === 0 ? (
-                            <p className="text-center text-muted-foreground py-8">لا توجد تغييرات مسجلة</p>
-                        ) : (
-                            <div className="space-y-3">
-                                {roleHistory.map((log) => (
-                                    <div key={log.id} className="border rounded-lg p-3">
-                                        <div className="flex items-center justify-between mb-2">
-                                            <span className="text-sm font-medium">
-                                                {log.old_role ? `${log.old_role} ← ${log.new_role}` : `تم التعيين: ${log.new_role}`}
-                                            </span>
-                                            <span className="text-xs text-muted-foreground">
-                                                {new Date(log.changed_at).toLocaleString('ar-SA')}
-                                            </span>
-                                        </div>
-                                        {log.change_reason && (
-                                            <p className="text-sm text-muted-foreground">{log.change_reason}</p>
-                                        )}
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                </DialogContent>
-            </Dialog>
         </AdminLayout>
     );
 };

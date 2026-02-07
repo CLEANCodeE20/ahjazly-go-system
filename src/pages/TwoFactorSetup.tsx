@@ -21,6 +21,7 @@ import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import QRCode from "qrcode";
 
 const TwoFactorSetup = () => {
+    console.log('[TwoFactorSetup] Mounted');
     const navigate = useNavigate();
     const location = useLocation();
     const { loading, status, getStatus, setup, verifyAndEnable, disable } = use2FA();

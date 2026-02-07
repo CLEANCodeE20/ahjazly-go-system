@@ -17,7 +17,9 @@ import {
     Shield,
     History,
     ScrollText,
-    ClipboardList
+    ClipboardList,
+    ArrowRightLeft,
+    Wallet
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -39,6 +41,8 @@ const adminSidebarLinks: SidebarLink[] = [
     { href: "/dashboard/drivers", label: "إدارة السائقين", icon: Users, permission: "fleet.view", hideForRoles: ['SUPERUSER'] },
     { href: "/admin/commissions", label: "العمولات", icon: DollarSign, permission: "financial.view" },
     { href: "/admin/reports", label: "التقارير المالية", icon: BarChart3, permission: "financial.view" },
+    { href: "/dashboard/partner-settlements", label: "تسويات الشركاء", icon: ArrowRightLeft, permission: "financial.view" },
+    { href: "/dashboard/admin-wallets", label: "إدارة المحافظ", icon: Wallet, permission: "financial.view" },
     { href: "/admin/notifications", label: "الإشعارات العامّة", icon: Bell, permission: "settings.edit" },
     { href: "/admin/banners", label: "إدارة السلايدر", icon: ImageIcon, permission: "settings.edit" },
     { href: "/admin/faqs", label: "الأسئلة الشائعة", icon: HelpCircle, permission: "settings.edit" },
@@ -57,7 +61,7 @@ interface AdminSidebarProps {
 export const AdminSidebar = ({ isOpen = false, onClose }: AdminSidebarProps) => {
     const location = useLocation();
     const { signOut, userRole } = useAuth();
-    const { hasPermission, loading } = usePermissions();
+    const { can, loading } = usePermissions();
 
     // Filter links based on permissions
     const filteredLinks = adminSidebarLinks.filter(link => {
@@ -67,7 +71,7 @@ export const AdminSidebar = ({ isOpen = false, onClose }: AdminSidebarProps) => 
         }
 
         if (!link.permission) return true; // No permission required? Show it.
-        return hasPermission(link.permission);
+        return can(link.permission);
     });
 
     return (

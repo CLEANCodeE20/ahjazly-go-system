@@ -17,3 +17,6 @@ export type { TripManifestData, ManifestPassenger } from './TripManifest/TripMan
 // كشف حساب الشريك
 export { PartnerStatement } from './PartnerStatement/PartnerStatement';
 export type { PartnerStatementData, StatementTransaction } from './PartnerStatement/PartnerStatement';
+
+// تقرير الرحلات
+export { TripsReport } from './TripsReport';

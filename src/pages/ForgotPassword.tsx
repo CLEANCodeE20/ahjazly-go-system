@@ -67,22 +67,38 @@ const ForgotPassword = () => {
                     </div>
 
                     {emailSent ? (
-                        <div className="bg-card rounded-2xl border border-border p-6 shadow-elegant">
-                            <div className="text-center">
-                                <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
-                                    <CheckCircle2 className="w-8 h-8 text-green-600" />
-                                </div>
-                                <h2 className="text-xl font-semibold mb-2">تم إرسال البريد!</h2>
-                                <p className="text-muted-foreground mb-6">
-                                    تحقق من بريدك الإلكتروني <span className="font-medium text-foreground">{email}</span> للحصول على رابط إعادة تعيين كلمة المرور
-                                </p>
-                                <Link to="/login">
-                                    <Button className="w-full">
-                                        <ArrowLeft className="w-4 h-4 ml-2" />
-                                        العودة لتسجيل الدخول
-                                    </Button>
-                                </Link>
+                        <div className="bg-card rounded-2xl border border-border p-8 shadow-elegant text-center animate-in fade-in zoom-in duration-300">
+                            <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-6">
+                                <CheckCircle2 className="w-8 h-8 text-green-600" />
                             </div>
+                            <h2 className="text-2xl font-bold mb-4">تم إرسال الرابط!</h2>
+                            <p className="text-muted-foreground mb-6 leading-relaxed">
+                                تم إرسال تعليمات إعادة تعيين كلمة المرور إلى البريد: <br />
+                                <span className="font-semibold text-foreground">{email}</span>
+                            </p>
+
+                            <div className="bg-muted p-4 rounded-xl text-sm text-right mb-8 space-y-2">
+                                <p className="font-medium">ماذا تفعل الآن؟</p>
+                                <ul className="list-disc list-inside text-muted-foreground space-y-1 pr-2">
+                                    <li>تحقق من صندوق الوارد في بريدك الإلكتروني</li>
+                                    <li>إذا لم تجد الرسالة، تحقق من مجلد الرسائل غير المرغوب فيها (Spam)</li>
+                                    <li>الرابط صالح لمدة 24 ساعة فقط</li>
+                                </ul>
+                            </div>
+
+                            <Link to="/login">
+                                <Button className="w-full h-11">
+                                    <ArrowLeft className="w-4 h-4 ml-2" />
+                                    العودة لتسجيل الدخول
+                                </Button>
+                            </Link>
+
+                            <button
+                                onClick={() => setEmailSent(false)}
+                                className="mt-6 text-sm text-primary hover:underline"
+                            >
+                                إرسال مرة أخرى
+                            </button>
                         </div>
                     ) : (
                         <form onSubmit={handleSubmit} className="bg-card rounded-2xl border border-border p-6 shadow-elegant">

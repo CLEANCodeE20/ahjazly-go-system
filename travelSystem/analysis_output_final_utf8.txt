@@ -1,0 +1,665 @@
+﻿Analyzing travelSystem...                                       
+
+   info - The file name 'TestView.dart' isn't a snake_case identifier - lib\TestView.dart:1:1 - file_names
+   info - The import of 'package:flutter/cupertino.dart' is unnecessary because all of the used elements are also provided by the import of 'package:flutter/material.dart' - lib\TestView.dart:2:8 - unnecessary_import
+   info - The import of 'package:get/get_core/src/get_main.dart' is unnecessary because all of the used elements are also provided by the import of 'package:get/get.dart' - lib\TestView.dart:4:8 - unnecessary_import
+   info - The type name 'testview' isn't an UpperCamelCase identifier - lib\TestView.dart:13:7 - camel_case_types
+   info - The type name '_testviewState' isn't an UpperCamelCase identifier - lib\TestView.dart:20:7 - camel_case_types
+warning - The value of the local variable 'controller' isn't used - lib\TestView.dart:23:24 - unused_local_variable
+   info - Use 'const' with the constructor to improve performance - lib\TestView.dart:26:16 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\TestView.dart:49:29 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\TestView.dart:52:39 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\TestView.dart:52:66 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\TestView.dart:52:94 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\TestView.dart:57:59 - prefer_const_constructors
+   info - Use a 'SizedBox' to add whitespace to a layout - lib\TestView.dart:58:33 - sized_box_for_whitespace
+   info - Use 'const' with the constructor to improve performance - lib\TestView.dart:60:32 - prefer_const_constructors
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - lib\TestView.dart:61:37 - prefer_const_literals_to_create_immutables
+   info - Use 'const' with the constructor to improve performance - lib\TestView.dart:62:29 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\TestView.dart:63:29 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\TestView.dart:64:29 - prefer_const_constructors
+   info - The type name 'initialBinding' isn't an UpperCamelCase identifier - lib\core\bindings\initial_binding.dart:10:7 - camel_case_types
+   info - The file name 'StatusRequest.dart' isn't a snake_case identifier - lib\core\classes\StatusRequest.dart:1:1 - file_names
+   info - The constant name 'Loding' isn't a lowerCamelCase identifier - lib\core\classes\StatusRequest.dart:2:3 - constant_identifier_names
+   info - The file name 'Color.dart' isn't a snake_case identifier - lib\core\constants\Color.dart:1:1 - file_names
+   info - The variable name 'color_primary' isn't a lowerCamelCase identifier - lib\core\constants\Color.dart:26:20 - non_constant_identifier_names
+   info - The variable name 'color_primary2' isn't a lowerCamelCase identifier - lib\core\constants\Color.dart:27:20 - non_constant_identifier_names
+   info - The variable name 'color_primary3' isn't a lowerCamelCase identifier - lib\core\constants\Color.dart:28:20 - non_constant_identifier_names
+   info - The variable name 'color_secondary' isn't a lowerCamelCase identifier - lib\core\constants\Color.dart:29:20 - non_constant_identifier_names
+   info - The variable name 'color_accent' isn't a lowerCamelCase identifier - lib\core\constants\Color.dart:30:20 - non_constant_identifier_names
+   info - The variable name 'image_logo' isn't a lowerCamelCase identifier - lib\core\constants\images.dart:2:17 - non_constant_identifier_names
+   info - The variable name 'image_ops_server' isn't a lowerCamelCase identifier - lib\core\constants\images.dart:3:17 - non_constant_identifier_names
+   info - The variable name 'image_forget' isn't a lowerCamelCase identifier - lib\core\constants\images.dart:4:17 - non_constant_identifier_names
+   info - The variable name 'image_home' isn't a lowerCamelCase identifier - lib\core\constants\images.dart:5:17 - non_constant_identifier_names
+   info - The variable name 'image_home_active' isn't a lowerCamelCase identifier - lib\core\constants\images.dart:6:17 - non_constant_identifier_names
+   info - The variable name 'image_event' isn't a lowerCamelCase identifier - lib\core\constants\images.dart:7:17 - non_constant_identifier_names
+   info - The variable name 'image_event_active' isn't a lowerCamelCase identifier - lib\core\constants\images.dart:8:17 - non_constant_identifier_names
+   info - The variable name 'image_setting' isn't a lowerCamelCase identifier - lib\core\constants\images.dart:9:17 - non_constant_identifier_names
+   info - The variable name 'image_setting_active' isn't a lowerCamelCase identifier - lib\core\constants\images.dart:10:17 - non_constant_identifier_names
+   info - The variable name 'image_travelers' isn't a lowerCamelCase identifier - lib\core\constants\images.dart:11:17 - non_constant_identifier_names
+   info - The variable name 'image_loding' isn't a lowerCamelCase identifier - lib\core\constants\images.dart:12:17 - non_constant_identifier_names
+   info - The variable name 'image_success' isn't a lowerCamelCase identifier - lib\core\constants\images.dart:13:17 - non_constant_identifier_names
+   info - The variable name 'linklist_users' isn't a lowerCamelCase identifier - lib\core\constants\linke.dart:8:17 - non_constant_identifier_names
+   info - The file name 'nameRoute.dart' isn't a snake_case identifier - lib\core\constants\nameRoute.dart:1:1 - file_names
+   info - The variable name 'Login' isn't a lowerCamelCase identifier - lib\core\constants\nameRoute.dart:2:17 - non_constant_identifier_names
+   info - The variable name 'SingUp' isn't a lowerCamelCase identifier - lib\core\constants\nameRoute.dart:3:18 - non_constant_identifier_names
+   info - The variable name 'SplashScreen' isn't a lowerCamelCase identifier - lib\core\constants\nameRoute.dart:4:17 - non_constant_identifier_names
+   info - The variable name 'CheckEmail' isn't a lowerCamelCase identifier - lib\core\constants\nameRoute.dart:6:17 - non_constant_identifier_names
+   info - The variable name 'VerificationCode' isn't a lowerCamelCase identifier - lib\core\constants\nameRoute.dart:8:17 - non_constant_identifier_names
+   info - The variable name 'VerificationCodesginup' isn't a lowerCamelCase identifier - lib\core\constants\nameRoute.dart:9:17 - non_constant_identifier_names
+   info - The variable name 'VerificationCodeForget' isn't a lowerCamelCase identifier - lib\core\constants\nameRoute.dart:10:17 - non_constant_identifier_names
+   info - The variable name 'Homepage' isn't a lowerCamelCase identifier - lib\core\constants\nameRoute.dart:11:17 - non_constant_identifier_names
+   info - The variable name 'MainController' isn't a lowerCamelCase identifier - lib\core\constants\nameRoute.dart:13:17 - non_constant_identifier_names
+   info - The variable name 'Reservations' isn't a lowerCamelCase identifier - lib\core\constants\nameRoute.dart:14:17 - non_constant_identifier_names
+   info - The variable name 'AboutApp' isn't a lowerCamelCase identifier - lib\core\constants\nameRoute.dart:15:17 - non_constant_identifier_names
+   info - The variable name 'SupportAndHelp' isn't a lowerCamelCase identifier - lib\core\constants\nameRoute.dart:16:17 - non_constant_identifier_names
+   info - The variable name 'BookingView' isn't a lowerCamelCase identifier - lib\core\constants\nameRoute.dart:17:17 - non_constant_identifier_names
+   info - The variable name 'TripsPage' isn't a lowerCamelCase identifier - lib\core\constants\nameRoute.dart:19:17 - non_constant_identifier_names
+   info - The variable name 'Profile' isn't a lowerCamelCase identifier - lib\core\constants\nameRoute.dart:20:17 - non_constant_identifier_names
+   info - The variable name 'Settings' isn't a lowerCamelCase identifier - lib\core\constants\nameRoute.dart:21:17 - non_constant_identifier_names
+   info - The variable name 'EditProfilePage' isn't a lowerCamelCase identifier - lib\core\constants\nameRoute.dart:23:17 - non_constant_identifier_names
+   info - The variable name 'FaqPage' isn't a lowerCamelCase identifier - lib\core\constants\nameRoute.dart:24:17 - non_constant_identifier_names
+   info - The variable name 'CancelPoliciesPage' isn't a lowerCamelCase identifier - lib\core\constants\nameRoute.dart:25:17 - non_constant_identifier_names
+   info - The variable name 'ForgetPassword' isn't a lowerCamelCase identifier - lib\core\constants\nameRoute.dart:26:17 - non_constant_identifier_names
+   info - The variable name 'ResetPassword' isn't a lowerCamelCase identifier - lib\core\constants\nameRoute.dart:27:17 - non_constant_identifier_names
+   info - The variable name 'NotificationSettingsPage' isn't a lowerCamelCase identifier - lib\core\constants\nameRoute.dart:28:17 - non_constant_identifier_names
+   info - The file name 'testData.dart' isn't a snake_case identifier - lib\core\data\remote\testData.dart:1:1 - file_names
+   info - Don't invoke 'print' in production code - lib\core\data\remote\testData.dart:8:5 - avoid_print
+   info - The file name 'DataQuickActions.dart' isn't a snake_case identifier - lib\core\data\static\DataQuickActions.dart:1:1 - file_names
+   info - The file name 'AlertExiteApp.dart' isn't a snake_case identifier - lib\core\functions\AlertExiteApp.dart:1:1 - file_names
+   info - The import of 'package:flutter/cupertino.dart' is unnecessary because all of the used elements are also provided by the import of 'package:flutter/material.dart' - lib\core\functions\AlertExiteApp.dart:3:8 - unnecessary_import
+   info - The variable name 'AlertExiteApp' isn't a lowerCamelCase identifier - lib\core\functions\AlertExiteApp.dart:9:14 - non_constant_identifier_names
+   info - Use 'const' with the constructor to improve performance - lib\core\functions\AlertExiteApp.dart:13:13 - prefer_const_constructors
+   info - The 'child' argument should be last in widget constructor invocations - lib\core\functions\AlertExiteApp.dart:19:11 - sort_child_properties_last
+   info - Use 'const' with the constructor to improve performance - lib\core\functions\AlertExiteApp.dart:19:18 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\core\functions\AlertExiteApp.dart:22:22 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\core\functions\AlertExiteApp.dart:22:47 - prefer_const_constructors
+   info - The 'child' argument should be last in widget constructor invocations - lib\core\functions\AlertExiteApp.dart:30:11 - sort_child_properties_last
+   info - Use 'const' with the constructor to improve performance - lib\core\functions\AlertExiteApp.dart:33:22 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\core\functions\AlertExiteApp.dart:33:47 - prefer_const_constructors
+   info - The file name 'NetworkController.dart' isn't a snake_case identifier - lib\core\functions\NetworkController.dart:1:1 - file_names
+   info - The file name 'bottomSheet.dart' isn't a snake_case identifier - lib\core\functions\bottomSheet.dart:1:1 - file_names
+   info - Use a 'SizedBox' to add whitespace to a layout - lib\core\functions\bottomSheet.dart:13:5 - sized_box_for_whitespace
+   info - Use 'const' with the constructor to improve performance - lib\core\functions\bottomSheet.dart:17:11 - prefer_const_constructors
+   info - The 'child' argument should be last in widget constructor invocations - lib\core\functions\bottomSheet.dart:25:17 - sort_child_properties_last
+   info - Use 'const' with the constructor to improve performance - lib\core\functions\bottomSheet.dart:28:28 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\core\functions\bottomSheet.dart:28:53 - prefer_const_constructors
+   info - The 'child' argument should be last in widget constructor invocations - lib\core\functions\bottomSheet.dart:36:17 - sort_child_properties_last
+   info - Use 'const' with the constructor to improve performance - lib\core\functions\bottomSheet.dart:36:24 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\core\functions\bottomSheet.dart:39:28 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\core\functions\bottomSheet.dart:39:53 - prefer_const_constructors
+   info - The file name 'checkEnternet.dart' isn't a snake_case identifier - lib\core\functions\checkEnternet.dart:1:1 - file_names
+warning - Unused import: 'package:travelsystem/core/constants/Color.dart' - lib\core\functions\funaction_language.dart:3:8 - unused_import
+warning - Unused import: '../localization/Changelocal.dart' - lib\core\functions\funaction_language.dart:7:8 - unused_import
+   info - Use 'const' with the constructor to improve performance - lib\core\functions\funaction_language.dart:11:5 - prefer_const_constructors
+   info - The file name 'handlingData.dart' isn't a snake_case identifier - lib\core\functions\handlingData.dart:1:1 - file_names
+   info - The file name 'openDialog.dart' isn't a snake_case identifier - lib\core\functions\openDialog.dart:1:1 - file_names
+warning - Unused import: 'package:path/path.dart' - lib\core\functions\openDialog.dart:3:8 - unused_import
+   info - The file name 'showLogoutDialog.dart' isn't a snake_case identifier - lib\core\functions\showLogoutDialog.dart:1:1 - file_names
+   info - Use 'const' with the constructor to improve performance - lib\core\functions\showLogoutDialog.dart:16:14 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\core\functions\showLogoutDialog.dart:20:14 - prefer_const_constructors
+   info - The file name 'validatorInput.dart' isn't a snake_case identifier - lib\core\functions\validatorInput.dart:1:1 - file_names
+warning - The operand can't be null, so the condition is always 'false' - lib\core\functions\validatorInput.dart:2:12 - unnecessary_null_comparison
+   info - The file name 'Changelocal.dart' isn't a snake_case identifier - lib\core\localization\Changelocal.dart:1:1 - file_names
+   info - Don't invoke 'print' in production code - lib\core\localization\Changelocal.dart:40:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\core\localization\Changelocal.dart:44:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\core\localization\Changelocal.dart:56:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\core\localization\Changelocal.dart:72:5 - avoid_print
+warning - Unused import: 'package:flutter/material.dart' - lib\core\middleware\mymiddleware.dart:1:8 - unused_import
+warning - Unused import: 'package:get/get.dart' - lib\core\middleware\mymiddleware.dart:2:8 - unused_import
+warning - Unused import: 'package:travelsystem/core/constants/nameRoute.dart' - lib\core\middleware\mymiddleware.dart:3:8 - unused_import
+warning - Unused import: '../services/services.dart' - lib\core\middleware\mymiddleware.dart:5:8 - unused_import
+   info - Don't invoke 'print' in production code - lib\core\middleware\route_middleware.dart:21:5 - avoid_print
+warning - Unused import: 'package:flutter/material.dart' - lib\core\routes\app_pages.dart:2:8 - unused_import
+warning - Duplicate import - lib\core\routes\app_pages.dart:14:8 - duplicate_import
+warning - Duplicate import - lib\core\routes\app_pages.dart:28:8 - duplicate_import
+   info - Use 'const' with the constructor to improve performance - lib\core\routes\app_pages.dart:51:53 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\core\routes\app_pages.dart:52:61 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\core\routes\app_pages.dart:67:46 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\core\routes\app_pages.dart:68:47 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\core\routes\app_pages.dart:69:55 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\core\routes\app_pages.dart:70:47 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\core\routes\app_pages.dart:71:58 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\core\routes\app_pages.dart:72:64 - prefer_const_constructors
+   info - The file name 'InternetService.dart' isn't a snake_case identifier - lib\core\services\InternetService.dart:1:1 - file_names
+   info - Don't invoke 'print' in production code - lib\core\services\notification_service.dart:15:5 - avoid_print
+   info - Don't invoke 'print' in production code - lib\core\services\notification_service.dart:18:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\core\services\notification_service.dart:22:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\core\services\notification_service.dart:27:7 - avoid_print
+   info - The file name 'sendTokenToServer.dart' isn't a snake_case identifier - lib\core\services\sendTokenToServer.dart:1:1 - file_names
+   info - Don't invoke 'print' in production code - lib\core\services\sendTokenToServer.dart:15:5 - avoid_print
+   info - Don't invoke 'print' in production code - lib\core\services\sendTokenToServer.dart:18:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\core\services\sendTokenToServer.dart:22:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\core\services\sendTokenToServer.dart:27:7 - avoid_print
+warning - Unused import: 'package:get/get.dart' - lib\core\services\services.dart:1:8 - unused_import
+warning - Unused import: 'package:shared_preferences/shared_preferences.dart' - lib\core\services\services.dart:2:8 - unused_import
+   info - Don't invoke 'print' in production code - lib\core\services\support_ticket_repository.dart:30:7 - avoid_print
+   info - The variable name 'fcm_token' isn't a lowerCamelCase identifier - lib\fcm_api.dart:7:12 - non_constant_identifier_names
+   info - Don't invoke 'print' in production code - lib\fcm_api.dart:8:6 - avoid_print
+   info - Don't invoke 'print' in production code - lib\fcm_api.dart:15:4 - avoid_print
+   info - Don't invoke 'print' in production code - lib\fcm_api.dart:16:4 - avoid_print
+   info - The file name 'ChatWebPage.dart' isn't a snake_case identifier - lib\features\ChatWebPage.dart:1:1 - file_names
+warning - Unused import: 'package:path/path.dart' - lib\features\ChatWebPage.dart:3:8 - unused_import
+   info - The file name 'AuthService.dart' isn't a snake_case identifier - lib\features\auth\controller\AuthService.dart:1:1 - file_names
+   info - The file name 'CheckEmail_Controller.dart' isn't a snake_case identifier - lib\features\auth\controller\CheckEmail_Controller.dart:1:1 - file_names
+   info - The file name 'ResetPassword_Controller.dart' isn't a snake_case identifier - lib\features\auth\controller\ResetPassword_Controller.dart:1:1 - file_names
+   info - Use 'const' for final variables initialized to a constant value - lib\features\auth\controller\ResetPassword_Controller.dart:61:7 - prefer_const_declarations
+   info - The file name 'VerificationCodeForgetController.dart' isn't a snake_case identifier - lib\features\auth\controller\VerificationCodeForgetController.dart:1:1 - file_names
+warning - Unused import: 'package:flutter/material.dart' - lib\features\auth\controller\VerificationCodeForgetController.dart:4:8 - unused_import
+   info - Don't invoke 'print' in production code - lib\features\auth\controller\login_controller.dart:101:6 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\auth\controller\login_controller.dart:107:5 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\auth\controller\login_controller.dart:109:5 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\auth\controller\login_controller.dart:111:7 - avoid_print
+warning - Unused import: 'dart:convert' - lib\features\auth\controller\signup_controller.dart:1:8 - unused_import
+   info - Don't invoke 'print' in production code - lib\features\auth\controller\signup_controller.dart:82:5 - avoid_print
+warning - The value of the local variable 'genderValue' isn't used - lib\features\auth\controller\signup_controller.dart:85:12 - unused_local_variable
+   info - The file name 'ForgetPassword.dart' isn't a snake_case identifier - lib\features\auth\presentation\screens\forgetpassword\ForgetPassword.dart:1:1 - file_names
+   info - The file name 'ResetPassword.dart' isn't a snake_case identifier - lib\features\auth\presentation\screens\forgetpassword\ResetPassword.dart:1:1 - file_names
+   info - Use 'const' with the constructor to improve performance - lib\features\auth\presentation\screens\forgetpassword\ResetPassword.dart:43:22 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\auth\presentation\screens\forgetpassword\ResetPassword.dart:53:25 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\auth\presentation\screens\forgetpassword\ResetPassword.dart:63:25 - prefer_const_constructors
+   info - The file name 'VerificationCodeForget.dart' isn't a snake_case identifier - lib\features\auth\presentation\screens\forgetpassword\VerificationCodeForget.dart:1:1 - file_names
+   info - Use 'const' with the constructor to improve performance - lib\features\auth\presentation\screens\forgetpassword\VerificationCodeForget.dart:21:18 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\auth\presentation\screens\login.dart:40:25 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\auth\presentation\screens\login.dart:61:21 - prefer_const_constructors
+   info - Constructors for public widgets should have a named 'key' parameter - lib\features\auth\presentation\screens\signup.dart:15:7 - use_key_in_widget_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\auth\presentation\screens\signup.dart:28:23 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\auth\presentation\screens\signup.dart:47:19 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\auth\presentation\screens\signup.dart:55:19 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\auth\presentation\screens\signup.dart:65:19 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\auth\presentation\screens\signup.dart:72:30 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\auth\presentation\screens\signup.dart:87:48 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\auth\presentation\screens\signup.dart:90:23 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\auth\presentation\screens\signup.dart:99:48 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\auth\presentation\screens\signup.dart:105:19 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\auth\presentation\screens\signup.dart:113:19 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\auth\presentation\screens\signup.dart:123:43 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\auth\presentation\screens\signup.dart:133:19 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\auth\presentation\screens\signup.dart:152:19 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\auth\presentation\screens\signup.dart:170:19 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\auth\presentation\screens\signup.dart:178:30 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\auth\presentation\screens\signup.dart:181:25 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\auth\presentation\screens\signup.dart:183:19 - prefer_const_constructors
+   info - The file name 'ConstomCheckForget.dart' isn't a snake_case identifier - lib\features\auth\presentation\widgets\ConstomCheckForget.dart:1:1 - file_names
+   info - The variable name 'Text1' isn't a lowerCamelCase identifier - lib\features\auth\presentation\widgets\ConstomCheckForget.dart:7:16 - non_constant_identifier_names
+   info - The variable name 'Text2' isn't a lowerCamelCase identifier - lib\features\auth\presentation\widgets\ConstomCheckForget.dart:8:16 - non_constant_identifier_names
+   info - The variable name 'Text3' isn't a lowerCamelCase identifier - lib\features\auth\presentation\widgets\ConstomCheckForget.dart:9:16 - non_constant_identifier_names
+   info - The variable name 'Text1' isn't a lowerCamelCase identifier - lib\features\auth\presentation\widgets\ConstomCheckForget.dart:14:19 - non_constant_identifier_names
+   info - The variable name 'Text2' isn't a lowerCamelCase identifier - lib\features\auth\presentation\widgets\ConstomCheckForget.dart:15:19 - non_constant_identifier_names
+   info - The variable name 'Text3' isn't a lowerCamelCase identifier - lib\features\auth\presentation\widgets\ConstomCheckForget.dart:16:19 - non_constant_identifier_names
+   info - Use 'const' with the constructor to improve performance - lib\features\auth\presentation\widgets\ConstomCheckForget.dart:24:9 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\auth\presentation\widgets\ConstomCheckForget.dart:26:9 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\auth\presentation\widgets\ConstomCheckForget.dart:27:57 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\auth\presentation\widgets\ConstomCheckForget.dart:29:11 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\auth\presentation\widgets\ConstomCheckForget.dart:30:59 - prefer_const_constructors
+   info - The file name 'LoginTypeTab.dart' isn't a snake_case identifier - lib\features\auth\presentation\widgets\LoginTypeTab.dart:1:1 - file_names
+   info - Use 'const' with the constructor to improve performance - lib\features\auth\presentation\widgets\LoginTypeTab.dart:26:20 - prefer_const_constructors
+   info - The file name 'Booking_binding.dart' isn't a snake_case identifier - lib\features\booking\bindings\Booking_binding.dart:1:1 - file_names
+   info - The file name 'BookingController.dart' isn't a snake_case identifier - lib\features\booking\controller\BookingController.dart:1:1 - file_names
+   info - Use 'const' with the constructor to improve performance - lib\features\booking\controller\BookingController.dart:70:24 - prefer_const_constructors
+   info - Don't invoke 'print' in production code - lib\features\booking\controller\BookingController.dart:71:11 - avoid_print
+   info - The file name 'WizardController.dart' isn't a snake_case identifier - lib\features\booking\controller\WizardController.dart:1:1 - file_names
+   info - The file name 'seat_view_Controller.dart' isn't a snake_case identifier - lib\features\booking\controller\seat_view_Controller.dart:1:1 - file_names
+warning - The value of the field '_authService' isn't used - lib\features\booking\controller\seat_view_Controller.dart:18:21 - unused_field
+   info - The parameter name 'num' matches a visible type name - lib\features\booking\controller\seat_view_Controller.dart:168:23 - avoid_types_as_parameter_names
+   info - The constant name 'Pending' isn't a lowerCamelCase identifier - lib\features\booking\controller\user_bookings_controller.dart:12:22 - constant_identifier_names
+   info - Don't invoke 'print' in production code - lib\features\booking\controller\user_bookings_controller.dart:106:5 - avoid_print
+   info - The file name 'BookingView.dart' isn't a snake_case identifier - lib\features\booking\presentation\screens\BookingView.dart:1:1 - file_names
+warning - Unused import: 'package:intl/intl.dart' - lib\features\booking\presentation\screens\BookingView.dart:3:8 - unused_import
+   info - Use 'const' with the constructor to improve performance - lib\features\booking\presentation\screens\BookingView.dart:45:16 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\booking\presentation\screens\BookingView.dart:54:18 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\booking\presentation\screens\BookingView.dart:58:15 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\booking\presentation\screens\BookingView.dart:65:16 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\booking\presentation\screens\BookingView.dart:67:18 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\booking\presentation\screens\BookingView.dart:95:21 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\booking\presentation\screens\BookingView.dart:101:21 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\booking\presentation\screens\BookingView.dart:106:16 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\booking\presentation\screens\BookingView.dart:111:11 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\booking\presentation\screens\BookingView.dart:113:11 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\booking\presentation\screens\BookingView.dart:115:11 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\booking\presentation\screens\BookingView.dart:123:12 - prefer_const_constructors
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - lib\features\booking\presentation\screens\BookingView.dart:124:17 - prefer_const_literals_to_create_immutables
+   info - Use 'const' with the constructor to improve performance - lib\features\booking\presentation\screens\BookingView.dart:126:9 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\booking\presentation\screens\BookingView.dart:129:18 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\booking\presentation\screens\BookingView.dart:137:9 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\booking\presentation\screens\BookingView.dart:140:9 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\booking\presentation\screens\BookingView.dart:143:18 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\booking\presentation\screens\BookingView.dart:177:9 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\booking\presentation\screens\BookingView.dart:179:9 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\booking\presentation\screens\BookingView.dart:183:9 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\booking\presentation\screens\BookingView.dart:184:9 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\booking\presentation\screens\BookingView.dart:185:9 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\booking\presentation\screens\BookingView.dart:188:9 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\booking\presentation\screens\BookingView.dart:202:17 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\booking\presentation\screens\BookingView.dart:205:26 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\booking\presentation\screens\BookingView.dart:213:21 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\booking\presentation\screens\BookingView.dart:218:21 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\booking\presentation\screens\BookingView.dart:221:30 - prefer_const_constructors
+   info - The file name 'BookingWizardPage.dart' isn't a snake_case identifier - lib\features\booking\presentation\screens\BookingWizardPage.dart:1:1 - file_names
+   info - Use 'const' with the constructor to improve performance - lib\features\booking\presentation\screens\booking_success_screen.dart:32:31 - prefer_const_constructors
+   info - The file name 'ConfirmStep.dart' isn't a snake_case identifier - lib\features\booking\presentation\screens\steps\ConfirmStep.dart:1:1 - file_names
+warning - Unused import: '../../../../../core/constants/nameRoute.dart' - lib\features\booking\presentation\screens\steps\ConfirmStep.dart:6:8 - unused_import
+   info - Use 'const' with the constructor to improve performance - lib\features\booking\presentation\screens\steps\ConfirmStep.dart:304:28 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\booking\presentation\screens\steps\ConfirmStep.dart:397:12 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\booking\presentation\screens\steps\ConfirmStep.dart:421:96 - prefer_const_constructors
+   info - The file name 'DetailsStep.dart' isn't a snake_case identifier - lib\features\booking\presentation\screens\steps\DetailsStep.dart:1:1 - file_names
+   info - Constructors for public widgets should have a named 'key' parameter - lib\features\booking\presentation\screens\steps\DetailsStep.dart:5:7 - use_key_in_widget_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\booking\presentation\screens\steps\DetailsStep.dart:11:21 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\booking\presentation\screens\steps\DetailsStep.dart:12:20 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\booking\presentation\screens\steps\DetailsStep.dart:13:24 - prefer_const_constructors
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - lib\features\booking\presentation\screens\steps\DetailsStep.dart:20:22 - prefer_const_literals_to_create_immutables
+   info - Use 'const' with the constructor to improve performance - lib\features\booking\presentation\screens\steps\DetailsStep.dart:21:13 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\booking\presentation\screens\steps\DetailsStep.dart:23:25 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\booking\presentation\screens\steps\DetailsStep.dart:43:17 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\booking\presentation\screens\steps\DetailsStep.dart:53:23 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\booking\presentation\screens\steps\DetailsStep.dart:71:17 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\booking\presentation\screens\steps\DetailsStep.dart:73:28 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\booking\presentation\screens\steps\DetailsStep.dart:76:28 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\booking\presentation\screens\steps\DetailsStep.dart:77:17 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\booking\presentation\screens\steps\DetailsStep.dart:79:28 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\booking\presentation\screens\steps\DetailsStep.dart:87:23 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\booking\presentation\screens\steps\DetailsStep.dart:94:13 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\booking\presentation\screens\steps\DetailsStep.dart:98:17 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\booking\presentation\screens\steps\DetailsStep.dart:100:28 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\booking\presentation\screens\steps\DetailsStep.dart:101:17 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\booking\presentation\screens\steps\DetailsStep.dart:103:28 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\booking\presentation\screens\steps\DetailsStep.dart:106:13 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\booking\presentation\screens\steps\DetailsStep.dart:110:17 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\booking\presentation\screens\steps\DetailsStep.dart:111:17 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\booking\presentation\screens\steps\DetailsStep.dart:112:47 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\booking\presentation\screens\steps\DetailsStep.dart:115:13 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\booking\presentation\screens\steps\DetailsStep.dart:122:80 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\booking\presentation\screens\steps\DetailsStep.dart:129:19 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\booking\presentation\screens\steps\DetailsStep.dart:137:13 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\booking\presentation\screens\steps\DetailsStep.dart:142:17 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\booking\presentation\screens\steps\DetailsStep.dart:146:13 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\booking\presentation\screens\steps\DetailsStep.dart:149:24 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\booking\presentation\screens\steps\DetailsStep.dart:157:19 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\booking\presentation\screens\steps\DetailsStep.dart:165:13 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\booking\presentation\screens\steps\DetailsStep.dart:170:23 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\booking\presentation\screens\steps\DetailsStep.dart:176:24 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\booking\presentation\screens\steps\DetailsStep.dart:178:26 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\booking\presentation\screens\steps\DetailsStep.dart:192:18 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\booking\presentation\screens\steps\DetailsStep.dart:200:13 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\booking\presentation\screens\steps\DetailsStep.dart:203:22 - prefer_const_constructors
+   info - The file name 'SeatStep.dart' isn't a snake_case identifier - lib\features\booking\presentation\screens\steps\SeatStep.dart:1:1 - file_names
+   info - Use 'const' for final variables initialized to a constant value - lib\features\booking\presentation\screens\steps\SeatStep.dart:22:5 - prefer_const_declarations
+   info - Use 'const' for final variables initialized to a constant value - lib\features\booking\presentation\screens\steps\SeatStep.dart:23:5 - prefer_const_declarations
+   info - Use 'const' for final variables initialized to a constant value - lib\features\booking\presentation\screens\steps\SeatStep.dart:24:5 - prefer_const_declarations
+   info - Use 'const' for final variables initialized to a constant value - lib\features\booking\presentation\screens\steps\SeatStep.dart:25:5 - prefer_const_declarations
+warning - The value of the local variable 'totalPassengers' isn't used - lib\features\booking\presentation\screens\steps\booking_summary_step.dart:17:11 - unused_local_variable
+   info - Use 'const' with the constructor to improve performance - lib\features\booking\presentation\screens\steps\booking_summary_step.dart:64:20 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\booking\presentation\screens\steps\booking_summary_step.dart:77:19 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\booking\presentation\screens\steps\booking_summary_step.dart:191:28 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\booking\presentation\screens\steps\passenger_count_step.dart:38:9 - prefer_const_constructors
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - lib\features\booking\presentation\screens\steps\passenger_count_step.dart:39:21 - prefer_const_literals_to_create_immutables
+   info - Use 'const' with the constructor to improve performance - lib\features\booking\presentation\screens\steps\passenger_count_step.dart:40:13 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\booking\presentation\screens\steps\passenger_details_step.dart:34:11 - prefer_const_constructors
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - lib\features\booking\presentation\screens\steps\passenger_details_step.dart:35:23 - prefer_const_literals_to_create_immutables
+   info - Use 'const' with the constructor to improve performance - lib\features\booking\presentation\screens\steps\passenger_details_step.dart:36:15 - prefer_const_constructors
+warning - The operand can't be null, so the condition is always 'false' - lib\features\booking\presentation\screens\steps\passenger_details_step.dart:95:40 - unnecessary_null_comparison
+warning - The '!' will have no effect because the receiver can't be null - lib\features\booking\presentation\screens\steps\passenger_details_step.dart:95:61 - unnecessary_non_null_assertion
+warning - The operand can't be null, so the condition is always 'false' - lib\features\booking\presentation\screens\steps\passenger_details_step.dart:96:40 - unnecessary_null_comparison
+warning - The '!' will have no effect because the receiver can't be null - lib\features\booking\presentation\screens\steps\passenger_details_step.dart:96:61 - unnecessary_non_null_assertion
+warning - The left operand can't be null, so the right operand is never executed - lib\features\booking\presentation\screens\steps\passenger_details_step.dart:188:58 - dead_null_aware_expression
+warning - The left operand can't be null, so the right operand is never executed - lib\features\booking\presentation\screens\steps\passenger_details_step.dart:202:56 - dead_null_aware_expression
+   info - Use 'const' with the constructor to improve performance - lib\features\booking\presentation\screens\steps\passenger_details_step.dart:255:42 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\booking\presentation\screens\steps\passenger_details_step.dart:400:21 - prefer_const_constructors
+   info - The file name 'DateField.dart' isn't a snake_case identifier - lib\features\booking\presentation\widgets\DateField.dart:1:1 - file_names
+   info - The file name 'DropdownCities.dart' isn't a snake_case identifier - lib\features\booking\presentation\widgets\DropdownCities.dart:1:1 - file_names
+   info - Constructors in '@immutable' classes should be declared as 'const' - lib\features\booking\presentation\widgets\DropdownCities.dart:11:4 - prefer_const_constructors_in_immutables
+   info - The file name 'TripTypeDropdown.dart' isn't a snake_case identifier - lib\features\booking\presentation\widgets\TripTypeDropdown.dart:1:1 - file_names
+   info - Use 'const' with the constructor to improve performance - lib\features\booking\presentation\widgets\TripTypeDropdown.dart:29:28 - prefer_const_constructors
+   info - The file name 'WizardStepper.dart' isn't a snake_case identifier - lib\features\booking\presentation\widgets\WizardStepper.dart:1:1 - file_names
+   info - Use 'const' with the constructor to improve performance - lib\features\booking\presentation\widgets\WizardStepper.dart:57:27 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\booking\presentation\widgets\booking_cards\user_booking_card.dart:205:31 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\booking\presentation\widgets\booking_cards\user_booking_card.dart:212:22 - prefer_const_constructors
+warning - Unused import: 'package:travelsystem/TestView.dart' - lib\features\home\controller\main_view_model.dart:5:8 - unused_import
+warning - Unused import: '../presentation/screens/notification.dart' - lib\features\home\controller\main_view_model.dart:13:8 - unused_import
+warning - Unused import: '../../trips/presentation/screens/trips_page.dart' - lib\features\home\controller\main_view_model.dart:17:8 - unused_import
+warning - The value of the local variable 'search' isn't used - lib\features\home\controller\main_view_model.dart:73:11 - unused_local_variable
+   info - The file name 'HomeAction.dart' isn't a snake_case identifier - lib\features\home\data\models\HomeAction.dart:1:1 - file_names
+   info - The file name 'HomeSection.dart' isn't a snake_case identifier - lib\features\home\presentation\screens\HomeSection.dart:1:1 - file_names
+warning - Unused import: '../../../../shared/widgets/section_title.dart' - lib\features\home\presentation\screens\HomeSection.dart:14:8 - unused_import
+warning - Unused import: '../../../../shared/widgets/info_card.dart' - lib\features\home\presentation\screens\HomeSection.dart:15:8 - unused_import
+   info - Use 'const' with the constructor to improve performance - lib\features\home\presentation\screens\HomeSection.dart:49:24 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\home\presentation\screens\HomeSection.dart:62:20 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\home\presentation\screens\HomeSection.dart:99:20 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\home\presentation\screens\HomeSection.dart:112:20 - prefer_const_constructors
+warning - Unused import: '../../../../shared/widgets/language_bottom_sheet.dart' - lib\features\home\presentation\screens\homepage.dart:15:8 - unused_import
+warning - The value of the local variable 'usersttus' isn't used - lib\features\home\presentation\screens\homepage.dart:26:11 - unused_local_variable
+   info - Use 'const' with the constructor to improve performance - lib\features\home\presentation\screens\homepage.dart:52:26 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\home\presentation\screens\homepage.dart:64:24 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\home\presentation\screens\homepage.dart:73:24 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\home\presentation\screens\homepage.dart:87:24 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\home\presentation\screens\homepage.dart:97:21 - prefer_const_constructors
+   info - The type name 'notification' isn't an UpperCamelCase identifier - lib\features\home\presentation\screens\notification.dart:9:7 - camel_case_types
+   info - Use 'const' with the constructor to improve performance - lib\features\home\presentation\screens\notification.dart:36:28 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\home\presentation\screens\notification.dart:55:13 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\home\presentation\screens\notification.dart:60:24 - prefer_const_constructors
+   info - The file name 'AnimatedPlaceholder.dart' isn't a snake_case identifier - lib\features\home\presentation\widgets\AnimatedPlaceholder.dart:1:1 - file_names
+warning - This class (or a class that this class inherits from) is marked as '@immutable', but one or more of its instance fields aren't final: AnimatedPlaceholder.height, AnimatedPlaceholder.text - lib\features\home\presentation\widgets\AnimatedPlaceholder.dart:8:7 - must_be_immutable
+   info - The file name 'CompanyLogos.dart' isn't a snake_case identifier - lib\features\home\presentation\widgets\CompanyLogos.dart:1:1 - file_names
+   info - The file name 'FadeInLogoWidget.dart' isn't a snake_case identifier - lib\features\home\presentation\widgets\FadeInLogoWidget.dart:1:1 - file_names
+   info - Use 'const' with the constructor to improve performance - lib\features\home\presentation\widgets\home_view.dart:66:18 - prefer_const_constructors
+   info - The file name 'OnboardingControler.dart' isn't a snake_case identifier - lib\features\onboarding\controller\OnboardingControler.dart:1:1 - file_names
+   info - The file name 'model_onBorading.dart' isn't a snake_case identifier - lib\features\onboarding\data\models\model_onBorading.dart:1:1 - file_names
+   info - The type name 'model_Borading' isn't an UpperCamelCase identifier - lib\features\onboarding\data\models\model_onBorading.dart:1:7 - camel_case_types
+   info - The file name 'DataonBorading.dart' isn't a snake_case identifier - lib\features\onboarding\data\static\DataonBorading.dart:1:1 - file_names
+   info - The variable name 'Data_onBorading' isn't a lowerCamelCase identifier - lib\features\onboarding\data\static\DataonBorading.dart:8:22 - non_constant_identifier_names
+   info - Use 'const' with the constructor to improve performance - lib\features\onboarding\presentation\screens\onboarding_screen.dart:16:12 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\onboarding\presentation\screens\onboarding_screen.dart:18:13 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\onboarding\presentation\screens\onboarding_screen.dart:19:16 - prefer_const_constructors
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - lib\features\onboarding\presentation\screens\onboarding_screen.dart:20:21 - prefer_const_literals_to_create_immutables
+   info - Use 'const' with the constructor to improve performance - lib\features\onboarding\presentation\screens\onboarding_screen.dart:25:13 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\onboarding\presentation\screens\onboarding_screen.dart:27:22 - prefer_const_constructors
+   info - The file name 'NextButton.dart' isn't a snake_case identifier - lib\features\onboarding\presentation\widgets\NextButton.dart:1:1 - file_names
+   info - Use 'const' with the constructor to improve performance - lib\features\onboarding\presentation\widgets\NextButton.dart:20:18 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\onboarding\presentation\widgets\NextButton.dart:29:24 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\onboarding\presentation\widgets\NextButton.dart:29:49 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\onboarding\presentation\widgets\NextButton.dart:32:40 - prefer_const_constructors
+   info - The file name 'onBordingControler.dart' isn't a snake_case identifier - lib\features\onboarding\presentation\widgets\onBordingControler.dart:1:1 - file_names
+   info - The type name 'onBordingControler' isn't an UpperCamelCase identifier - lib\features\onboarding\presentation\widgets\onBordingControler.dart:11:7 - camel_case_types
+   info - Use 'const' with the constructor to improve performance - lib\features\onboarding\presentation\widgets\onBordingControler.dart:25:27 - prefer_const_constructors
+   info - The type of the right operand ('int') isn't a subtype or a supertype of the left operand ('RxInt') - lib\features\onboarding\presentation\widgets\onBordingControler.dart:26:48 - unrelated_type_equality_checks
+   info - The file name 'onBordingSelder.dart' isn't a snake_case identifier - lib\features\onboarding\presentation\widgets\onBordingSelder.dart:1:1 - file_names
+   info - The type name 'onBordingSelder' isn't an UpperCamelCase identifier - lib\features\onboarding\presentation\widgets\onBordingSelder.dart:12:7 - camel_case_types
+   info - Use 'const' with the constructor to improve performance - lib\features\onboarding\presentation\widgets\onBordingSelder.dart:31:85 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\onboarding\presentation\widgets\onBordingSelder.dart:33:15 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\onboarding\presentation\widgets\onBordingSelder.dart:34:90 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\onboarding\presentation\widgets\onBordingSelder.dart:35:15 - prefer_const_constructors
+   info - The type of the right operand ('int') isn't a subtype or a supertype of the left operand ('RxInt') - lib\features\onboarding\presentation\widgets\onboarding_indicator.dart:24:45 - unrelated_type_equality_checks
+   info - The type of the right operand ('int') isn't a subtype or a supertype of the left operand ('RxInt') - lib\features\onboarding\presentation\widgets\onboarding_indicator.dart:27:47 - unrelated_type_equality_checks
+   info - The file name 'UpdeatDataUserController.dart' isn't a snake_case identifier - lib\features\profile\controller\UpdeatDataUserController.dart:1:1 - file_names
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\controller\UpdeatDataUserController.dart:35:26 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\controller\support_ticket_controller.dart:92:17 - prefer_const_constructors
+   info - The file name 'DatahelpCards.dart' isn't a snake_case identifier - lib\features\profile\data\static\DatahelpCards.dart:1:1 - file_names
+warning - Unused import: 'package:path/path.dart' - lib\features\profile\data\static\DatahelpCards.dart:3:8 - unused_import
+   info - The file name 'CancelPoliciesPage.dart' isn't a snake_case identifier - lib\features\profile\presentation\screens\CancelPoliciesPage.dart:1:1 - file_names
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\CancelPoliciesPage.dart:38:26 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\CancelPoliciesPage.dart:40:28 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\CancelPoliciesPage.dart:52:30 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\CancelPoliciesPage.dart:136:16 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\CancelPoliciesPage.dart:255:28 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\CancelPoliciesPage.dart:258:36 - prefer_const_constructors
+   info - The file name 'FaqPage.dart' isn't a snake_case identifier - lib\features\profile\presentation\screens\FaqPage.dart:1:1 - file_names
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\FaqPage.dart:23:20 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\FaqPage.dart:31:18 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\FaqPage.dart:69:24 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\FaqPage.dart:79:19 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\FaqPage.dart:82:28 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\FaqPage.dart:88:19 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\FaqPage.dart:141:50 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\FaqPage.dart:180:48 - prefer_const_constructors
+   info - The file name 'aboutApp.dart' isn't a snake_case identifier - lib\features\profile\presentation\screens\aboutApp.dart:1:1 - file_names
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\aboutApp.dart:32:17 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\aboutApp.dart:38:16 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\aboutApp.dart:45:16 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\aboutApp.dart:53:16 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\aboutApp.dart:88:16 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\aboutApp.dart:90:18 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\aboutApp.dart:102:20 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\aboutApp.dart:105:15 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\aboutApp.dart:118:34 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\aboutApp.dart:129:39 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\aboutApp.dart:144:21 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\aboutApp.dart:147:21 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\aboutApp.dart:150:30 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\aboutApp.dart:158:21 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\aboutApp.dart:162:32 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\aboutApp.dart:176:37 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\aboutApp.dart:180:30 - prefer_const_constructors
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - lib\features\profile\presentation\screens\aboutApp.dart:182:35 - prefer_const_literals_to_create_immutables
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\aboutApp.dart:183:27 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\aboutApp.dart:188:27 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\aboutApp.dart:189:27 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\aboutApp.dart:191:36 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\aboutApp.dart:216:36 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\aboutApp.dart:223:34 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\aboutApp.dart:229:25 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\aboutApp.dart:230:25 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\aboutApp.dart:232:34 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\aboutApp.dart:241:21 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\aboutApp.dart:244:21 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\aboutApp.dart:246:30 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\aboutApp.dart:253:21 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\aboutApp.dart:256:21 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\aboutApp.dart:260:21 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\aboutApp.dart:264:21 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\aboutApp.dart:268:21 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\aboutApp.dart:283:21 - prefer_const_constructors
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - lib\features\profile\presentation\screens\aboutApp.dart:285:33 - prefer_const_literals_to_create_immutables
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\aboutApp.dart:286:25 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\aboutApp.dart:291:25 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\aboutApp.dart:292:25 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\aboutApp.dart:294:34 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\aboutApp.dart:303:21 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\aboutApp.dart:312:36 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\aboutApp.dart:316:25 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\aboutApp.dart:321:36 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\aboutApp.dart:327:21 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\aboutApp.dart:336:36 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\aboutApp.dart:340:25 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\aboutApp.dart:345:36 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\aboutApp.dart:355:15 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\edit_profile_page.dart:77:15 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\edit_profile_page.dart:81:16 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\edit_profile_page.dart:135:33 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\edit_profile_page.dart:144:28 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\edit_profile_page.dart:150:25 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\edit_profile_page.dart:168:31 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\edit_profile_page.dart:179:31 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\edit_profile_page.dart:199:28 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\edit_profile_page.dart:205:25 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\edit_profile_page.dart:222:31 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\edit_profile_page.dart:232:31 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\edit_profile_page.dart:253:30 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\edit_profile_page.dart:282:28 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\edit_profile_page.dart:320:37 - prefer_const_constructors
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - lib\features\profile\presentation\screens\edit_profile_page.dart:323:43 - prefer_const_literals_to_create_immutables
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\edit_profile_page.dart:328:35 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\edit_profile_page.dart:331:35 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\edit_profile_page.dart:333:44 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\edit_profile_page.dart:351:17 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\edit_profile_page.dart:352:26 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\notification_settings_page.dart:24:18 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\notification_settings_page.dart:36:20 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\notification_settings_page.dart:40:15 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\notification_settings_page.dart:43:24 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\notification_settings_page.dart:50:15 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\notification_settings_page.dart:53:24 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\notification_settings_page.dart:59:15 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\support_help.dart:37:18 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\support_help.dart:49:20 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\support_help.dart:50:20 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\support_help.dart:54:15 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\support_help.dart:59:24 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\support_help.dart:66:15 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\support_help.dart:69:24 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\support_help.dart:75:15 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\support_help.dart:81:28 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\support_help.dart:90:33 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\support_help.dart:97:23 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\support_help.dart:102:23 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\support_help.dart:105:32 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\support_help.dart:116:15 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\support_help.dart:126:15 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\screens\support_help.dart:135:15 - prefer_const_constructors
+   info - The file name 'ActionCard.dart' isn't a snake_case identifier - lib\features\profile\presentation\widgets\ActionCard.dart:1:1 - file_names
+   info - Constructors for public widgets should have a named 'key' parameter - lib\features\profile\presentation\widgets\ActionCard.dart:14:9 - use_key_in_widget_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\widgets\ActionCard.dart:19:15 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\widgets\ActionCard.dart:26:16 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\widgets\ActionCard.dart:45:22 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\widgets\ActionCard.dart:62:11 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\widgets\ActionCard.dart:69:11 - prefer_const_constructors
+   info - The file name 'AnimatedInfoCard.dart' isn't a snake_case identifier - lib\features\profile\presentation\widgets\AnimatedInfoCard.dart:1:1 - file_names
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\widgets\AnimatedInfoCard.dart:29:19 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\widgets\AnimatedInfoCard.dart:33:20 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\widgets\AnimatedInfoCard.dart:42:25 - prefer_const_constructors
+   info - The file name 'AppFeatureItem.dart' isn't a snake_case identifier - lib\features\profile\presentation\widgets\AppFeatureItem.dart:1:1 - file_names
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\widgets\AppFeatureItem.dart:21:16 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\widgets\AppFeatureItem.dart:25:22 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\widgets\AppFeatureItem.dart:36:11 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\widgets\AppFeatureItem.dart:40:22 - prefer_const_constructors
+   info - The file name 'HeroChip.dart' isn't a snake_case identifier - lib\features\profile\presentation\widgets\HeroChip.dart:1:1 - file_names
+   info - Constructors for public widgets should have a named 'key' parameter - lib\features\profile\presentation\widgets\HeroChip.dart:14:9 - use_key_in_widget_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\widgets\HeroChip.dart:23:16 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\widgets\HeroChip.dart:35:11 - prefer_const_constructors
+   info - The file name 'ProfileImageSection.dart' isn't a snake_case identifier - lib\features\profile\presentation\widgets\ProfileImageSection.dart:1:1 - file_names
+warning - Unused import: 'package:get/get.dart' - lib\features\profile\presentation\widgets\ProfileImageSection.dart:2:8 - unused_import
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\widgets\ProfileImageSection.dart:24:19 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\widgets\ProfileImageSection.dart:26:23 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\widgets\ProfileImageSection.dart:27:23 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\widgets\ProfileImageSection.dart:28:24 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\widgets\ProfileImageSection.dart:33:11 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\widgets\ProfileImageSection.dart:49:31 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\widgets\ProfileImageSection.dart:60:25 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\widgets\ProfileImageSection.dart:76:32 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\widgets\ProfileImageSection.dart:92:30 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\widgets\ProfileImageSection.dart:102:11 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\widgets\ProfileImageSection.dart:106:20 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\widgets\ProfileImageSection.dart:113:11 - prefer_const_constructors
+   info - The file name 'SectionHeader.dart' isn't a snake_case identifier - lib\features\profile\presentation\widgets\SectionHeader.dart:1:1 - file_names
+   info - Constructors for public widgets should have a named 'key' parameter - lib\features\profile\presentation\widgets\SectionHeader.dart:14:9 - use_key_in_widget_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\widgets\SectionHeader.dart:23:15 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\widgets\SectionHeader.dart:35:11 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\widgets\SectionHeader.dart:39:24 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\widgets\SectionHeader.dart:50:13 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\widgets\SectionHeader.dart:59:26 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\widgets\SectionHeader.dart:67:19 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\widgets\SectionHeader.dart:70:28 - prefer_const_constructors
+   info - The file name 'SocialMediaButton.dart' isn't a snake_case identifier - lib\features\profile\presentation\widgets\SocialMediaButton.dart:1:1 - file_names
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\widgets\SocialMediaButton.dart:70:20 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\widgets\SocialMediaButton.dart:90:31 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\widgets\SocialMediaButton.dart:102:15 - prefer_const_constructors
+   info - The file name 'SupportContactCard.dart' isn't a snake_case identifier - lib\features\profile\presentation\widgets\SupportContactCard.dart:1:1 - file_names
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\widgets\SupportContactCard.dart:28:16 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\widgets\SupportContactCard.dart:37:21 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\widgets\SupportContactCard.dart:45:22 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\widgets\SupportContactCard.dart:56:11 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\widgets\SupportContactCard.dart:65:26 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\widgets\SupportContactCard.dart:72:17 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\widgets\SupportContactCard.dart:75:26 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\widgets\SupportContactCard.dart:92:26 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\widgets\SupportContactCard.dart:106:26 - prefer_const_constructors
+   info - The file name 'TicketSubmissionSheet.dart' isn't a snake_case identifier - lib\features\profile\presentation\widgets\TicketSubmissionSheet.dart:1:1 - file_names
+warning - Unused import: '../../../auth/controller/AuthService.dart' - lib\features\profile\presentation\widgets\TicketSubmissionSheet.dart:6:8 - unused_import
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\widgets\TicketSubmissionSheet.dart:40:19 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\widgets\TicketSubmissionSheet.dart:42:23 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\widgets\TicketSubmissionSheet.dart:43:20 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\widgets\TicketSubmissionSheet.dart:44:21 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\widgets\TicketSubmissionSheet.dart:52:20 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\widgets\TicketSubmissionSheet.dart:65:30 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\widgets\TicketSubmissionSheet.dart:79:17 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\widgets\TicketSubmissionSheet.dart:83:26 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\widgets\TicketSubmissionSheet.dart:90:17 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\widgets\TicketSubmissionSheet.dart:96:34 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\widgets\TicketSubmissionSheet.dart:107:39 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\widgets\TicketSubmissionSheet.dart:130:17 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\widgets\TicketSubmissionSheet.dart:134:26 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\widgets\TicketSubmissionSheet.dart:141:17 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\widgets\TicketSubmissionSheet.dart:148:32 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\widgets\TicketSubmissionSheet.dart:160:21 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\widgets\TicketSubmissionSheet.dart:169:17 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\widgets\TicketSubmissionSheet.dart:173:26 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\widgets\TicketSubmissionSheet.dart:180:17 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\widgets\TicketSubmissionSheet.dart:188:32 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\widgets\TicketSubmissionSheet.dart:200:21 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\widgets\TicketSubmissionSheet.dart:209:17 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\widgets\TicketSubmissionSheet.dart:220:38 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\widgets\TicketSubmissionSheet.dart:223:35 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\widgets\TicketSubmissionSheet.dart:231:36 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\widgets\TicketSubmissionSheet.dart:239:23 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\widgets\TicketSubmissionSheet.dart:248:38 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\widgets\TicketSubmissionSheet.dart:267:36 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\widgets\notification_setting_tile.dart:17:15 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\widgets\notification_setting_tile.dart:18:16 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\widgets\notification_setting_tile.dart:46:11 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\widgets\notification_setting_tile.dart:55:26 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\widgets\notification_setting_tile.dart:62:17 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\widgets\notification_setting_tile.dart:65:26 - prefer_const_constructors
+   info - Constructors for public widgets should have a named 'key' parameter - lib\features\profile\presentation\widgets\user_hero_card.dart:15:9 - use_key_in_widget_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\widgets\user_hero_card.dart:24:16 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\widgets\user_hero_card.dart:45:11 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\widgets\user_hero_card.dart:53:11 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\widgets\user_hero_card.dart:56:15 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\widgets\user_hero_card.dart:57:15 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\widgets\user_hero_card.dart:68:11 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\widgets\user_hero_card.dart:77:17 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\widgets\user_hero_card.dart:82:19 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\widgets\user_hero_card.dart:84:17 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\profile\presentation\widgets\user_hero_card.dart:89:19 - prefer_const_constructors
+warning - Unused import: '../../../onboarding/controller/OnboardingControler.dart' - lib\features\splash\presentation\screens\splash_screen.dart:5:8 - unused_import
+warning - This method overrides a method annotated as '@mustCallSuper' in 'State', but doesn't invoke the overridden method - lib\features\splash\presentation\screens\splash_screen.dart:18:8 - must_call_super
+   info - Use 'const' with the constructor to improve performance - lib\features\splash\presentation\screens\splash_screen.dart:20:20 - prefer_const_constructors
+   info - Statements in an if should be enclosed in a block - lib\features\trips\controller\trip_controller.dart:35:7 - curly_braces_in_flow_control_structures
+   info - Statements in an if should be enclosed in a block - lib\features\trips\controller\trip_controller.dart:37:7 - curly_braces_in_flow_control_structures
+   info - Statements in an if should be enclosed in a block - lib\features\trips\controller\trip_controller.dart:39:7 - curly_braces_in_flow_control_structures
+   info - Statements in an if should be enclosed in a block - lib\features\trips\controller\trip_controller.dart:41:7 - curly_braces_in_flow_control_structures
+   info - The file name 'BusTrip.dart' isn't a snake_case identifier - lib\features\trips\data\models\BusTrip.dart:1:1 - file_names
+   info - The local variable '_toInt' starts with an underscore - lib\features\trips\data\models\user_booking_model.dart:32:9 - no_leading_underscores_for_local_identifiers
+   info - The local variable '_toDouble' starts with an underscore - lib\features\trips\data\models\user_booking_model.dart:39:12 - no_leading_underscores_for_local_identifiers
+   info - The file name 'Reservations.dart' isn't a snake_case identifier - lib\features\trips\presentation\screens\Reservations.dart:1:1 - file_names
+   info - Use 'const' with the constructor to improve performance - lib\features\trips\presentation\screens\Reservations.dart:37:24 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\trips\presentation\screens\Reservations.dart:40:26 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\trips\presentation\screens\Reservations.dart:45:24 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\trips\presentation\screens\Reservations.dart:72:25 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\trips\presentation\screens\Reservations.dart:74:22 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\trips\presentation\screens\Reservations.dart:91:21 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\trips\presentation\screens\Reservations.dart:92:21 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\trips\presentation\screens\Reservations.dart:93:21 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\trips\presentation\screens\Reservations.dart:95:30 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\trips\presentation\screens\Reservations.dart:101:21 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\trips\presentation\screens\Reservations.dart:102:21 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\trips\presentation\screens\Reservations.dart:104:30 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\trips\presentation\screens\Reservations.dart:109:21 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\trips\presentation\screens\Reservations.dart:112:29 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\trips\presentation\screens\Reservations.dart:113:30 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\trips\presentation\screens\Reservations.dart:116:34 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\trips\presentation\screens\Reservations.dart:133:21 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\trips\presentation\screens\Reservations.dart:134:21 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\trips\presentation\screens\Reservations.dart:143:21 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\trips\presentation\screens\Reservations.dart:146:29 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\trips\presentation\screens\Reservations.dart:147:30 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\features\trips\presentation\screens\Reservations.dart:150:34 - prefer_const_constructors
+warning - Unused import: 'package:travelsystem/core/constants/Color.dart' - lib\main.dart:4:8 - unused_import
+warning - Unused import: 'core/services/services.dart' - lib\main.dart:16:8 - unused_import
+   info - Don't invoke 'print' in production code - lib\main.dart:28:3 - avoid_print
+   info - Use 'const' with the constructor to improve performance - lib\main.dart:77:13 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\shared\widgets\bottom_bar_item.dart:20:18 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\shared\widgets\bottom_bar_item.dart:71:13 - prefer_const_constructors
+warning - Unused import: '../../shared/widgets/custom_button.dart' - lib\shared\widgets\bus_trip_card.dart:4:8 - unused_import
+   info - Use 'const' with the constructor to improve performance - lib\shared\widgets\bus_trip_card.dart:32:27 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\shared\widgets\bus_trip_card.dart:64:46 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\shared\widgets\bus_trip_card.dart:65:46 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\shared\widgets\bus_trip_card.dart:73:50 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\shared\widgets\bus_trip_card.dart:74:68 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\shared\widgets\bus_trip_card.dart:81:48 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\shared\widgets\bus_trip_card.dart:82:48 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\shared\widgets\bus_trip_card.dart:128:32 - prefer_const_constructors
+warning - This class (or a class that this class inherits from) is marked as '@immutable', but one or more of its instance fields aren't final: NextButtont.text, NextButtont.onPressed, NextButtont.size - lib\shared\widgets\custom_button.dart:9:7 - must_be_immutable
+   info - Use 'const' with the constructor to improve performance - lib\shared\widgets\custom_button.dart:23:18 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\shared\widgets\custom_button.dart:28:24 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\shared\widgets\custom_button.dart:28:49 - prefer_const_constructors
+   info - The variable name 'MyController' isn't a lowerCamelCase identifier - lib\shared\widgets\custom_text_field.dart:10:32 - non_constant_identifier_names
+   info - The variable name 'TypeText' isn't a lowerCamelCase identifier - lib\shared\widgets\custom_text_field.dart:11:24 - non_constant_identifier_names
+   info - Constructors in '@immutable' classes should be declared as 'const' - lib\shared\widgets\custom_text_field.dart:14:4 - prefer_const_constructors_in_immutables
+   info - The variable name 'TypeText' isn't a lowerCamelCase identifier - lib\shared\widgets\custom_text_field.dart:18:11 - non_constant_identifier_names
+   info - The variable name 'MyController' isn't a lowerCamelCase identifier - lib\shared\widgets\custom_text_field.dart:20:12 - non_constant_identifier_names
+   info - Use 'const' with the constructor to improve performance - lib\shared\widgets\custom_text_field.dart:32:23 - prefer_const_constructors
+   info - The 'child' argument should be last in widget constructor invocations - lib\shared\widgets\filter_sheet.dart:53:36 - sort_child_properties_last
+   info - Use 'const' with the constructor to improve performance - lib\shared\widgets\info_card.dart:34:16 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\shared\widgets\input_field_builder.dart:86:18 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\shared\widgets\input_field_builder.dart:114:29 - prefer_const_constructors
+   info - Constructors for public widgets should have a named 'key' parameter - lib\shared\widgets\no_internet_widget.dart:7:9 - use_key_in_widget_constructors
+   info - Use 'const' with the constructor to improve performance - lib\shared\widgets\no_internet_widget.dart:15:9 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\shared\widgets\no_internet_widget.dart:15:48 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\shared\widgets\no_internet_widget.dart:19:17 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\shared\widgets\no_internet_widget.dart:20:18 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\shared\widgets\no_internet_widget.dart:20:48 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\shared\widgets\no_internet_widget.dart:23:24 - prefer_const_constructors
+   info - Constructors for public widgets should have a named 'key' parameter - lib\shared\widgets\section_title.dart:9:9 - use_key_in_widget_constructors
+   info - Use 'const' with the constructor to improve performance - lib\shared\widgets\section_title.dart:21:20 - prefer_const_constructors
+warning - Unused import: '../../features/onboarding/presentation/widgets/onBordingControler.dart' - lib\shared\widgets\smooth_indicator.dart:6:8 - unused_import
+   info - Constructors in '@immutable' classes should be declared as 'const' - lib\shared\widgets\smooth_indicator.dart:9:4 - prefer_const_constructors_in_immutables
+

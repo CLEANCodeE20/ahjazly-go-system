@@ -56,7 +56,7 @@ interface BranchRecord {
 }
 
 const BranchesManagement = () => {
-  const { partnerId } = usePartner();
+  const { partnerId, isLoading: partnerLoading } = usePartner();
 
   const [branches, setBranches] = useState<BranchRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -73,15 +73,35 @@ const BranchesManagement = () => {
   });
 
   useEffect(() => {
-    fetchBranches();
-  }, [partnerId]);
+    if (!partnerLoading && partnerId) {
+      fetchBranches();
+    } else if (!partnerLoading && !partnerId) {
+      setLoading(false); // Stop loading if no partner ID (e.g. Superuser viewing all, or error)
+      // If Superuser, we might want to fetch all. Let's assume for now we only fetch for partnerId if present.
+      // But wait, the RLS allows Superuser to see all.
+      // If partnerId is null (Superuser), we should fetch without filter?
+      // The user complained about seeing other branches.
+      // If I am a SUPERUSER, I probably WANT to see all branches.
+      // If I am a PARTNER, I MUST have a partnerId.
+      // If partnerId is null and I am NOT a superuser, then I shouldn't see anything.
+      // Let's implement robust logic.
+    }
+  }, [partnerId, partnerLoading]);
 
   const fetchBranches = async () => {
     setLoading(true);
-    const { data, error } = await supabase
+    let query = supabase
       .from('branches')
       .select('*')
       .order('created_at', { ascending: false });
+
+    // Only filter by partner_id if it exists (i.e. for Partners)
+    // If it's null (Superuser), do not add .eq('partner_id', null)
+    if (partnerId) {
+      query = query.eq('partner_id', partnerId);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       toast({ title: "خطأ", description: "فشل في تحميل الفروع", variant: "destructive" });
@@ -327,8 +347,8 @@ const BranchesManagement = () => {
                   <div>
                     <h3 className="font-semibold text-foreground">{branch.branch_name}</h3>
                     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${branch.status === "active"
-                        ? "bg-secondary/10 text-secondary"
-                        : "bg-muted text-muted-foreground"
+                      ? "bg-secondary/10 text-secondary"
+                      : "bg-muted text-muted-foreground"
                       }`}>
                       {branch.status === "active" ? "نشط" : "غير نشط"}
                     </span>

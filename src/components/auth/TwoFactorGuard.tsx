@@ -56,10 +56,12 @@ export const TwoFactorGuard = ({ children }: TwoFactorGuardProps) => {
                     return;
                 }
 
+                console.log('[TwoFactorGuard] Checking requirement for role:', userRole?.role);
                 const needs2FA = userRole && (
                     userRole.role === 'SUPERUSER' ||
                     userRole.role === 'PARTNER_ADMIN'
                 );
+                console.log('[TwoFactorGuard] Needs 2FA:', needs2FA);
 
                 if (!needs2FA) {
                     setRequires2FA(false);
@@ -140,6 +142,7 @@ export const TwoFactorGuard = ({ children }: TwoFactorGuardProps) => {
     }
 
     if (requires2FA) {
+        console.log('[TwoFactorGuard] Blocking access due to 2FA requirement (Requires2FA: true)');
         return null; // Block access
     }
 

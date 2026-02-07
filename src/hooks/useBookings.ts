@@ -62,18 +62,20 @@ interface UseBookingsOptions {
     pageSize: number;
     searchQuery?: string;
     statusFilter?: string;
+    partnerId?: number | null;
 }
 
-export const useBookings = ({ page, pageSize, searchQuery, statusFilter }: UseBookingsOptions) => {
+export const useBookings = ({ page, pageSize, searchQuery, statusFilter, partnerId }: UseBookingsOptions) => {
     return useQuery({
-        queryKey: ["bookings", page, pageSize, searchQuery, statusFilter],
+        queryKey: ["bookings", page, pageSize, searchQuery, statusFilter, partnerId],
         queryFn: async () => {
             try {
-                const { data, error } = await supabase.rpc('search_bookingsv2' as any, {
+                const { data, error } = await supabase.rpc('search_bookingsv3' as any, {
                     p_search_query: searchQuery || null,
                     p_status_filter: statusFilter && statusFilter !== 'all' ? statusFilter : null,
                     p_page: page,
-                    p_page_size: pageSize
+                    p_page_size: pageSize,
+                    p_partner_id: partnerId || null
                 }) as { data: any[] | null, error: any };
 
                 if (error) throw error;
@@ -84,7 +86,7 @@ export const useBookings = ({ page, pageSize, searchQuery, statusFilter }: UseBo
 
                 const { data: passengers } = await supabase
                     .from('passengers')
-                    .select('passenger_id, booking_id, full_name, seat_id, id_number, id_image, birth_date, gender, passenger_status, checked_in_at')
+                    .select('passenger_id, booking_id, full_name, seat_id, id_number, id_image, birth_date, gender, passenger_status')
                     .in('booking_id', bookingIds);
 
                 const { data: ledger } = await supabase
@@ -94,7 +96,7 @@ export const useBookings = ({ page, pageSize, searchQuery, statusFilter }: UseBo
                     .order('created_at', { ascending: false });
 
                 const bookings: Booking[] = data.map((row: any) => ({
-                    booking_id: row.booking_id,
+                    booking_id: Number(row.booking_id),
                     booking_date: row.booking_date,
                     booking_status: row.booking_status,
                     payment_status: row.payment_status,
@@ -104,8 +106,8 @@ export const useBookings = ({ page, pageSize, searchQuery, statusFilter }: UseBo
                     partner_revenue: row.partner_revenue,
                     gateway_transaction_id: row.gateway_transaction_id,
                     payment_timestamp: row.payment_timestamp,
-                    auth_id: row.auth_id, // Updated from user_id to auth_id
-                    trip_id: row.trip_id,
+                    auth_id: row.auth_id,
+                    trip_id: Number(row.trip_id),
                     user: row.user_full_name ? {
                         full_name: row.user_full_name,
                         phone_number: row.user_phone_number

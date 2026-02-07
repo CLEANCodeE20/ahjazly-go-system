@@ -1,7 +1,8 @@
 -- ========================================================
--- NOTIFY ADMINS ON NEW PARTNER APPLICATION
+-- NOTIFY ADMINS ON NEW PARTNER APPLICATION (FIXED)
 -- Trigger: INSERT on partner_applications
 -- Action: Create notification for valid SUPERUSER/ADMINs
+-- Fixes: Uses auth_id instead of user_id, action_url instead of link
 -- ========================================================
 
 CREATE OR REPLACE FUNCTION public.notify_admin_on_new_application()
@@ -11,7 +12,7 @@ DECLARE
 BEGIN
   -- 1. Loop through all admins/superusers
   FOR admin_record IN 
-    SELECT u.user_id 
+    SELECT u.auth_id 
     FROM public.users u
     JOIN public.user_roles ur ON u.auth_id = ur.auth_id
     WHERE ur.role IN ('SUPERUSER', 'ADMIN')
@@ -19,22 +20,22 @@ BEGIN
     
     -- 2. Insert notification for each admin
     INSERT INTO public.notifications (
-      user_id,
+      auth_id,        -- corrected from user_id
       title,
       message,
       type,
       priority,
-      link,
+      action_url,     -- corrected from link
       metadata
     ) VALUES (
-      admin_record.user_id,
+      admin_record.auth_id,
       'طلب انضمام شريك جديد',
       'قام ' || NEW.company_name || ' بتقديم طلب انضمام جديد للمنصة. يرجى المراجعة.',
-      'system_alert',
+      'system',       -- corrected from system_alert to match ENUM
       'high',
       '/admin/partners?tab=applications',
       json_build_object(
-        'application_id', NEW.id,
+        'application_id', NEW.application_id,
         'company_name', NEW.company_name,
         'owner_phone', NEW.owner_phone
       )

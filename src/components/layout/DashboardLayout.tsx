@@ -194,6 +194,8 @@ export const DashboardLayout = ({ children, title, subtitle, actions }: Dashboar
                                     if (link.href === "/dashboard/admin-wallets" && !isAdmin) return null;
                                     if (link.href === "/dashboard/financial-analytics" && !isAdmin && !isPartner) return null;
                                     if (link.href === "/dashboard/partner-settlements" && !isAdmin) return null;
+                                    if (link.href === "/dashboard/wallet" && isPartner) return null; // Hide personal wallet from partner dashboard for isolation
+
 
                                     const badgeCount = link.badgeKey ? badges[link.badgeKey] : 0;
 

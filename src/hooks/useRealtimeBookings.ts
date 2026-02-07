@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from "react";
+import { useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -11,9 +11,16 @@ interface BookingPayload {
 }
 
 export const useRealtimeBookings = (onNewBooking?: (booking: BookingPayload['new']) => void) => {
+  // Use ref to hold the latest callback without triggering effect re-runs
+  const onNewBookingRef = useRef(onNewBooking);
+
+  useEffect(() => {
+    onNewBookingRef.current = onNewBooking;
+  }, [onNewBooking]);
+
   const handleNewBooking = useCallback((payload: BookingPayload) => {
     console.log("New booking received:", payload);
-    
+
     toast.success("حجز جديد!", {
       description: `تم استلام حجز جديد رقم BK-${payload.new.booking_id.toString().padStart(3, '0')} بقيمة ${payload.new.total_price} ر.س`,
       duration: 5000,
@@ -31,10 +38,10 @@ export const useRealtimeBookings = (onNewBooking?: (booking: BookingPayload['new
       console.log("Audio not supported");
     }
 
-    if (onNewBooking) {
-      onNewBooking(payload.new);
+    if (onNewBookingRef.current) {
+      onNewBookingRef.current(payload.new);
     }
-  }, [onNewBooking]);
+  }, []);
 
   useEffect(() => {
     console.log("Setting up realtime subscription for bookings...");

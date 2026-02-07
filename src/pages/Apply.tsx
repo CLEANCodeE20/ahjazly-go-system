@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
@@ -10,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Building2,
   User,
@@ -21,35 +23,55 @@ import {
   ArrowLeft,
   ArrowRight,
   Loader2,
-  Lock,
-  Eye,
-  EyeOff,
-  XCircle
+  MapPin,
+  Briefcase
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { WhatsAppButton } from "@/components/ui/WhatsAppButton";
+import { motion, AnimatePresence } from "framer-motion";
 
-// 1. Define Enhanced Zod Schema with Best Practices
+// 1. Define Enhanced Zod Schema with Yemeni Validation
 const applyFormSchema = z.object({
+  // Company Info
+  companyName: z.string()
+    .min(2, "اسم الشركة مطلوب")
+    .max(200, "اسم الشركة طويل جداً")
+    .trim(),
+
+  companyCity: z.string()
+    .min(1, "يرجى اختيار المدينة"), // Now a dropdown ID/Name
+
+  companyAddress: z.string()
+    .max(500, "العنوان طويل جداً")
+    .optional(),
+
+  commercialRegistration: z.string()
+    .min(1, "رقم السجل التجاري مطلوب")
+    .trim(),
+
+  website: z.string()
+    .url("رابط الموقع غير صحيح")
+    .trim()
+    .optional()
+    .or(z.literal("")),
+
   // Owner Info
   ownerName: z.string()
-    .min(3, "الاسم يجب أن يكون 3 أحرف على الأقل")
+    .min(3, "الاسم الرباعي مطلوب")
     .max(100, "الاسم طويل جداً")
     .trim(),
 
   ownerPhone: z.string()
-    .regex(/^(05|5)\d{8}$/, "رقم الجوال يجب أن يبدأ بـ 05 ويتكون من 10 أرقام")
-    .transform(val => val.startsWith('5') ? '0' + val : val), // تطبيع الرقم
+    .regex(/^(77|73|71|70|01|02|03|04|05)\d{7}$/, "رقم الهاتف غير صحيح (يجب أن يبدأ بـ 77, 73, 71, 70 او مفتاح المحافظة)")
+    .min(9, "رقم الهاتف قصير"),
 
   ownerEmail: z.string()
     .email("البريد الإلكتروني غير صحيح")
     .toLowerCase()
-    .trim()
-    .max(255, "البريد الإلكتروني طويل جداً"),
+    .trim(),
 
   ownerIdNumber: z.string()
-    .regex(/^\d{10}$/, "رقم الهوية يجب أن يكون 10 أرقام")
+    .min(5, "رقم الهوية مطلوب")
     .optional()
     .or(z.literal("")),
 
@@ -61,73 +83,13 @@ const applyFormSchema = z.object({
 
   confirmPassword: z.string(),
 
-  // Company Info
-  companyName: z.string()
-    .min(2, "اسم الشركة مطلوب")
-    .max(200, "اسم الشركة طويل جداً")
-    .trim(),
-
-  companyEmail: z.string()
-    .email("بريد الشركة غير صحيح")
-    .toLowerCase()
-    .trim()
-    .optional()
-    .or(z.literal("")),
-
-  companyPhone: z.string()
-    .regex(/^(05|5)\d{8}$/, "رقم الهاتف غير صحيح")
-    .transform(val => val.startsWith('5') ? '0' + val : val)
-    .optional()
-    .or(z.literal("")),
-
-  companyAddress: z.string()
-    .max(500, "العنوان طويل جداً")
-    .optional(),
-
-  companyCity: z.string()
-    .min(2, "المدينة مطلوبة")
-    .max(100, "اسم المدينة طويل جداً")
-    .trim(),
-
-  commercialRegistration: z.string()
-    .min(1, "رقم السجل التجاري مطلوب")
-    .regex(/^\d{10}$/, "رقم السجل التجاري يجب أن يكون 10 أرقام")
-    .trim(),
-
-  fleetSize: z.preprocess(
-    (val) => (val === "" || val === null || val === undefined) ? undefined : Number(val),
-    z.number()
-      .min(1, "يجب أن يكون لديك حافلة واحدة على الأقل")
-      .max(1000, "العدد كبير جداً")
-      .optional()
-  ),
-
-  website: z.string()
-    .url("رابط الموقع غير صحيح")
-    .trim()
-    .optional()
-    .or(z.literal("")),
-
-  taxNumber: z.string()
-    .regex(/^\d{15}$/, "الرقم الضريبي يجب أن يكون 15 رقم")
-    .optional()
-    .or(z.literal("")),
-
-
-  // Financial Info - Removed (will be collected after approval)
-
-  // Documents (handled separately with file validation)
-  // Documents (handled separately with file validation)
+  // Documents
   commercialRegister: z.any()
-    .refine((file) => file instanceof File, "يرجى إرفاق السجل التجاري كملف"),
+    .refine((file) => file instanceof File, "يرجى إرفاق صورة السجل التجاري"),
+
   taxCertificate: z.any()
-    .refine((file) => file instanceof File, "يرجى إرفاق شهادة الزكاة كملف"),
+    .refine((file) => file instanceof File, "يرجى إرفاق صورة البطاقة الضريبية"),
 
-  description: z.string()
-    .max(1000, "الوصف طويل جداً")
-    .optional(),
-
-  // Terms
   acceptTerms: z.boolean().refine(val => val === true, "يجب الموافقة على الشروط"),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "كلمات المرور غير متطابقة",
@@ -136,491 +98,172 @@ const applyFormSchema = z.object({
 
 type ApplyFormValues = z.infer<typeof applyFormSchema>;
 
-// 2. File Validation Helper
 const validateFile = (file: File | null): { valid: boolean; error?: string } => {
   if (!file) return { valid: true };
-
   const maxSize = 5 * 1024 * 1024; // 5MB
   const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf'];
-
-  if (file.size > maxSize) {
-    return { valid: false, error: 'حجم الملف يجب أن يكون أقل من 5 ميجابايت' };
-  }
-
-  if (!allowedTypes.includes(file.type)) {
-    return { valid: false, error: 'نوع الملف غير مدعوم. الأنواع المسموحة: JPG, PNG, PDF' };
-  }
-
+  if (file.size > maxSize) return { valid: false, error: 'حجم الملف يجب أن يكون أقل من 5 ميجابايت' };
+  if (!allowedTypes.includes(file.type)) return { valid: false, error: 'الأنواع المسموحة: JPG, PNG, PDF' };
   return { valid: true };
-};
-
-// Rate limiting removed as per user request
-
-// 4. Input Sanitization
-const sanitizeInput = (input: string): string => {
-  return input
-    .trim()
-    .replace(/[<>]/g, '') // Remove HTML tags
-    .substring(0, 1000); // Limit length
 };
 
 const Apply = () => {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
+  const [cities, setCities] = useState<{ id: number; name_ar: string }[]>([]);
+  const [isLoadingCities, setIsLoadingCities] = useState(true);
 
-  // 5. Initialize Form
+  // Initialize Form
   const form = useForm<ApplyFormValues>({
     resolver: zodResolver(applyFormSchema),
     mode: "onChange",
     defaultValues: {
+      companyName: "",
+      companyCity: "",
+      companyAddress: "",
+      commercialRegistration: "",
+      website: "",
       ownerName: "",
       ownerPhone: "",
       ownerEmail: "",
       ownerIdNumber: "",
       password: "",
       confirmPassword: "",
-      // Company
-      companyName: "",
-      companyEmail: "",
-      companyPhone: "",
-      companyAddress: "",
-      companyCity: "",
-      fleetSize: undefined,
-      website: "",
-      commercialRegistration: "",
-      taxNumber: "",
-      // Bank fields removed - will be collected after approval
-      // Checkbox
       acceptTerms: false,
     }
   });
 
-  // 6. Auto-save functionality
+  // Fetch Cities
   useEffect(() => {
-    const saveFormData = () => {
-      const formData = form.getValues();
-      // Don't save sensitive data
-      const { password, confirmPassword, ...safeData } = formData;
-      localStorage.setItem('partner_application_draft', JSON.stringify({
-        ...safeData,
-        savedAt: new Date().toISOString()
-      }));
-    };
-
-    const interval = setInterval(saveFormData, 60000); // Every 60 seconds
-    return () => clearInterval(interval);
-  }, [form]);
-
-  // 7. Restore saved data on mount
-  useEffect(() => {
-    const savedData = localStorage.getItem('partner_application_draft');
-    if (savedData) {
+    const fetchCities = async () => {
       try {
-        const parsed = JSON.parse(savedData);
-        const savedDate = new Date(parsed.savedAt);
-        const hoursSince = (Date.now() - savedDate.getTime()) / (1000 * 60 * 60);
+        const { data, error } = await supabase
+          .from('cities')
+          .select('city_id, name_ar') // Assuming schema based on user info
+          .order('name_ar');
 
-        if (hoursSince < 24) {
-          const { savedAt, ...formData } = parsed;
-          form.reset(formData);
-          toast({
-            title: "تم استعادة البيانات المحفوظة",
-            description: `آخر حفظ: ${savedDate.toLocaleString('ar-SA')}`,
-            duration: 5000
-          });
+        if (error) {
+          console.error('Error fetching cities:', error);
+          // Fallback if table structure is different or empty
+          setCities([
+            { id: 1, name_ar: "صنعاء" },
+            { id: 2, name_ar: "عدن" },
+            { id: 3, name_ar: "تعز" },
+            { id: 4, name_ar: "حضرموت" },
+            { id: 5, name_ar: "الحديدة" },
+            { id: 6, name_ar: "إب" },
+            { id: 7, name_ar: "مأرب" },
+          ]);
         } else {
-          localStorage.removeItem('partner_application_draft');
+          // Type assertion or mapping if needed
+          setCities(data?.map((c: any) => ({ id: c.city_id, name_ar: c.name_ar })) || []);
         }
-      } catch (error) {
-        console.error('Error restoring saved data:', error);
-        localStorage.removeItem('partner_application_draft');
-      }
-    }
-  }, [form]);
-
-  // 8. Warn before leaving with unsaved changes
-  useEffect(() => {
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (form.formState.isDirty && !submitted) {
-        e.preventDefault();
-        e.returnValue = '';
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setIsLoadingCities(false);
       }
     };
 
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [form.formState.isDirty, submitted]);
+    fetchCities();
+  }, []);
 
-  // Helper for file upload
-  const uploadFile = async (file: File, path: string): Promise<string | null> => {
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${path}/${Date.now()}.${fileExt}`;
+  // Steps Configuration
+  const steps = [
+    { id: 1, title: "بيانات الشركة", icon: Building2 },
+    { id: 2, title: "بيانات المالك", icon: User },
+    { id: 3, title: "المستندات", icon: FileText },
+    { id: 4, title: "المراجعة", icon: CheckCircle2 },
+  ];
 
-    const { data, error } = await supabase.storage
-      .from('partner-documents')
-      .upload(fileName, file);
-
-    if (error) {
-      console.error('Upload error:', error);
-      return null;
-    }
-
-    const { data: urlData } = supabase.storage
-      .from('partner-documents')
-      .getPublicUrl(data.path);
-
-    return urlData.publicUrl;
-  };
-
-  // 3. Multi-step Validation
   const nextStep = async () => {
-    let fieldsToValidate: (keyof ApplyFormValues)[] = [];
+    let fields: (keyof ApplyFormValues)[] = [];
+    if (step === 1) fields = ['companyName', 'companyCity', 'commercialRegistration', 'companyAddress'];
+    if (step === 2) fields = ['ownerName', 'ownerPhone', 'ownerEmail', 'password', 'confirmPassword'];
+    if (step === 3) fields = ['commercialRegister', 'taxCertificate'];
 
-    if (step === 1) {
-      fieldsToValidate = ['ownerName', 'ownerPhone', 'ownerEmail', 'password', 'confirmPassword'];
-    } else if (step === 2) {
-      fieldsToValidate = ['companyName', 'companyCity', 'commercialRegistration', 'website', 'taxNumber'];
-      // Step 3 removed - bank fields will be collected after approval
-    }
-
-    const isValid = await form.trigger(fieldsToValidate);
-    if (isValid) {
-      setStep(prev => prev + 1);
-    } else {
-      toast({
-        title: "بيانات ناقصة",
-        description: "يرجى التحقق من الخانات المطلوبة قبل المتابعة",
-        variant: "destructive"
-      });
-    }
+    const isValid = await form.trigger(fields);
+    if (isValid) setStep(prev => prev + 1);
   };
 
   const prevStep = () => setStep(prev => prev - 1);
 
-  // 9. Submit Handler with Best Practices
   const onSubmit = async (values: ApplyFormValues) => {
     setIsSubmitting(true);
-
-    // Track uploaded files for rollback
     let uploadedFiles: string[] = [];
-    let authUserId: string | null = null;
 
     try {
-      // Rate limiting check removed
+      // 1. Upload Files
+      const uploadFile = async (file: File, prefix: string) => {
+        const ext = file.name.split('.').pop();
+        const fileName = `${prefix}_${Date.now()}.${ext}`;
+        const { data, error } = await supabase.storage.from('partner-documents').upload(fileName, file);
+        if (error) throw error;
+        uploadedFiles.push(data.path);
+        const { data: urlData } = supabase.storage.from('partner-documents').getPublicUrl(data.path);
+        return urlData.publicUrl;
+      };
 
-      // 1. Validate Files
-      const commercialRegFile = values.commercialRegister as File | null;
-      const taxCertFile = values.taxCertificate as File | null;
+      const crUrl = await uploadFile(values.commercialRegister, 'cr');
+      const taxUrl = await uploadFile(values.taxCertificate, 'tax');
 
-      const commercialValidation = validateFile(commercialRegFile);
-      if (!commercialValidation.valid) {
-        toast({
-          title: "خطأ في ملف السجل التجاري",
-          description: commercialValidation.error,
-          variant: "destructive"
-        });
-        setIsSubmitting(false);
-        return;
-      }
-
-      const taxValidation = validateFile(taxCertFile);
-      if (!taxValidation.valid) {
-        toast({
-          title: "خطأ في ملف شهادة الزكاة",
-          description: taxValidation.error,
-          variant: "destructive"
-        });
-        setIsSubmitting(false);
-        return;
-      }
-
-      // 3. Check if email already exists
-      const { data: existingUser } = await supabase
-        .from('users')
-        .select('email')
-        .eq('email', values.ownerEmail)
-        .single();
-
-      if (existingUser) {
-        toast({
-          title: "البريد الإلكتروني مستخدم",
-          description: (
-            <div className="space-y-2">
-              <p>هذا البريد الإلكتروني مسجل مسبقاً في النظام.</p>
-              <p className="text-sm">إذا كنت قد قدمت طلباً سابقاً، يرجى انتظار المراجعة.</p>
-              <p className="text-sm">أو يمكنك <a href="/login" className="underline font-medium">تسجيل الدخول</a> إذا كان لديك حساب.</p>
-            </div>
-          ),
-          variant: "destructive",
-          duration: 8000
-        });
-
-        setIsSubmitting(false);
-        return;
-      }
-
-      // 4. Create auth user
+      // 2. Auth User
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: values.ownerEmail,
         password: values.password,
         options: {
-          emailRedirectTo: `${window.location.origin}/login`,
-          data: {
-            full_name: values.ownerName,
-            phone: values.ownerPhone
-          }
+          data: { full_name: values.ownerName, phone: values.ownerPhone }
         }
       });
 
-      if (authError) {
-        console.error('Auth signup error:', {
-          message: authError.message,
-          status: authError.status,
-          timestamp: new Date().toISOString()
-        });
+      if (authError) throw authError;
 
-        // Smart Auth Recovery: Check if user already exists
-        if (authError.message.includes('already registered') || authError.message.includes('User already registered')) {
-          console.log('[Apply] User exists, attempting to sign in...');
-
-          try {
-            // Attempt to sign in with the provided password
-            const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-              email: values.ownerEmail,
-              password: values.password
-            });
-
-            if (signInData.user && !signInError) {
-              console.log('[Apply] Sign in successful, proceeding with existing user');
-              authData.user = signInData.user;
-              // Clear error to allow flow to continue
-            } else {
-              console.error('[Apply] Auto-sign in failed:', signInError);
-              toast({
-                title: "الحساب موجود مسبقاً",
-                description: "البريد الإلكتروني مسجل لكن كلمة المرور غير صحيحة. يرجى تسجيل الدخول أو استعادة كلمة المرور.",
-                variant: "destructive",
-                duration: 6000
-              });
-              setIsSubmitting(false);
-              return;
-            }
-          } catch (loginErr) {
-            console.error('[Apply] Login attempt error:', loginErr);
-            toast({
-              title: "لم نتمكن من تسجيل الدخول",
-              description: "البريد مسجل مسبقاً. يرجى المحاولة من صفحة تسجيل الدخول.",
-              variant: "destructive"
-            });
-            setIsSubmitting(false);
-            return;
-          }
-        } else if (authError.message.includes('network')) {
-          toast({
-            title: "خطأ في الاتصال",
-            description: "يرجى التحقق من اتصالك بالإنترنت والمحاولة مرة أخرى",
-            variant: "destructive"
-          });
-          throw authError; // Stop execution for network errors
-        } else {
-          toast({
-            title: "خطأ في إنشاء الحساب",
-            description: authError.message || "حدث خطأ غير متوقع",
-            variant: "destructive"
-          });
-          throw authError; // Stop execution for other errors
-        }
-      }
-
-      authUserId = authData.user?.id || null;
-
-      // 5. Upload files
-      let commercialRegisterUrl = null;
-      let taxCertificateUrl = null;
-
-      if (commercialRegFile instanceof File) {
-        commercialRegisterUrl = await uploadFile(commercialRegFile, `applications/${authUserId || 'anonymous'}/commercial`);
-        if (commercialRegisterUrl) {
-          uploadedFiles.push(commercialRegisterUrl);
-        } else {
-          throw new Error('فشل رفع ملف السجل التجاري');
-        }
-      }
-
-      if (taxCertFile instanceof File) {
-        taxCertificateUrl = await uploadFile(taxCertFile, `applications/${authUserId || 'anonymous'}/tax`);
-        if (taxCertificateUrl) {
-          uploadedFiles.push(taxCertificateUrl);
-        } else {
-          throw new Error('فشل رفع ملف شهادة الزكاة');
-        }
-      }
-
-      // 6. Create application with sanitized data
-      const applicationData = {
-        owner_name: sanitizeInput(values.ownerName),
+      // 3. Insert Application
+      const { error: appError } = await supabase.from('partner_applications').insert({
+        company_name: values.companyName,
+        company_city: values.companyCity, // Now storing city name or ID
+        company_address: values.companyAddress,
+        company_email: values.ownerEmail, // Using owner email as contact for now
+        company_phone: values.ownerPhone, // Using owner phone as company phone
+        owner_name: values.ownerName,
         owner_phone: values.ownerPhone,
-        owner_email: values.ownerEmail.toLowerCase(),
-        owner_id_number: values.ownerIdNumber || null,
-        company_name: sanitizeInput(values.companyName),
-        company_email: values.companyEmail?.toLowerCase() || null,
-        company_phone: values.companyPhone || null,
-        company_address: values.companyAddress ? sanitizeInput(values.companyAddress) : null,
-        company_city: sanitizeInput(values.companyCity),
-        fleet_size: values.fleetSize || null,
-        commercial_registration: values.commercialRegistration,
-        website: values.website || null,
-        tax_number: values.taxNumber || null,
-        // Bank fields removed - will be collected after approval
-        commercial_register_url: commercialRegisterUrl,
-        tax_certificate_url: taxCertificateUrl,
-        description: values.description ? sanitizeInput(values.description) : null,
-        auth_user_id: authUserId,
+        owner_email: values.ownerEmail,
+        owner_id_number: values.ownerIdNumber,
+        commercial_register_url: crUrl,
+        tax_certificate_url: taxUrl,
+        auth_user_id: authData.user?.id,
         status: 'pending'
-      };
+      });
 
-      console.log('Submitting application:', { ...applicationData, auth_user_id: '***' });
+      if (appError) throw appError;
 
-      const { error: appError } = await supabase
-        .from('partner_applications')
-        .insert(applicationData);
-
-      if (appError) {
-        console.error('Application insert error:', {
-          message: appError.message,
-          code: appError.code,
-          details: appError.details,
-          timestamp: new Date().toISOString()
-        });
-
-        // Handle specific database errors
-        if (appError.code === '23505') {
-          toast({
-            title: "بيانات مكررة",
-            description: "يبدو أن هناك طلب مسجل بنفس البيانات",
-            variant: "destructive"
-          });
-        } else if (appError.code === '23503') {
-          toast({
-            title: "خطأ في البيانات",
-            description: "هناك مشكلة في الربط بين البيانات",
-            variant: "destructive"
-          });
-        } else {
-          toast({
-            title: "خطأ في حفظ الطلب",
-            description: appError.message || "حدث خطأ غير متوقع",
-            variant: "destructive"
-          });
-        }
-
-        throw appError;
-      }
-
-      // 7. Create user profile
-      if (authUserId) {
-        const { error: userError } = await supabase.from('users').insert({
-          auth_id: authUserId,
-          full_name: sanitizeInput(values.ownerName),
-          email: values.ownerEmail.toLowerCase(),
-          phone_number: values.ownerPhone,
-          account_status: 'pending'
-        });
-
-        if (userError) {
-          console.error('User profile creation error:', userError);
-          // Don't throw here, application is already created
-        }
-
-        // 8. Insert documents
-        if (commercialRegisterUrl) {
-          await supabase.from('documents').insert({
-            auth_id: authUserId,
-            document_type: 'registration',
-            document_url: commercialRegisterUrl,
-            verification_status: 'pending'
-          } as any);
-        }
-
-        if (taxCertificateUrl) {
-          await supabase.from('documents').insert({
-            auth_id: authUserId,
-            document_type: 'tax_certificate',
-            document_url: taxCertificateUrl,
-            verification_status: 'pending'
-          } as any);
-        }
-      }
-
-      // 9. Sign out and clear saved data
-      await supabase.auth.signOut();
-      localStorage.removeItem('partner_application_draft');
-      localStorage.removeItem(`apply_attempts_${values.ownerEmail}`);
-
-      setSubmitted(true);
+      setStep(5); // Success Step
+      toast({ title: "تم تقديم الطلب بنجاح!", description: "سيتم مراجعة طلبك وإشعارك قريباً." });
 
     } catch (error: any) {
-      console.error('Submission Error:', {
-        message: error.message,
-        stack: error.stack,
-        timestamp: new Date().toISOString()
-      });
-
-      // Rollback: Delete uploaded files
-      if (uploadedFiles.length > 0) {
-        console.log('Rolling back uploaded files:', uploadedFiles);
-        for (const fileUrl of uploadedFiles) {
-          try {
-            const filePath = fileUrl.split('/partner-documents/')[1];
-            if (filePath) {
-              await supabase.storage.from('partner-documents').remove([filePath]);
-            }
-          } catch (rollbackError) {
-            console.error('Rollback error:', rollbackError);
-          }
-        }
-      }
-
-      // Note: Cannot delete auth user from client side
-      if (authUserId) {
-        console.warn('Auth user created but application failed. User ID:', authUserId);
-      }
-
-      // Show generic error if not already shown
-      if (!error.message.includes('البريد')) {
-        toast({
-          title: "حدث خطأ",
-          description: error.message || "فشل إرسال الطلب. يرجى المحاولة مرة أخرى",
-          variant: "destructive"
-        });
-      }
-
-
+      console.error(error);
+      toast({ title: "حدث خطأ", description: error.message || "فشل تقديم الطلب", variant: "destructive" });
+      // Cleanup uploaded files if needed
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  if (submitted) {
+  if (step === 5) {
     return (
-      <div className="min-h-screen flex flex-col">
+      <div className="min-h-screen flex flex-col bg-gray-50/50">
         <Header />
-        <WhatsAppButton />
-        <main className="flex-1 flex items-center justify-center pt-24 pb-16">
-          <div className="max-w-md w-full px-4 text-center animate-fade-in">
-            <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-6">
+        <main className="flex-1 flex items-center justify-center p-4">
+          <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center space-y-6">
+            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto">
               <CheckCircle2 className="w-10 h-10 text-green-600" />
             </div>
-            <h1 className="text-3xl font-bold text-foreground mb-4">تم إرسال طلبك بنجاح!</h1>
-            <p className="text-muted-foreground mb-8 text-lg">
-              شكراً لاهتمامك بالانضمام إلى منصة "احجزلي". سنقوم بمراجعة طلبك والتواصل معك عبر البريد الإلكتروني خلال 48 ساعة عمل.
-            </p>
-            <Button size="lg" className="w-full" asChild>
-              <Link to="/">العودة للرئيسية</Link>
-            </Button>
+            <h2 className="text-2xl font-bold text-gray-900">تم استلام طلبك بنجاح</h2>
+            <p className="text-gray-600">شكراً لاهتمامك بالانضمام إلينا. سنقوم بمراجعة طلبك والرد عليك خلال 48 ساعة عمل.</p>
+            <Link to="/">
+              <Button className="w-full mt-4">العودة للرئيسية</Button>
+            </Link>
           </div>
         </main>
         <Footer />
@@ -629,468 +272,397 @@ const Apply = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-slate-50">
       <Header />
-
-      <main className="flex-1 pt-24 pb-16">
-        <div className="container mx-auto px-4">
-          <div className="max-w-3xl mx-auto text-center mb-12">
-            <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
-              انضم إلى منصة احجزلي
-            </h1>
-            <p className="text-muted-foreground text-lg">
-              أكمل النموذج التالي لتقديم طلب انضمام شركتك إلى المنصة
-            </p>
-          </div>
-
-          {/* Steps Indicator */}
-          <div className="max-w-2xl mx-auto mb-8">
-            <div className="flex items-center justify-between">
-              {[
-                { num: 1, label: "معلومات المالك" },
-                { num: 2, label: "بيانات الشركة" },
-                { num: 3, label: "الوثائق" }
-              ].map((s, index) => (
-                <div key={s.num} className="flex items-center">
-                  <div className="flex flex-col items-center">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold transition-all ${step >= s.num
-                      ? "gradient-primary text-primary-foreground"
-                      : "bg-muted text-muted-foreground"
-                      }`}>
-                      {step > s.num ? <CheckCircle2 className="w-5 h-5" /> : s.num}
-                    </div>
-                    <span className={`text-sm mt-2 ${step >= s.num ? "text-foreground" : "text-muted-foreground"}`}>
-                      {s.label}
-                    </span>
+      <main className="flex-1 pt-24 pb-16 px-4">
+        <div className="max-w-4xl mx-auto">
+          {/* Progress Bar */}
+          <div className="mb-8">
+            <div className="flex justify-between items-center relative z-10">
+              {steps.map((s) => (
+                <div key={s.id} className="flex flex-col items-center gap-2">
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${step >= s.id ? 'bg-primary text-white shadow-lg scale-110' : 'bg-gray-200 text-gray-400'
+                    }`}>
+                    <s.icon className="w-5 h-5" />
                   </div>
-                  {index < 2 && (
-                    <div className={`w-16 md:w-24 h-1 mx-2 rounded-full transition-all ${step > s.num ? "bg-primary" : "bg-muted"
-                      }`} />
-                  )}
+                  <span className={`text-sm font-medium ${step >= s.id ? 'text-primary' : 'text-gray-400'}`}>
+                    {s.title}
+                  </span>
                 </div>
               ))}
             </div>
+            <div className="absolute top-32 left-0 w-full h-1 bg-gray-200 -z-0 hidden md:block">
+              <div
+                className="h-full bg-primary transition-all duration-500 ease-out"
+                style={{ width: `${((step - 1) / (steps.length - 1)) * 100}%` }}
+              />
+            </div>
           </div>
 
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="max-w-2xl mx-auto">
-              <div className="bg-card rounded-2xl border border-border p-6 md:p-8 shadow-elegant">
+          <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
+            <div className="bg-primary/5 p-6 border-b border-gray-100">
+              <h1 className="text-2xl font-bold text-gray-900">طلب انضمام شريك</h1>
+              <p className="text-gray-500 mt-1">انضم لشبكة أحجزلي وابدأ بتوسيع نطاق أعمالك</p>
+            </div>
 
-                {/* Step 1: Owner Info */}
-                {step === 1 && (
-                  <div className="space-y-6 animate-fade-in">
-                    <div className="flex items-center gap-3 mb-6">
-                      <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center">
-                        <User className="w-5 h-5 text-primary-foreground" />
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="p-6 md:p-8 space-y-6">
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={step}
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    {step === 1 && (
+                      <div className="space-y-6">
+                        <div className="grid md:grid-cols-2 gap-6">
+                          <FormField
+                            control={form.control}
+                            name="companyName"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>اسم الشركة / المؤسسة</FormLabel>
+                                <FormControl>
+                                  <div className="relative">
+                                    <Building2 className="absolute right-3 top-3 h-4 w-4 text-gray-400" />
+                                    <Input className="pr-10" placeholder="مثال: شركة النقل السريع" {...field} />
+                                  </div>
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={form.control}
+                            name="companyCity"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>المحافظة/المدينة</FormLabel>
+                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                  <FormControl>
+                                    <SelectTrigger>
+                                      <SelectValue placeholder="اختر المدينة" />
+                                    </SelectTrigger>
+                                  </FormControl>
+                                  <SelectContent>
+                                    {isLoadingCities ? (
+                                      <div className="p-2 text-center text-sm text-gray-500">جاري التحميل...</div>
+                                    ) : (
+                                      cities.map((city) => (
+                                        <SelectItem key={city.id} value={city.name_ar}>
+                                          {city.name_ar}
+                                        </SelectItem>
+                                      ))
+                                    )}
+                                  </SelectContent>
+                                </Select>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={form.control}
+                            name="commercialRegistration"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>رقم السجل التجاري</FormLabel>
+                                <FormControl>
+                                  <div className="relative">
+                                    <FileText className="absolute right-3 top-3 h-4 w-4 text-gray-400" />
+                                    <Input className="pr-10" {...field} />
+                                  </div>
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={form.control}
+                            name="companyAddress"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>العنوان التفصيلي</FormLabel>
+                                <FormControl>
+                                  <div className="relative">
+                                    <MapPin className="absolute right-3 top-3 h-4 w-4 text-gray-400" />
+                                    <Input className="pr-10" placeholder="الشارع، الحي..." {...field} />
+                                  </div>
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
                       </div>
-                      <h2 className="text-xl font-semibold text-foreground">معلومات صاحب الشركة</h2>
-                    </div>
+                    )}
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="ownerName"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>الاسم الكامل *</FormLabel>
-                            <FormControl>
-                              <Input placeholder="الاسم الكامل" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="ownerIdNumber"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>رقم الهوية</FormLabel>
-                            <FormControl>
-                              <Input placeholder="رقم الهوية الوطنية" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="ownerPhone"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>رقم الجوال *</FormLabel>
-                            <FormControl>
-                              <div className="relative">
-                                <Phone className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                                <Input className="pr-10" placeholder="05xxxxxxxx" {...field} />
-                              </div>
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="ownerEmail"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>البريد الإلكتروني *</FormLabel>
-                            <FormControl>
-                              <div className="relative">
-                                <Mail className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                                <Input className="pr-10" type="email" placeholder="email@example.com" {...field} />
-                              </div>
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-
-                    <div className="border-t border-border pt-6 mt-6">
-                      <h3 className="text-lg font-medium text-foreground mb-4 flex items-center gap-2">
-                        <Lock className="w-5 h-5 text-primary" />
-                        إنشاء كلمة مرور للحساب
-                      </h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <FormField
-                          control={form.control}
-                          name="password"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>كلمة المرور *</FormLabel>
-                              <FormControl>
-                                <div className="relative">
-                                  <Lock className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                                  <Input
-                                    className="pr-10 pl-10"
-                                    type={showPassword ? "text" : "password"}
-                                    placeholder="6 أحرف على الأقل"
-                                    {...field}
-                                  />
-                                  <button
-                                    type="button"
-                                    className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                                    onClick={() => setShowPassword(!showPassword)}
-                                  >
-                                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                                  </button>
-                                </div>
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="confirmPassword"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>تأكيد كلمة المرور *</FormLabel>
-                              <FormControl>
-                                <div className="relative">
-                                  <Lock className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                                  <Input
-                                    className="pr-10"
-                                    type={showPassword ? "text" : "password"}
-                                    placeholder="تأكيد كلمة المرور"
-                                    {...field}
-                                  />
-                                </div>
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Step 2: Company Info */}
-                {step === 2 && (
-                  <div className="space-y-6 animate-fade-in">
-                    <div className="flex items-center gap-3 mb-6">
-                      <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center">
-                        <Building2 className="w-5 h-5 text-primary-foreground" />
-                      </div>
-                      <h2 className="text-xl font-semibold text-foreground">بيانات الشركة</h2>
-                    </div>
-
-                    <FormField
-                      control={form.control}
-                      name="companyName"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>اسم الشركة *</FormLabel>
-                          <FormControl>
-                            <Input placeholder="الاسم التجاري للشركة" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="companyEmail"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>البريد الإلكتروني للشركة</FormLabel>
-                            <FormControl>
-                              <Input type="email" placeholder="info@company.com" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="companyPhone"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>هاتف الشركة</FormLabel>
-                            <FormControl>
-                              <Input placeholder="الهاتف الثابت" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="companyCity"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>المدينة *</FormLabel>
-                            <FormControl>
-                              <Input placeholder="المدينة" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="commercialRegistration"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>رقم السجل التجاري *</FormLabel>
-                            <FormControl>
-                              <Input placeholder="1010xxxxxx" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="fleetSize"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>عدد الحافلات</FormLabel>
-                            <FormControl>
-                              <Input
-                                type="number"
-                                placeholder="عدد الحافلات"
-                                min="1"
-                                {...field}
-                                value={field.value || ''}
-                                onChange={(e) => field.onChange(e.target.valueAsNumber)}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="website"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>الموقع الإلكتروني</FormLabel>
-                            <FormControl>
-                              <Input placeholder="https://..." {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                    <FormField
-                      control={form.control}
-                      name="taxNumber"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>الرقم الضريبي</FormLabel>
-                          <FormControl>
-                            <Input placeholder="الرقم الضريبي" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="companyAddress"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>العنوان التفصيلي</FormLabel>
-                          <FormControl>
-                            <Textarea placeholder="العنوان الكامل" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                )}
-
-
-                {/* Step 3: Financial Info - Removed (will be collected after approval) */}
-
-                {/* Step 3: Documents and Final Submit */}
-                {step === 3 && (
-                  <div className="space-y-6 animate-fade-in">
-                    <div className="flex items-center gap-3 mb-6">
-                      <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center">
-                        <FileText className="w-5 h-5 text-primary-foreground" />
-                      </div>
-                      <h2 className="text-xl font-semibold text-foreground">الوثائق المطلوبة</h2>
-                    </div>
-
-                    {/* File Uploads - Handling manually inside React Hook Form logic */}
-                    <div className="space-y-4">
-                      <div className="border-2 border-dashed border-border p-6 rounded-xl text-center">
-                        <p className="font-medium mb-2">السجل التجاري</p>
-                        <Input
-                          type="file"
-                          accept="image/*,.pdf"
-                          onChange={(e) => {
-                            if (e.target.files) form.setValue('commercialRegister', e.target.files[0]);
-                          }}
-                        />
-                        {form.watch('commercialRegister') && (
-                          <p className="text-sm text-green-600 mt-2 flex items-center justify-center gap-1">
-                            <CheckCircle2 className="w-4 h-4" /> تم اختيار الملف
-                          </p>
-                        )}
-                      </div>
-                      <div className="border-2 border-dashed border-border p-6 rounded-xl text-center">
-                        <p className="font-medium mb-2">شهادة الزكاة</p>
-                        <Input
-                          type="file"
-                          accept="image/*,.pdf"
-                          onChange={(e) => {
-                            if (e.target.files) form.setValue('taxCertificate', e.target.files[0]);
-                          }}
-                        />
-                        {form.watch('taxCertificate') && (
-                          <p className="text-sm text-green-600 mt-2 flex items-center justify-center gap-1">
-                            <CheckCircle2 className="w-4 h-4" /> تم اختيار الملف
-                          </p>
-                        )}
-                      </div>
-                    </div>
-
-                    <FormField
-                      control={form.control}
-                      name="description"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>معلومات إضافية</FormLabel>
-                          <FormControl>
-                            <Textarea placeholder="أي معلومات إضافية.." {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="acceptTerms"
-                      render={({ field }) => (
-                        <FormItem className="flex flex-row items-start space-x-3 space-x-reverse space-y-0 rounded-md border p-4">
-                          <FormControl>
-                            <input
-                              type="checkbox"
-                              checked={field.value}
-                              onChange={field.onChange}
-                              className="w-4 h-4 mt-1 rounded border-gray-300 text-primary"
-                            />
-                          </FormControl>
-                          <div className="space-y-1 leading-none mr-2">
-                            <FormLabel>
-                              أوافق على شروط الاستخدام وسياسة الخصوصية
-                            </FormLabel>
-                            <FormMessage />
+                    {step === 2 && (
+                      <div className="space-y-6">
+                        <div className="bg-blue-50/50 p-4 rounded-lg border border-blue-100 flex items-start gap-4 mb-6">
+                          <div className="p-2 bg-blue-100 rounded-full">
+                            <User className="h-5 w-5 text-blue-600" />
                           </div>
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                )}
+                          <div>
+                            <h4 className="font-semibold text-blue-900">بيانات المسؤول</h4>
+                            <p className="text-sm text-blue-700">ستستخدم هذه البيانات لإنشاء حساب المدير وللتواصل الرسمي.</p>
+                          </div>
+                        </div>
 
-                {/* Navigation Buttons */}
-                <div className="flex justify-between mt-8 pt-6 border-t border-border">
+                        <div className="grid md:grid-cols-2 gap-6">
+                          <FormField
+                            control={form.control}
+                            name="ownerName"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>الاسم الرباعي</FormLabel>
+                                <FormControl>
+                                  <Input {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={form.control}
+                            name="ownerPhone"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>رقم الهاتف (واتساب)</FormLabel>
+                                <FormControl>
+                                  <div className="relative" dir="ltr">
+                                    <span className="absolute left-3 top-3 text-sm text-gray-500 font-medium">+967</span>
+                                    <Input className="pl-14 text-right" placeholder="77xxxxxxx" {...field} />
+                                    <Phone className="absolute right-3 top-3 h-4 w-4 text-gray-400" />
+                                  </div>
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={form.control}
+                            name="ownerEmail"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>البريد الإلكتروني</FormLabel>
+                                <FormControl>
+                                  <Input type="email" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={form.control}
+                            name="ownerIdNumber"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>رقم الهوية / جواز السفر</FormLabel>
+                                <FormControl>
+                                  <Input {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={form.control}
+                            name="password"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>كلمة المرور</FormLabel>
+                                <FormControl>
+                                  <Input type="password" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={form.control}
+                            name="confirmPassword"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>تأكيد كلمة المرور</FormLabel>
+                                <FormControl>
+                                  <Input type="password" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {step === 3 && (
+                      <div className="space-y-6">
+                        <div className="bg-amber-50/50 p-4 rounded-lg border border-amber-100 mb-6">
+                          <h4 className="font-semibold text-amber-900 flex items-center gap-2">
+                            <Upload className="h-5 w-5" />
+                            المرفقات المطلوبة
+                          </h4>
+                          <ul className="list-disc list-inside text-sm text-amber-700 mt-2 space-y-1">
+                            <li>صورة السجل التجاري (سارية المفعول)</li>
+                            <li>صورة البطاقة الضريبية</li>
+                            <li>التنسيقات المدعومة: PDF, JPG, PNG (بحد أقصى 5 ميجا)</li>
+                          </ul>
+                        </div>
+
+                        <div className="grid md:grid-cols-2 gap-6">
+                          <FormField
+                            control={form.control}
+                            name="commercialRegister"
+                            render={({ field: { onChange, value, ...field } }) => (
+                              <FormItem>
+                                <FormLabel>صورة السجل التجاري</FormLabel>
+                                <FormControl>
+                                  <div className="border-2 border-dashed border-gray-200 rounded-xl p-8 text-center hover:border-primary/50 transition-colors cursor-pointer bg-gray-50/50">
+                                    <input
+                                      type="file"
+                                      accept=".pdf,.jpg,.jpeg,.png"
+                                      className="hidden"
+                                      id="cr-upload"
+                                      onChange={(e) => onChange(e.target.files ? e.target.files[0] : null)}
+                                      {...field}
+                                    />
+                                    <label htmlFor="cr-upload" className="cursor-pointer flex flex-col items-center gap-2">
+                                      <Upload className="h-8 w-8 text-gray-400" />
+                                      <span className="text-sm font-medium text-gray-600">
+                                        {value ? (value as File).name : "اضغط لرفع الملف"}
+                                      </span>
+                                    </label>
+                                  </div>
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={form.control}
+                            name="taxCertificate"
+                            render={({ field: { onChange, value, ...field } }) => (
+                              <FormItem>
+                                <FormLabel>صورة البطاقة الضريبية</FormLabel>
+                                <FormControl>
+                                  <div className="border-2 border-dashed border-gray-200 rounded-xl p-8 text-center hover:border-primary/50 transition-colors cursor-pointer bg-gray-50/50">
+                                    <input
+                                      type="file"
+                                      accept=".pdf,.jpg,.jpeg,.png"
+                                      className="hidden"
+                                      id="tax-upload"
+                                      onChange={(e) => onChange(e.target.files ? e.target.files[0] : null)}
+                                      {...field}
+                                    />
+                                    <label htmlFor="tax-upload" className="cursor-pointer flex flex-col items-center gap-2">
+                                      <Upload className="h-8 w-8 text-gray-400" />
+                                      <span className="text-sm font-medium text-gray-600">
+                                        {value ? (value as File).name : "اضغط لرفع الملف"}
+                                      </span>
+                                    </label>
+                                  </div>
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {step === 4 && (
+                      <div className="space-y-6">
+                        <div className="bg-gray-50 p-6 rounded-xl border border-gray-200 space-y-4">
+                          <h3 className="text-lg font-bold">مراجعة البيانات</h3>
+                          <div className="grid md:grid-cols-2 gap-4 text-sm">
+                            <div>
+                              <span className="text-gray-500 block">اسم الشركة</span>
+                              <span className="font-medium">{form.getValues('companyName')}</span>
+                            </div>
+                            <div>
+                              <span className="text-gray-500 block">المدينة</span>
+                              <span className="font-medium">{form.getValues('companyCity')}</span>
+                            </div>
+                            <div>
+                              <span className="text-gray-500 block">اسم المدير</span>
+                              <span className="font-medium">{form.getValues('ownerName')}</span>
+                            </div>
+                            <div>
+                              <span className="text-gray-500 block">رقم الهاتف</span>
+                              <span className="font-medium">{form.getValues('ownerPhone')}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <FormField
+                          control={form.control}
+                          name="acceptTerms"
+                          render={({ field }) => (
+                            <FormItem className="flex flex-row items-start space-x-3 space-x-reverse space-y-0 rounded-md border p-4">
+                              <FormControl>
+                                <input
+                                  type="checkbox"
+                                  checked={field.value}
+                                  onChange={field.onChange}
+                                  className="h-4 w-4 mt-1 rounded border-gray-300 text-primary focus:ring-primary"
+                                />
+                              </FormControl>
+                              <div className="space-y-1 leading-none mr-3">
+                                <FormLabel>
+                                  أقر بصحة البيانات المرفقة وأوافق على <Link to="/terms" className="text-primary hover:underline">الشروط والأحكام</Link>
+                                </FormLabel>
+                                <FormMessage />
+                              </div>
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    )}
+                  </motion.div>
+                </AnimatePresence>
+
+                <div className="flex justify-between pt-6 border-t border-gray-100">
                   {step > 1 ? (
-                    <Button type="button" variant="outline" onClick={prevStep}>
-                      <ArrowRight className="w-4 h-4 ml-2" />
-                      السابق
+                    <Button type="button" variant="outline" onClick={prevStep} disabled={isSubmitting}>
+                      <ArrowRight className="ml-2 h-4 w-4" /> السابق
                     </Button>
-                  ) : (
-                    <div />
-                  )}
+                  ) : <div></div>}
 
                   {step < 4 ? (
                     <Button type="button" onClick={nextStep}>
-                      التالي
-                      <ArrowLeft className="w-4 h-4 mr-2" />
+                      التالي <ArrowLeft className="mr-2 h-4 w-4" />
                     </Button>
                   ) : (
-                    <Button type="submit" disabled={isSubmitting}>
+                    <Button type="submit" disabled={isSubmitting || !form.formState.isValid} className="bg-green-600 hover:bg-green-700">
                       {isSubmitting ? (
                         <>
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          جاري الإرسال...
+                          <Loader2 className="ml-2 h-4 w-4 animate-spin" /> جاري الإرسال
                         </>
                       ) : (
-                        <>
-                          إرسال الطلب
-                          <CheckCircle2 className="w-4 h-4 mr-2" />
-                        </>
+                        <>تأكيد وإرسال الطلب <CheckCircle2 className="mr-2 h-4 w-4" /></>
                       )}
                     </Button>
                   )}
                 </div>
 
-              </div>
-            </form>
-          </Form>
-
-          <p className="text-center text-muted-foreground text-sm mt-6">
-            هل لديك حساب بالفعل؟{" "}
-            <Link to="/login" className="text-primary hover:underline">
-              تسجيل الدخول
-            </Link>
-          </p>
+              </form>
+            </Form>
+          </div>
         </div>
-      </main >
-
+      </main>
       <Footer />
-    </div >
+    </div>
   );
 };
 

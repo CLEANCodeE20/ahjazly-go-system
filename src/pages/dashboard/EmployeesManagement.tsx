@@ -128,12 +128,13 @@ const EmployeesManagement = () => {
   }, [partnerId]);
 
   const fetchData = async () => {
+    if (!partnerId) return;
     setLoading(true);
 
     const [employeesRes, branchesRes, driversRes] = await Promise.all([
-      supabase.from('employees').select('*').order('created_at', { ascending: false }),
-      supabase.from('branches').select('branch_id, branch_name, city'),
-      supabase.from('drivers').select('*').order('created_at', { ascending: false })
+      supabase.from('employees').select('*').eq('partner_id', partnerId).order('created_at', { ascending: false }),
+      supabase.from('branches').select('branch_id, branch_name, city').eq('partner_id', partnerId),
+      supabase.from('drivers').select('*').eq('partner_id', partnerId).order('created_at', { ascending: false })
     ]);
 
     if (!employeesRes.error) setEmployees((employeesRes.data as any) || []);

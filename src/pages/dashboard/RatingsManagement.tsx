@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { StarRating } from '@/components/ratings/StarRating';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { usePartner } from '@/hooks/usePartner';
 import { Search, TrendingUp, AlertTriangle, MessageSquare, AlertCircle } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -43,53 +44,49 @@ export const RatingsManagement: React.FC = () => {
     const [selectedRating, setSelectedRating] = useState<number | null>(null);
     const [responseText, setResponseText] = useState('');
     const [showResponseDialog, setShowResponseDialog] = useState(false);
+    const { partnerId, isLoading: partnerLoading } = usePartner();
     const { toast } = useToast();
 
     useEffect(() => {
-        fetchRatingsNeedingAttention();
-    }, []);
+        if (!partnerLoading) {
+            fetchRatingsNeedingAttention();
+        }
+    }, [partnerLoading, partnerId]);
 
     const fetchRatingsNeedingAttention = async () => {
         setLoading(true);
         try {
-            // Query directly from ratings table instead of missing view
-            const { data, error } = await supabase
-                .from('ratings')
-                .select(`
-                    rating_id,
-                    stars,
-                    comment,
-                    rating_date,
-                    trip_id,
-                    partner_id,
-                    user_id,
-                    users:user_id(full_name),
-                    partners:partner_id(company_name)
-                `)
-                .lte('stars', 3)
-                .order('rating_date', { ascending: false })
-                .limit(50);
+            // Use the standardized view instead of manual query with broken relationships
+            let query = supabase
+                .from('v_ratings_requiring_attention')
+                .select('*');
+
+            // Apply partner isolation if not a superuser
+            if (partnerId) {
+                query = query.eq('partner_id', partnerId);
+            }
+
+            const { data, error } = await query.limit(50);
 
             if (error) throw error;
-            
-            // Transform data to expected format
+
+            // Transform data or use directly
             const transformedData: RatingRequiringAttention[] = (data || []).map((r: any) => ({
                 rating_id: r.rating_id,
                 trip_id: r.trip_id || 0,
-                partner_name: r.partners?.company_name || 'غير محدد',
-                user_name: r.users?.full_name || 'مستخدم',
+                partner_name: r.partner_name || 'غير محدد',
+                user_name: r.user_name || 'مستخدم',
                 stars: r.stars || 0,
                 comment: r.comment || '',
                 rating_date: r.rating_date,
-                reported_count: 0,
-                has_response: false,
-                days_since_rating: Math.floor((Date.now() - new Date(r.rating_date).getTime()) / (1000 * 60 * 60 * 24))
+                reported_count: r.reported_count || 0,
+                has_response: r.has_response || false,
+                days_since_rating: r.days_since_rating || 0
             }));
-            
+
             setRatingsNeedingAttention(transformedData);
         } catch (error: any) {
             console.error('Error fetching ratings:', error);
-            // Don't show error toast - just set empty array
             setRatingsNeedingAttention([]);
         } finally {
             setLoading(false);

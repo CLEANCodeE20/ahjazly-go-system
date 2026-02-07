@@ -9,6 +9,14 @@ interface PartnerInfo {
   commission_percentage: number | null;
   address: string | null;
   status: string | null;
+  bank_name: string | null;
+  iban: string | null;
+  account_number: string | null;
+  swift_code: string | null;
+  commercial_registration: string | null;
+  tax_number: string | null;
+  website: string | null;
+  logo_url: string | null;
 }
 
 export const usePartner = () => {
@@ -23,7 +31,7 @@ export const usePartner = () => {
       if (userRole?.partner_id) {
         const { data, error } = await supabase
           .from('partners')
-          .select('partner_id, company_name, contact_person, address, commission_percentage, status')
+          .select('partner_id, company_name, contact_person, address, commission_percentage, status, bank_name, iban, account_number, swift_code, commercial_registration, tax_number, website, logo_url')
           .eq('partner_id', userRole.partner_id)
           .single();
 
@@ -41,5 +49,6 @@ export const usePartner = () => {
     partner,
     partnerId: userRole?.partner_id || null,
     isLoading: authLoading || isLoading,
+    setPartner
   };
 };

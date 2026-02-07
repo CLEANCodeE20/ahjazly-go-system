@@ -6,7 +6,7 @@
 /* ==================== إعدادات الصفحة ==================== */
 @page {
     size: A4 portrait;
-    margin: 15mm 10mm;
+    margin: 0;
 }
 
 /* صفحة أولى مختلفة */
@@ -42,7 +42,11 @@
     .report-container {
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
-        color-adjust: exact;
+        padding: 20mm 15mm !important;
+        margin: 0 !important;
+        width: 100% !important;
+        max-width: none !important;
+        box-shadow: none !important;
     }
 }
 
@@ -202,11 +206,10 @@ img {
     bottom: 0;
     left: 0;
     right: 0;
-    padding: 10px 0;
-    border-top: 1px solid #333;
+    padding: 5mm 15mm;
+    border-top: 1px solid #e5e7eb;
     background: white;
     font-size: 9pt;
-    text-align: center;
     z-index: 1000;
 }
 
@@ -356,4 +359,39 @@ li {
         font-size: 8pt;
     }
 }
-@media print { .no-print { display: none !important; } }
+
+@media print {
+    .no-print {
+        display: none !important;
+    }
+}
+
+/* Utility Classes for Screen/Print Visibility */
+@media screen {
+    .visible-on-print {
+        display: none !important;
+    }
+}
+
+@media print {
+    .hidden-on-print {
+        display: none !important;
+    }
+
+    .visible-on-print {
+        display: block !important;
+    }
+
+    /* Hide standard dashboard elements and overlays - removed to support react-to-print */
+
+    /* Specifically hide Radix UI Portals for Dropdowns, Dialogs, Popovers */
+    [data-radix-portal],
+    [data-radix-popper-content-wrapper],
+    [role="dialog"],
+    [role="menu"],
+    [role="tooltip"],
+    .toast-viewport,
+    .sonner-toast {
+        display: none !important;
+    }
+}

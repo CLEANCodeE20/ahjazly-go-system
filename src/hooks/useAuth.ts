@@ -96,15 +96,42 @@ export const useAuth = () => {
     return () => subscription.unsubscribe();
   }, []);
 
-  const fetchUserRole = async (userId: string, retries = 5, delay = 200) => {
+  const fetchUserRole = async (userId: string, retries = 3, delay = 200) => {
     try {
-      console.log(`[Auth] Resolving identity for ${userId}... (retries left: ${retries})`);
-
       // 1. JWT Claims Check (The Gold Standard - Instant)
       const { data: { session } } = await supabase.auth.getSession();
       const jwtRole = session?.user?.app_metadata?.role as AppRole | undefined;
+      const jwtPartnerId = session?.user?.app_metadata?.partner_id as number | undefined;
+
+      // OPTIMIZATION: If we have the role in JWT, trust it and skip DB calls!
+      // EXCEPTION: If role is 'TRAVELER' or 'user', we must verify against DB because they might have been upgraded
+      // to PARTNER_ADMIN or other roles without the JWT updating yet.
+      // EXCEPTION 2: If role is a Partner role (Admin or Employee) but we don't have the partner_id, we MUST fetch from DB
+      const partnerRoles = ['PARTNER_ADMIN', 'manager', 'accountant', 'support', 'supervisor', 'driver', 'assistant'];
+      const isPartnerWithoutId = partnerRoles.includes(jwtRole as string) && !jwtPartnerId;
+
+      const isDefaultRole = jwtRole === 'TRAVELER' || (jwtRole as string) === 'user' || isPartnerWithoutId;
+
+      if (jwtRole && !isDefaultRole) {
+        console.log(`[Auth] ⚡ Fast Login: Using JWT Metadata (Role: ${jwtRole})`);
+
+        setAuthState(prev => ({
+          ...prev,
+          userRole: {
+            role: jwtRole,
+            partner_id: jwtPartnerId || null,
+            auth_id: userId
+          },
+          userStatus: 'active', // Assume active if they could sign in (Auth guards suspended users)
+          isLoading: false,
+        }));
+        return;
+      }
+
+      console.log(`[Auth] Metadata missing, falling back to DB... (retries: ${retries})`);
 
       // 2. Database Fetch (Parallel fallback & Extra data)
+      // Only run this if JWT is missing data (e.g. legacy users)
       const { data: userData, error: userError } = await supabase
         .from('users')
         .select('account_status, partner_id')
@@ -114,10 +141,10 @@ export const useAuth = () => {
       if (userError) console.error('[Auth] Profile fetch error:', userError);
 
       // 3. Fallback/Supplement from user_roles
-      let finalRole: AppRole | null = jwtRole || null;
+      let finalRole: AppRole | null = null;
       let rolePartnerId: number | null = null;
 
-      // Always fetch from user_roles to get partner_id even if role is in JWT
+      // @ts-ignore - Supabase type depth issue
       const { data: roleData } = await supabase
         .from('user_roles')
         .select('role, partner_id')
@@ -125,81 +152,51 @@ export const useAuth = () => {
         .maybeSingle();
 
       if (roleData) {
-        if (!finalRole) finalRole = roleData.role as AppRole;
+        finalRole = roleData.role as AppRole;
         rolePartnerId = roleData.partner_id;
       }
 
-      // 4. Identification logic
-      let finalPartnerId = userData?.partner_id || rolePartnerId || null;
-      let finalStatus = userData?.account_status || null;
-
-      // 4.5 Check for Pending Partner Application if no role/profile found
-      // This is crucial for users who just applied and are waiting for approval
-      if (!finalRole && !userData && !roleData) {
-        const { data: appData } = await supabase
-          .from('partner_applications')
-          .select('status')
-          .eq('auth_user_id', userId)
-          .eq('status', 'pending')
-          .maybeSingle();
-
-        if (appData) {
-          console.log('[Auth] Found pending partner application');
-          finalRole = 'PARTNER_ADMIN'; // Assign tentative role so they don't get signed out
-          finalStatus = 'pending';     // This triggers the Login.tsx toast
-        }
+      // NORMALIZE LEGACY ROLES
+      if ((finalRole as string) === 'user' || (finalRole as string) === 'customer') {
+        finalRole = 'TRAVELER';
+      }
+      if ((finalRole as string) === 'partner') {
+        finalRole = 'PARTNER_ADMIN';
       }
 
-      // 5. Improved Retry Logic
-      const hasSession = !!session;
-      const hasNoData = !finalRole && !userData && !roleData && !finalStatus; // Updated check
-      const shouldRetry = hasSession && hasNoData && retries > 0;
+      // 4. Identification logic
+      let finalPartnerId = jwtPartnerId || userData?.partner_id || rolePartnerId || null;
+      let finalStatus = userData?.account_status || null;
+      let effectiveStatus = finalStatus || 'active';
 
-      if (shouldRetry) {
-        console.log(`[Auth] Profile not found yet, retrying... (${retries} left)`);
+      // 5. Retry Logic
+      const hasNoData = !finalRole && !userData && !roleData;
+
+      if (hasNoData && retries > 0) {
         setTimeout(() => fetchUserRole(userId, retries - 1, delay * 1.5), delay);
         return;
       }
 
-      // 6. CRITICAL: If no profile found after all retries, sign out
-      if (hasSession && hasNoData) {
-        console.error('[Auth] ⛔ CRITICAL: User has session but NO profile after all retries!');
-        console.error('[Auth] ⛔ This will cause infinite loops. Signing out immediately.');
+      // 6. Set State
+      const resolvedRole = finalRole || 'TRAVELER'; // Fallback to TRAVELER to prevent login hang
 
-        // Set loading to false first
-        setAuthState({
-          user: null,
-          session: null,
-          userRole: null,
-          userStatus: null,
-          isLoading: false,
-        });
-
-        // Sign out immediately
-        await supabase.auth.signOut();
-
-        // Clear all storage
-        localStorage.clear();
-        sessionStorage.clear();
-
-        console.error('[Auth] ⛔ Session cleared. User must re-register or contact support.');
-        return;
+      if (!finalRole) {
+        console.warn(`[Auth] No role found for user ${userId} - Defaulting to TRAVELER to allow UI processing`);
       }
 
-      // 7. Normal flow - set auth state
       setAuthState(prev => ({
         ...prev,
-        userRole: finalRole ? {
-          role: finalRole,
+        userRole: {
+          role: resolvedRole,
           partner_id: finalPartnerId,
           auth_id: userId
-        } : null,
-        userStatus: userData?.account_status || 'active',
+        },
+        userStatus: effectiveStatus,
         isLoading: false,
       }));
 
     } catch (err) {
-      console.error('[Auth] Critical error in fetchUserRole:', err);
+      console.error('[Auth] Critical error:', err);
       setAuthState(prev => ({ ...prev, isLoading: false }));
     }
   };

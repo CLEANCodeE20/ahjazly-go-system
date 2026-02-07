@@ -33,11 +33,13 @@ const bankDetailsSchema = z.object({
         .max(100, "اسم البنك طويل جداً"),
 
     iban: z.string()
-        .regex(/^SA\d{22}$/, "رقم الآيبان غير صحيح (يجب أن يبدأ بـ SA ويتكون من 24 حرف)")
-        .trim(),
+        .min(10, "رقم الآيبان قصير جداً")
+        .max(34, "رقم الآيبان طويل جداً")
+        .optional()
+        .or(z.literal("")), // Allow empty or generic IBAN, as some local transfers might not use it
 
     accountNumber: z.string()
-        .min(1, "رقم الحساب مطلوب")
+        .min(5, "رقم الحساب مطلوب (5 أرقام على الأقل)")
         .max(50, "رقم الحساب طويل جداً")
         .trim(),
 
@@ -51,7 +53,8 @@ type BankDetailsFormValues = z.infer<typeof bankDetailsSchema>;
 
 const BankDetails = () => {
     const navigate = useNavigate();
-    const { userRole } = useAuth();
+    const { userRole, isLoading: authLoading } = useAuth();
+    console.log('[BankDetails] userRole:', userRole, 'authLoading:', authLoading);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [hasExistingData, setHasExistingData] = useState(false);
@@ -69,13 +72,15 @@ const BankDetails = () => {
     // Fetch existing bank details
     useEffect(() => {
         const fetchBankDetails = async () => {
+            if (authLoading) return;
+
             if (!userRole?.partner_id) {
                 toast({
                     title: "خطأ",
                     description: "لم يتم العثور على معرف الشريك",
                     variant: "destructive",
                 });
-                navigate("/partner");
+                navigate("/dashboard/settings");
                 return;
             }
 
@@ -159,7 +164,7 @@ const BankDetails = () => {
         }
     };
 
-    if (loading) {
+    if (loading || authLoading) {
         return (
             <div className="flex items-center justify-center min-h-screen">
                 <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -230,13 +235,13 @@ const BankDetails = () => {
                                         <FormLabel>رقم الآيبان (IBAN) *</FormLabel>
                                         <FormControl>
                                             <Input
-                                                placeholder="SA0000000000000000000000"
+                                                placeholder="SA..."
                                                 {...field}
                                                 onChange={(e) => field.onChange(e.target.value.toUpperCase())}
                                             />
                                         </FormControl>
                                         <FormDescription>
-                                            رقم الآيبان يجب أن يبدأ بـ SA ويتكون من 24 حرف
+                                            رقم الآيبان (اختياري للتحويلات المحلية)
                                         </FormDescription>
                                         <FormMessage />
                                     </FormItem>
@@ -305,7 +310,7 @@ const BankDetails = () => {
                                 <Button
                                     type="button"
                                     variant="outline"
-                                    onClick={() => navigate("/partner")}
+                                    onClick={() => navigate("/dashboard/settings")}
                                 >
                                     إلغاء
                                 </Button>

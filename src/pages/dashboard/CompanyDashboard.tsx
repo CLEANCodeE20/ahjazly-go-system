@@ -21,7 +21,8 @@ import {
   Calendar,
   Shield,
   Star,
-  MessageSquare
+  MessageSquare,
+  AlertCircle
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useSupabaseCRUD } from "@/hooks/useSupabaseCRUD";
@@ -73,7 +74,7 @@ const CHART_COLORS = {
 };
 
 const CompanyDashboard = () => {
-  const { partner, partnerId } = usePartner();
+  const { partner, partnerId, isLoading: partnerLoading } = usePartner();
   const { can } = usePermissions();
   const [ratingsStats, setRatingsStats] = useState({ average: 0, total: 0, pending: 0 });
 
@@ -101,7 +102,7 @@ const CompanyDashboard = () => {
     initialFetch: true
   });
 
-  const loading = tripsLoading || bookingsLoading;
+  const loading = tripsLoading || bookingsLoading || partnerLoading;
 
   useEffect(() => {
     const fetchRatingsStats = async () => {
@@ -263,20 +264,49 @@ const CompanyDashboard = () => {
     completed: { label: "مكتملة", color: CHART_COLORS.secondary },
   };
 
+  const hasBankDetails = partner?.bank_name && partner?.iban && partner?.account_number;
+
   return (
     <DashboardLayout
       subtitle="إليك نظرة عامة على نشاطك اليوم"
       actions={
-        can('trips.manage') && (
-          <Button variant="default" size="sm" asChild>
-            <Link to="/dashboard/trips">
-              <Plus className="w-4 h-4 ml-2" />
-              رحلة جديدة
-            </Link>
-          </Button>
-        )
+        <div className="flex items-center gap-2">
+          {!hasBankDetails && (
+            <Button variant="outline" className="text-amber-600 border-amber-200 bg-amber-50 hover:bg-amber-100 hover:text-amber-700 hidden md:flex" asChild>
+              <Link to="/partner/bank-details">
+                <AlertCircle className="w-4 h-4 ml-2" />
+                إكمال البيانات البنكية
+              </Link>
+            </Button>
+          )}
+          {can('trips.manage') && (
+            <Button variant="default" size="sm" asChild>
+              <Link to="/dashboard/trips">
+                <Plus className="w-4 h-4 ml-2" />
+                رحلة جديدة
+              </Link>
+            </Button>
+          )}
+        </div>
       }
     >
+      {!hasBankDetails && !loading && (
+        <div className="mb-6 p-4 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 rounded-xl flex items-center justify-between gap-4 animate-in fade-in slide-in-from-top-4 duration-500">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center shrink-0">
+              <CreditCard className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+            </div>
+            <div>
+              <p className="font-semibold text-amber-900 dark:text-amber-100">البيانات البنكية ناقصة!</p>
+              <p className="text-sm text-amber-700/80 dark:text-amber-400/80 mt-1">يجب إكمال بيانات الحساب البنكي لتتمكن من استلام المستحقات المالية من المنصة.</p>
+            </div>
+          </div>
+          <Button variant="default" className="bg-amber-600 hover:bg-amber-700 text-white shrink-0" asChild>
+            <Link to="/partner/bank-details">إدراج البيانات الآن</Link>
+          </Button>
+        </div>
+      )}
+
       {loading ? (
         <div className="flex items-center justify-center py-24">
           <Loader2 className="w-8 h-8 animate-spin text-primary" />

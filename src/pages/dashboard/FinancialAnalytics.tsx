@@ -28,7 +28,7 @@ const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884d8"];
 
 const FinancialAnalytics = () => {
     const { userRole } = useAuth();
-    const isAdmin = userRole?.role === 'admin';
+    const isAdmin = userRole?.role === 'SUPERUSER';
     const { exportToPDF } = useExport();
     const [loading, setLoading] = useState(true);
     const [dailyData, setDailyData] = useState<any[]>([]);
@@ -43,22 +43,40 @@ const FinancialAnalytics = () => {
     const fetchAnalytics = async () => {
         setLoading(true);
         try {
-            // 1. Fetch Daily Revenue
-            let dailyQuery = supabase.from("daily_financial_summary" as any).select("*").order("report_date", { ascending: true }).limit(15);
-            if (!isAdmin) {
-                // For partners, we need to filter by their trips. 
-                // Note: daily_financial_summary is global, so we might need a partner-specific view or filter.
-                // For now, let's use the partner_financial_summary for top-level stats.
-            }
-            const { data: daily } = await dailyQuery;
-            if (daily) setDailyData(daily);
+            // 1. Fetch Daily Revenue (Conditional View)
+            let dailyDataResult;
 
-            // 2. Fetch Payment Methods
-            const { data: pm } = await supabase.from("payment_methods_report" as any).select("*");
-            if (pm) setPaymentMethods(pm);
-
-            // 3. Fetch Partner Balances (Admin only)
             if (isAdmin) {
+                // Admin: Global View
+                const { data } = await supabase
+                    .from("daily_financial_summary" as any)
+                    .select("*")
+                    .order("report_date", { ascending: true })
+                    .limit(15);
+                dailyDataResult = data;
+            } else {
+                // Partner: Specific View
+                const { data } = await supabase
+                    .from("daily_partner_financial_summary" as any)
+                    .select("*")
+                    .eq('partner_id', userRole?.partner_id)
+                    .order("report_date", { ascending: true })
+                    .limit(15);
+                dailyDataResult = data;
+            }
+
+            if (dailyDataResult) setDailyData(dailyDataResult);
+
+            // 2. Fetch Payment Methods (Global is fine for trends, but better if filtered? 
+            // The view 'payment_methods_report' is global. For now we keep it or hide it.
+            // Let's hide it for partners for strict isolation, or leave it if generic.)
+            // Logic: Assume Partners want to see their own methods. 
+            // Current view doesn't support partner_id. We'll skip it for partners or show empty.
+            if (isAdmin) {
+                const { data: pm } = await supabase.from("payment_methods_report" as any).select("*");
+                if (pm) setPaymentMethods(pm);
+
+                // 3. Fetch Partner Balances (Admin only)
                 const { data: ps } = await supabase.from("partner_balance_report" as any).select("*");
                 if (ps) setPartnerStats(ps);
 
@@ -133,7 +151,9 @@ const FinancialAnalytics = () => {
                         <CardContent className="p-6">
                             <div className="flex justify-between items-start">
                                 <div>
-                                    <p className="text-xs text-muted-foreground font-bold">إجمالي الإيرادات (30 يوم)</p>
+                                    <p className="text-xs text-muted-foreground font-bold">
+                                        {isAdmin ? "إجمالي الإيرادات (30 يوم)" : "حجم المبيعات (30 يوم)"}
+                                    </p>
                                     <h3 className="text-2xl font-black mt-1">
                                         {dailyData.reduce((sum, d) => sum + d.gross_revenue, 0).toLocaleString()} ر.س
                                     </h3>
@@ -144,7 +164,7 @@ const FinancialAnalytics = () => {
                             </div>
                             <div className="mt-4 flex items-center gap-1 text-xs text-green-600 font-bold">
                                 <ArrowUpRight className="w-3 h-3" />
-                                <span>12% زيادة عن الشهر الماضي</span>
+                                <span>{isAdmin ? "12% زيادة عن الشهر الماضي" : "الأداء المالي للفترة الحالية"}</span>
                             </div>
                         </CardContent>
                     </Card>
@@ -170,16 +190,23 @@ const FinancialAnalytics = () => {
                         <CardContent className="p-6">
                             <div className="flex justify-between items-start">
                                 <div>
-                                    <p className="text-xs text-muted-foreground font-bold">عمولات المنصة</p>
+                                    <p className="text-xs text-muted-foreground font-bold">
+                                        {isAdmin ? "عمولات المنصة" : "صافي الأرباح (بعد العمولة)"}
+                                    </p>
                                     <h3 className="text-2xl font-black mt-1">
-                                        {dailyData.reduce((sum, d) => sum + d.platform_commission, 0).toLocaleString()} ر.س
+                                        {isAdmin
+                                            ? dailyData.reduce((sum, d) => sum + d.platform_commission, 0).toLocaleString()
+                                            : dailyData.reduce((sum, d) => sum + d.partner_revenue, 0).toLocaleString()
+                                        } ر.س
                                     </h3>
                                 </div>
                                 <div className="p-2 bg-amber-500/10 rounded-lg">
                                     <DollarSign className="w-5 h-5 text-amber-600" />
                                 </div>
                             </div>
-                            <p className="mt-4 text-[10px] text-muted-foreground">صافي ربح المنصة قبل التشغيل</p>
+                            <p className="mt-4 text-[10px] text-muted-foreground">
+                                {isAdmin ? "صافي ربح المنصة قبل التشغيل" : "إجمالي المبالغ المستحقة للتحويل"}
+                            </p>
                         </CardContent>
                     </Card>
 
@@ -229,7 +256,8 @@ const FinancialAnalytics = () => {
                                             contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
                                         />
                                         <Area type="monotone" dataKey="gross_revenue" name="الإيرادات" stroke="#8884d8" fillOpacity={1} fill="url(#colorRevenue)" strokeWidth={3} />
-                                        <Area type="monotone" dataKey="net_revenue" name="الصافي" stroke="#10b981" fill="transparent" strokeWidth={2} strokeDasharray="5 5" />
+                                        <Area type="monotone" dataKey="gross_revenue" name="الإيرادات" stroke="#8884d8" fillOpacity={1} fill="url(#colorRevenue)" strokeWidth={3} />
+                                        <Area type="monotone" dataKey={isAdmin ? "net_revenue" : "partner_revenue"} name={isAdmin ? "الصافي" : "أرباحي"} stroke="#10b981" fill="transparent" strokeWidth={2} strokeDasharray="5 5" />
                                     </AreaChart>
                                 </ResponsiveContainer>
                             </div>
@@ -268,61 +296,63 @@ const FinancialAnalytics = () => {
                     </Card>
                 </div>
 
-                {/* Charts Row 2 - Wallet & Settlements */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="text-sm font-bold">تسويات الشركاء (الأرصدة المعلقة)</CardTitle>
-                            <CardDescription>المبالغ المستحقة لكل شركة نقل</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="space-y-4">
-                                {partnerStats.slice(0, 5).map((p, idx) => (
-                                    <div key={idx} className="space-y-1">
-                                        <div className="flex justify-between text-xs">
-                                            <span className="font-bold">{p.company_name}</span>
-                                            <span className="text-muted-foreground">{p.current_balance.toLocaleString()} ر.س</span>
+                {/* Charts Row 2 - Wallet & Settlements (Admin Only) */}
+                {isAdmin && (
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="text-sm font-bold">تسويات الشركاء (الأرصدة المعلقة)</CardTitle>
+                                <CardDescription>المبالغ المستحقة لكل شركة نقل</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="space-y-4">
+                                    {partnerStats.slice(0, 5).map((p, idx) => (
+                                        <div key={idx} className="space-y-1">
+                                            <div className="flex justify-between text-xs">
+                                                <span className="font-bold">{p.company_name}</span>
+                                                <span className="text-muted-foreground">{p.current_balance.toLocaleString()} ر.س</span>
+                                            </div>
+                                            <div className="w-full bg-muted rounded-full h-1.5 overflow-hidden">
+                                                <div
+                                                    className="bg-primary h-full rounded-full"
+                                                    style={{ width: `${Math.min((p.current_balance / 10000) * 100, 100)}%` }}
+                                                />
+                                            </div>
                                         </div>
-                                        <div className="w-full bg-muted rounded-full h-1.5 overflow-hidden">
-                                            <div
-                                                className="bg-primary h-full rounded-full"
-                                                style={{ width: `${Math.min((p.current_balance / 10000) * 100, 100)}%` }}
-                                            />
-                                        </div>
-                                    </div>
-                                ))}
-                                {partnerStats.length > 5 && (
-                                    <Button variant="ghost" size="sm" className="w-full text-xs text-muted-foreground">عرض الكل...</Button>
-                                )}
-                            </div>
-                        </CardContent>
-                    </Card>
+                                    ))}
+                                    {partnerStats.length > 5 && (
+                                        <Button variant="ghost" size="sm" className="w-full text-xs text-muted-foreground">عرض الكل...</Button>
+                                    )}
+                                </div>
+                            </CardContent>
+                        </Card>
 
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="text-sm font-bold">أداء المحفظة (الاستردادات vs الدفع)</CardTitle>
-                            <CardDescription>تحليل حركة الأموال داخل نظام المحفظة</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="h-[250px] w-full">
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <BarChart data={dailyData.slice(-7)}>
-                                        <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                                        <XAxis
-                                            dataKey="report_date"
-                                            tickFormatter={(str) => new Date(str).toLocaleDateString('ar-SA', { day: 'numeric' })}
-                                            fontSize={10}
-                                        />
-                                        <YAxis fontSize={10} />
-                                        <Tooltip />
-                                        <Bar dataKey="total_refunds" name="استردادات للمحفظة" fill="#10b981" radius={[4, 4, 0, 0]} />
-                                        <Bar dataKey="cancellation_fees" name="رسوم إلغاء (ربح)" fill="#f59e0b" radius={[4, 4, 0, 0]} />
-                                    </BarChart>
-                                </ResponsiveContainer>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </div>
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="text-sm font-bold">أداء المحفظة (الاستردادات vs الدفع)</CardTitle>
+                                <CardDescription>تحليل حركة الأموال داخل نظام المحفظة</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="h-[250px] w-full">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <BarChart data={dailyData.slice(-7)}>
+                                            <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                            <XAxis
+                                                dataKey="report_date"
+                                                tickFormatter={(str) => new Date(str).toLocaleDateString('ar-SA', { day: 'numeric' })}
+                                                fontSize={10}
+                                            />
+                                            <YAxis fontSize={10} />
+                                            <Tooltip />
+                                            <Bar dataKey="total_refunds" name="استردادات للمحفظة" fill="#10b981" radius={[4, 4, 0, 0]} />
+                                            <Bar dataKey="cancellation_fees" name="رسوم إلغاء (ربح)" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </div>
+                )}
             </div>
         </DashboardLayout>
     );

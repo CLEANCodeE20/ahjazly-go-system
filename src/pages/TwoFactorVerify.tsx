@@ -11,6 +11,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 
 const TwoFactorVerify = () => {
+    console.log('[TwoFactorVerify] Mounted');
     const navigate = useNavigate();
     const location = useLocation();
     const { verify } = use2FA();
@@ -64,9 +65,9 @@ const TwoFactorVerify = () => {
     };
 
     const getDefaultRoute = () => {
-        if (userRole?.role === 'admin') return '/admin';
-        if (userRole?.role === 'partner') return '/dashboard';
-        if (userRole?.role === 'employee') return '/dashboard';
+        if (userRole?.role === 'SUPERUSER') return '/admin';
+        if (userRole?.role === 'PARTNER_ADMIN') return '/dashboard';
+        if (['manager', 'accountant', 'support', 'supervisor', 'driver', 'assistant'].includes(userRole?.role || '')) return '/dashboard';
         return '/';
     };
 

@@ -40,12 +40,26 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
 import { usePartner } from "@/hooks/usePartner";
 import { toast } from "@/hooks/use-toast";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
+
+interface City {
+  id: number;
+  name_ar: string;
+  name_en: string;
+  code: string;
+}
 
 interface RouteRecord {
   route_id: number;
@@ -94,9 +108,24 @@ const RoutesManagement = () => {
     preparation_time: ""
   });
 
+  const [cities, setCities] = useState<City[]>([]);
+
   useEffect(() => {
     fetchRoutes();
+    fetchCities();
   }, [partnerId]);
+
+  const fetchCities = async () => {
+    const { data } = await supabase
+      .from('cities')
+      .select('*')
+      .eq('is_active', true)
+      .order('name_ar');
+
+    if (data) {
+      setCities(data);
+    }
+  };
 
   const fetchRoutes = async () => {
     setLoading(true);
@@ -306,19 +335,49 @@ const RoutesManagement = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>مدينة الانطلاق *</Label>
-                  <Input
-                    placeholder="تعز"
+                  <Select
                     value={formData.origin_city}
-                    onChange={(e) => setFormData({ ...formData, origin_city: e.target.value })}
-                  />
+                    onValueChange={(value) => setFormData({ ...formData, origin_city: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="اختر مدينة الانطلاق" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {cities.map((city) => (
+                        <SelectItem
+                          key={city.id}
+                          value={city.name_ar}
+                          disabled={city.name_ar === formData.destination_city}
+                          className={city.name_ar === formData.destination_city ? "opacity-50" : ""}
+                        >
+                          {city.name_ar} {city.name_ar === formData.destination_city && "(مدينة الوصول)"}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
                   <Label>مدينة الوصول *</Label>
-                  <Input
-                    placeholder="الرياض"
+                  <Select
                     value={formData.destination_city}
-                    onChange={(e) => setFormData({ ...formData, destination_city: e.target.value })}
-                  />
+                    onValueChange={(value) => setFormData({ ...formData, destination_city: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="اختر مدينة الوصول" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {cities.map((city) => (
+                        <SelectItem
+                          key={city.id}
+                          value={city.name_ar}
+                          disabled={city.name_ar === formData.origin_city}
+                          className={city.name_ar === formData.origin_city ? "opacity-50" : ""}
+                        >
+                          {city.name_ar} {city.name_ar === formData.origin_city && "(مدينة الانطلاق)"}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
@@ -365,11 +424,21 @@ const RoutesManagement = () => {
                             {index + 1}
                           </div>
                           <div className="flex-1 space-y-2">
-                            <Input
-                              placeholder="اسم نقطة الصعود (مثال: تعز، إب، صنعاء)"
+                            <Select
                               value={stop.name}
-                              onChange={(e) => updateNewStop(index, 'name', e.target.value)}
-                            />
+                              onValueChange={(value) => updateNewStop(index, 'name', value)}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="اسم نقطة الصعود (اختر مدينة)" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {cities.map((city) => (
+                                  <SelectItem key={city.id} value={city.name_ar}>
+                                    {city.name_ar}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                             <div className="grid grid-cols-2 gap-2">
                               <Input
                                 placeholder="الموقع (اختياري)"
@@ -662,11 +731,21 @@ const RoutesManagement = () => {
           <div className="space-y-4 mt-4">
             <div className="space-y-2">
               <Label>اسم المحطة *</Label>
-              <Input
-                placeholder="مثال: محطة الرياض الرئيسية"
+              <Select
                 value={stopFormData.stop_name}
-                onChange={(e) => setStopFormData({ ...stopFormData, stop_name: e.target.value })}
-              />
+                onValueChange={(value) => setStopFormData({ ...stopFormData, stop_name: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="اختر اسم المحطة (المدينة)" />
+                </SelectTrigger>
+                <SelectContent>
+                  {cities.map((city) => (
+                    <SelectItem key={city.id} value={city.name_ar}>
+                      {city.name_ar}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label>الموقع التفصيلي</Label>

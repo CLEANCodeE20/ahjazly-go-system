@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Header from "@/components/layout/Header";
-import { Bus, Mail, Lock, Eye, EyeOff, ArrowLeft } from "lucide-react";
+import { Bus, Mail, Lock, Eye, EyeOff, ArrowLeft, Info } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { ErrorLogger } from "@/utils/ErrorLogger";
@@ -12,7 +12,7 @@ import { ErrorLogger } from "@/utils/ErrorLogger";
 const Login = () => {
   console.log('[Login] Rendering Login Page');
   const navigate = useNavigate();
-  const { user, userRole, userStatus, isLoading: authLoading, signIn } = useAuth();
+  const { user, userRole, userStatus, isLoading: authLoading, signIn, signOut } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [loginType, setLoginType] = useState<"company" | "admin">("company");
@@ -41,57 +41,56 @@ const Login = () => {
 
   // Redirect if already logged in
   useEffect(() => {
-    console.log('[Login] State Check:', { authLoading, user: !!user, userRole: !!userRole, userStatus });
+    const handleRedirect = async () => {
+      console.log('[Login] State Check:', { authLoading, user: !!user, userRole: !!userRole, userStatus });
 
-    if (!authLoading && user && userRole && !hasNotified) {
-      if (userStatus && userStatus !== 'active' && userRole.role !== 'SUPERUSER') {
-        setHasNotified(true);
-        if (userStatus === 'pending') {
-          navigate("/application-status");
-          return;
-        }
-        toast({
-          title: "الحساب غير نشط",
-          description: "هذا الحساب معطل حالياً، يرجى التواصل مع الدعم الفني.",
-          variant: "destructive"
-        });
-        return;
-      }
+      if (!authLoading && user && userRole && !hasNotified) {
+        // 🚫 منع العملاء العاديين من الوصول للمنصة (الويب للإدارة والشركات فقط)
+        if (userRole.role === 'TRAVELER') {
+          console.warn('[Login] TRAVELER attempted web platform access - blocking');
+          setHasNotified(true);
 
-      setHasNotified(true);
-      toast({
-        title: "تم تسجيل الدخول بنجاح",
-        description: "مرحباً بك في منصة احجزلي",
-      });
-
-      if (userRole.role === 'SUPERUSER') {
-        navigate("/admin");
-      } else {
-        navigate("/dashboard");
-      }
-    } else if (!authLoading && user && !userRole) {
-      // User has session but no profile - wait then sign out
-      console.warn('[Login] User has session but no profile');
-
-      const timer = setTimeout(async () => {
-        if (user && !userRole) {
-          console.error('[Login] No profile found after timeout - signing out');
+          await signOut(); // Use the proper signOut function
 
           toast({
-            title: "خطأ في تحميل البيانات",
-            description: "لم نتمكن من تحميل بيانات حسابك. يرجى تسجيل الدخول مرة أخرى.",
+            title: "غير مسموح بالوصول",
+            description: "هذه المنصة مخصصة للإدارة والشركات الشريكة فقط. يرجى استخدام تطبيق الجوال للحجز.",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        if (userStatus && userStatus !== 'active' && userRole.role !== 'SUPERUSER') {
+          setHasNotified(true);
+          if (userStatus === 'pending') {
+            navigate("/application-status");
+            return;
+          }
+          toast({
+            title: "الحساب غير نشط",
+            description: "هذا الحساب معطل حالياً، يرجى التواصل مع الدعم الفني.",
             variant: "destructive"
           });
-
-          // Sign out to clear invalid session
-          await signIn('', ''); // This will trigger sign out in useAuth
-          window.location.href = '/login';
+          return;
         }
-      }, 5000); // Wait 5 seconds for profile to load
 
-      return () => clearTimeout(timer);
-    }
-  }, [user, userRole, authLoading, navigate, userStatus, hasNotified, signIn]);
+        setHasNotified(true);
+        toast({
+          title: "تم تسجيل الدخول بنجاح",
+          description: "مرحباً بك في منصة احجزلي",
+        });
+
+        // ✅ توجيه حسب الدور - دعم كافة الأدوار الإدارية والشركاء
+        if (userRole.role === 'SUPERUSER') {
+          navigate("/admin");
+        } else {
+          navigate("/dashboard");
+        }
+      }
+    };
+
+    handleRedirect();
+  }, [user, userRole, authLoading, navigate, userStatus, hasNotified, signOut]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -266,6 +265,16 @@ const Login = () => {
                 تواصل مع الدعم
               </Link>
             </p>
+
+            <div className="mt-8 p-4 bg-primary/5 rounded-xl border border-primary/10 text-right">
+              <div className="flex items-center gap-2 mb-2 text-primary">
+                <Info className="w-4 h-4" />
+                <span className="font-semibold text-sm">للعملاء والمسافرين</span>
+              </div>
+              <p className="text-xs leading-relaxed">
+                إذا كنت ترغب في حجز رحلة، يرجى استخدام تطبيق "احجزلي" المتوفر على متاجر التطبيقات. هذه المنصة مخصصة لإدارة عمليات الشركات فقط.
+              </p>
+            </div>
           </div>
 
         </div>

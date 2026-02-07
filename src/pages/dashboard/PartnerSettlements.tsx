@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
+import { AdminLayout } from "@/components/layout/AdminLayout";
 import { useSupabaseCRUD } from "@/hooks/useSupabaseCRUD";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -107,17 +108,42 @@ const PartnerSettlements = () => {
         window.open(`/dashboard/financial-statement?partner_id=${pId}`, '_blank');
     };
 
+    const Layout = userRole?.role === 'SUPERUSER' ? AdminLayout : DashboardLayout;
+
+    const filteredBalances = balances.filter(pb =>
+        pb.company_name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    // Filter settlements based on search too (optional but nice)
+    const filteredSettlements = settlements.filter(s => {
+        const partnerName = balances.find(b => b.partner_id === s.partner_id)?.company_name || '';
+        return partnerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            s.payment_reference?.toLowerCase().includes(searchTerm.toLowerCase());
+    });
+
     return (
-        <DashboardLayout
+        <Layout
             title="تسوية حسابات الشركاء"
             subtitle="إدارة المدفوعات من المنصة إلى شركات النقل (غرفة المقاصة)"
         >
             <div className="space-y-8">
+                <div className="relative max-w-sm">
+                    <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                        placeholder="بحث باسم الشركة أو رقم العملية..."
+                        className="pr-9"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                </div>
+
                 {/* Partner Balances Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     {balancesLoading ? (
                         <Skeleton className="h-32 w-full" />
-                    ) : balances.map((pb) => (
+                    ) : filteredBalances.length === 0 ? (
+                        <div className="col-span-3 text-center py-8 text-muted-foreground">لا نتائج للبحث</div>
+                    ) : filteredBalances.map((pb) => (
                         <Card key={pb.partner_id} className="relative overflow-hidden border-primary/10">
                             <div className="absolute top-0 left-0 w-1 h-full bg-primary" />
                             <CardHeader className="pb-2">
@@ -187,7 +213,9 @@ const PartnerSettlements = () => {
                                     <tbody className="divide-y divide-border">
                                         {settlementsLoading ? (
                                             <tr><td colSpan={5} className="py-8 text-center"><Loader2 className="w-6 h-6 animate-spin mx-auto" /></td></tr>
-                                        ) : settlements.map((s) => (
+                                        ) : filteredSettlements.length === 0 ? (
+                                            <tr><td colSpan={5} className="py-8 text-center text-muted-foreground">لا توجد عمليات مطابقة</td></tr>
+                                        ) : filteredSettlements.map((s) => (
                                             <tr key={s.settlement_id}>
                                                 <td className="py-4 px-4 font-bold">
                                                     {balances.find(b => b.partner_id === s.partner_id)?.company_name || `#${s.partner_id}`}
@@ -243,7 +271,7 @@ const PartnerSettlements = () => {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-        </DashboardLayout>
+        </Layout>
     );
 };
 

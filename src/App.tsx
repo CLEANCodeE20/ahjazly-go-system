@@ -22,6 +22,7 @@ import ProtectedRoute from "./components/auth/ProtectedRoute";
 import { MaintenanceGuard } from "./components/auth/MaintenanceGuard";
 import { TwoFactorGuard } from "./components/auth/TwoFactorGuard";
 import { AdminLayout } from "./components/layout/AdminLayout";
+import { DashboardLayout } from "./components/layout/DashboardLayout";
 
 // Eagerly Load Public Pages for SPA stability
 import Index from "./pages/Index";
@@ -34,9 +35,13 @@ const ApplicationStatus = lazy(() => import("./pages/partner/ApplicationStatus")
 import Features from "./pages/features";
 import About from "./pages/About";
 import Contact from "./pages/Contact";
+import Unauthorized from "./pages/Unauthorized";
 
 const NotFound = lazy(() => import("./pages/NotFound"));
 const MaintenancePage = lazy(() => import("./pages/MaintenancePage"));
+const TwoFactorSetup = lazy(() => import("./pages/TwoFactorSetup"));
+const TwoFactorVerify = lazy(() => import("./pages/TwoFactorVerify"));
+
 
 // Admin Pages
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
@@ -88,8 +93,6 @@ const BankDetails = lazy(() => import("./pages/partner/BankDetails"));
 // User Management Pages
 const UserProfile = lazy(() => import("./pages/UserProfile"));
 const SessionManager = lazy(() => import("./pages/SessionManager"));
-const TwoFactorSetup = lazy(() => import("./pages/TwoFactorSetup"));
-const TwoFactorVerify = lazy(() => import("./pages/TwoFactorVerify"));
 const OnboardingWizard = lazy(() => import("./pages/OnboardingWizard"));
 
 const queryClient = new QueryClient({
@@ -113,6 +116,8 @@ const GuardedLayout = () => (
   </TwoFactorGuard>
 );
 
+import { MaintenanceCountdownBanner } from "./components/auth/MaintenanceCountdownBanner";
+
 const App = () => {
   console.log('[App] Rendering at:', window.location.pathname);
 
@@ -127,6 +132,7 @@ const App = () => {
             v7_relativeSplatPath: true,
           }}
         >
+          <MaintenanceCountdownBanner />
           <PageLoadMonitor />
           <NetworkMonitor />
           <Suspense fallback={<LoadingSpinner />}>
@@ -135,8 +141,11 @@ const App = () => {
               <Route path="/login" element={<Login />} />
               <Route path="/maintenance" element={<MaintenancePage />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/unauthorized" element={<Unauthorized />} />
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/verify-email" element={<VerifyEmail />} />
+              <Route path="/2fa-setup" element={<TwoFactorSetup />} />
+              <Route path="/2fa-verify" element={<TwoFactorVerify />} />
               <Route path="/application-status" element={<ApplicationStatus />} />
 
 
@@ -299,9 +308,9 @@ const App = () => {
                 } />
                 <Route path="/partner/bank-details" element={
                   <ProtectedRoute allowedRoles={['PARTNER_ADMIN', 'manager']}>
-                    <AdminLayout title="البيانات البنكية">
+                    <DashboardLayout title="البيانات البنكية">
                       <BankDetails />
-                    </AdminLayout>
+                    </DashboardLayout>
                   </ProtectedRoute>
                 } />
                 <Route path="/dashboard/permissions" element={

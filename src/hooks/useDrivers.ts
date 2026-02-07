@@ -84,7 +84,7 @@ export const useDrivers = () => {
                 .from("drivers")
                 .select(`
           *,
-          user:users!drivers_auth_id_public_fkey(full_name, email, phone_number, account_status, auth_id),
+          user:users(full_name, email, phone_number, account_status, auth_id),
           partner:partners(company_name)
         `)
                 .order("created_at", { ascending: false });
@@ -202,24 +202,65 @@ export const useCreateDriver = () => {
                 }
             });
 
-            if (authError) {
-                console.error("Edge Function Error:", authError);
-                // Try to parse the response body if available
-                if (authError instanceof Error && 'context' in authError) {
-                    // @ts-ignore
-                    const body = await authError.context.json().catch(() => null);
-                    console.error("Edge Function Error Body:", body);
-                    if (body && body.error) throw new Error(body.error);
+            let authId = null;
+
+            if (authData?.user_id) {
+                authId = authData.user_id;
+            } else if (authError || authData?.error) {
+                let errorMsg = authData?.error || "";
+
+                // Extract error message from FunctionsHttpError if present
+                if (authError && typeof authError === 'object' && 'context' in authError) {
+                    try {
+                        // @ts-ignore
+                        const body = await authError.context.json().catch(() => null);
+                        if (body?.error) errorMsg = body.error;
+                        else if (body?.message) errorMsg = body.message;
+                    } catch (e) {
+                        console.error("[Auth] Failed to parse error body:", e);
+                    }
                 }
-                throw authError;
-            }
 
-            if (authData?.error) {
-                console.error("Edge Function Returned Error:", authData.error);
-                throw new Error(authData.error);
-            }
+                if (!errorMsg) errorMsg = String(authError || "Unknown error");
+                console.log("[Auth] Edge Function reported error:", errorMsg);
 
-            const authId = authData.user_id;
+                // Check if user already exists
+                const alreadyRegistered = errorMsg.toLowerCase().includes('already been registered') ||
+                    errorMsg.toLowerCase().includes('already exists') ||
+                    errorMsg.toLowerCase().includes('duplicate');
+
+                if (alreadyRegistered) {
+                    console.log("[Auth] User already exists, attempting to recover auth_id...");
+
+                    // 1. Try public users table
+                    const { data: existingUser } = await supabase
+                        .from('users')
+                        .select('auth_id')
+                        .eq('email', driverData.email)
+                        .maybeSingle();
+
+                    if (existingUser?.auth_id) {
+                        authId = existingUser.auth_id;
+                        console.log("[Auth] Recovered existing auth_id from users table:", authId);
+                    } else {
+                        // 2. Try RPC recovery (Plan B)
+                        console.log("[Auth] User not in public.users, trying RPC recovery...");
+                        const { data: recoveredId, error: recoveryError } = await supabase.rpc('get_auth_id_by_email', {
+                            p_email: driverData.email
+                        });
+
+                        if (recoveredId) {
+                            authId = recoveredId;
+                            console.log("[Auth] Recovered auth_id via RPC:", authId);
+                        } else {
+                            console.error("[Auth] Recovery failed:", recoveryError);
+                            throw new Error("هذا البريد الإلكتروني مسجل مسبقاً في النظام ولكن لا يمكن الوصول لبياناته. يرجى مراجعة الإدارة.");
+                        }
+                    }
+                } else {
+                    throw new Error(errorMsg);
+                }
+            }
 
             // 2. Create Driver Record via RPC
             const { data, error } = await supabase.rpc("create_driver_with_account", {
@@ -366,6 +407,7 @@ export const useUploadDriverDocument = () => {
             driverId,
             file,
             documentType,
+            documentNumber,
             expiryDate,
         }: {
             driverId: number;

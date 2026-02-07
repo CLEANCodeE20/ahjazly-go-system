@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
+import { AdminLayout } from "@/components/layout/AdminLayout";
+import { useAuth } from "@/hooks/useAuth";
 import { useSupabaseCRUD } from "@/hooks/useSupabaseCRUD";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -104,8 +106,11 @@ const AdminWalletManagement = () => {
         }
     };
 
+    const { userRole } = useAuth();
+    const Layout = userRole?.role === 'SUPERUSER' ? AdminLayout : DashboardLayout;
+
     return (
-        <DashboardLayout
+        <Layout
             title="إدارة محافظ العملاء"
             subtitle="الرقابة الكاملة على أرصدة المستخدمين وإجراء التعديلات اليدوية"
         >
@@ -262,7 +267,7 @@ const AdminWalletManagement = () => {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-        </DashboardLayout>
+        </Layout>
     );
 };
 
