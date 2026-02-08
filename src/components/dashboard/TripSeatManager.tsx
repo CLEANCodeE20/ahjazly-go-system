@@ -63,6 +63,32 @@ export default function TripSeatManager({ isOpen, onClose, tripId, busId, routeI
             const defaultLayout = generateDefaultLayout(capacity);
             setLayout(defaultLayout);
 
+            // Fetch Currently Booked Seats AND Sync Missing Seats if needed
+            const { count: existingSeatsCount, error: countError } = await supabase
+                .from('seats')
+                .select('*', { count: 'exact', head: true })
+                .eq('bus_id', busId);
+
+            if (!countError && (existingSeatsCount || 0) < capacity) {
+                // Auto-generate missing seats
+                const seatsToInsert = [];
+                for (let i = (existingSeatsCount || 0) + 1; i <= capacity; i++) {
+                    seatsToInsert.push({
+                        bus_id: busId,
+                        seat_number: i.toString(),
+                        price_adjustment_factor: 1.0
+                    });
+                }
+
+                if (seatsToInsert.length > 0) {
+                    await supabase.from('seats').insert(seatsToInsert);
+                    toast({
+                        title: "مزامنة المقاعد",
+                        description: `تم إضافة ${seatsToInsert.length} مقعد مفقود للحافلة تلقائياً.`,
+                    });
+                }
+            }
+
             // Fetch Currently Booked Seats
             const { data: bookedData, error: bookedError } = await supabase
                 .from('passengers')

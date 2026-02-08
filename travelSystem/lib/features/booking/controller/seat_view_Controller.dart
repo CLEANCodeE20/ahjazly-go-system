@@ -56,7 +56,7 @@ class SeatViewModel extends GetxController {
   int _convertSeatCodeToLayoutNumber(String seatCode) {
     if (seatCode.isEmpty) return -1;
     
-    // Try to find in custom layout first
+    // 1. Try to find in custom layout first
     if (customLayout.isNotEmpty) {
       final List cells = customLayout['cells'] ?? [];
       for (var cell in cells) {
@@ -67,13 +67,19 @@ class SeatViewModel extends GetxController {
       }
     }
 
-    // Fallback: Try to parse as integer
+    // 2. Direct Integer Parsing (Primary for standard buses)
+    // Since our database now syncs seats as "1", "25", etc.
+    final int? parsed = int.tryParse(seatCode.trim());
+    if (parsed != null) {
+      return parsed;
+    }
+
+    // 3. Fallback: Parse random strings
     final numericOnly = seatCode.replaceAll(RegExp(r'[^0-9]'), '');
     if (numericOnly.isNotEmpty) {
       return int.tryParse(numericOnly) ?? -1;
     }
     
-    // Last resort: hash the string to a number
     return seatCode.hashCode.abs() % 1000;
   }
 
@@ -150,14 +156,14 @@ class SeatViewModel extends GetxController {
         rows,
         (r) => List.generate(
           cols,
-          (c) => SeatInfo(layoutNumber: null, code: null, type: SeatType.table),
+          (c) => SeatInfo(type: SeatType.empty),
         ),
       );
 
       for (var cell in cells) {
         final int r = cell['row'] ?? 0;
         final int c = cell['col'] ?? 0;
-        final String typeStr = cell['type'] ?? 'empty';
+        final String typeStr = cell['type']?.toString().toLowerCase() ?? 'empty';
         final String? label = cell['label'];
         final String? seatClass = cell['class'];
 
@@ -174,29 +180,46 @@ class SeatViewModel extends GetxController {
                 ? (seatClass == 'vip' ? SeatType.premium : SeatType.standard) 
                 : SeatType.taken,
           );
-        } else if (typeStr == 'aisle') {
-          grid[r][c] = SeatInfo(layoutNumber: null, code: null, type: SeatType.table);
+        } else if (typeStr == 'aisle' || typeStr == 'table') {
+          grid[r][c] = SeatInfo(type: SeatType.table);
         } else if (typeStr == 'driver') {
-           grid[r][c] = SeatInfo(layoutNumber: null, code: 'P', type: SeatType.taken);
+           grid[r][c] = SeatInfo(code: label ?? 'P', type: SeatType.driver);
+        } else if (typeStr == 'door' || typeStr == 'exit') {
+           grid[r][c] = SeatInfo(type: SeatType.door);
+        } else if (typeStr == 'toilet' || typeStr == 'wc') {
+           grid[r][c] = SeatInfo(type: SeatType.toilet);
+        } else if (typeStr == 'stairs' || typeStr == 'steps') {
+           grid[r][c] = SeatInfo(type: SeatType.stairs);
+        } else {
+           grid[r][c] = SeatInfo(type: SeatType.empty);
         }
       }
       return grid;
     }
 
-    // Dynamic Fallback Grid (4 columns)
+    // Dynamic Fallback Grid (Standard 2-2 Layout with Aisle)
     final allSeatNumbers = seatNumberToCode.keys.toList()..sort();
     if (allSeatNumbers.isEmpty) return [];
 
-    final int cols = 4;
-    final int rows = (allSeatNumbers.length / cols).ceil();
+    // We want 5 columns: [Seat][Seat] [Aisle] [Seat][Seat]
+    final int gridCols = 5;
+    final int seatsPerRow = 4;
+    final int rows = (allSeatNumbers.length / seatsPerRow).ceil();
     
     List<List<SeatInfo>> grid = [];
+    int seatIndex = 0;
+
     for (int r = 0; r < rows; r++) {
       List<SeatInfo> row = [];
-      for (int c = 0; c < cols; c++) {
-        final index = r * cols + c;
-        if (index < allSeatNumbers.length) {
-          final num = allSeatNumbers[index];
+      for (int c = 0; c < gridCols; c++) {
+        // Center column (index 2) is Aisle
+        if (c == 2) {
+           row.add(SeatInfo(layoutNumber: null, code: null, type: SeatType.table));
+           continue;
+        }
+
+        if (seatIndex < allSeatNumbers.length) {
+          final num = allSeatNumbers[seatIndex];
           final isAvailable = availableSeatNumbers.contains(num);
           final code = seatNumberToCode[num];
           row.add(SeatInfo(
@@ -204,7 +227,9 @@ class SeatViewModel extends GetxController {
             code: code, 
             type: isAvailable ? SeatType.standard : SeatType.taken
           ));
+          seatIndex++;
         } else {
+          // Empty seat slot if we ran out of seats
           row.add(SeatInfo(layoutNumber: null, code: null, type: SeatType.table));
         }
       }

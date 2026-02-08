@@ -9,7 +9,7 @@ RETURNS TRIGGER AS $$
 DECLARE
   -- ⚠️⚠️⚠️ REPLACE 'YOUR_SERVICE_ROLE_KEY_HERE' WITH YOUR ACTUAL KEY ⚠️⚠️⚠️
   -- You can find this in Supabase Dashboard -> Project Settings -> API -> Service Role Secret
-  v_service_key TEXT := 'YOUR_SERVICE_ROLE_KEY_HERE';
+  v_service_key TEXT := 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtiZ2JmdHl2YmRneW9lb3N4bG9rIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NjU3MTExNywiZXhwIjoyMDgyMTQ3MTE3fQ.-oiIri8pTmxJATXAmyYU8K8sobTtI4e7kHGeqHX0mwoE';
 BEGIN
   -- Call the Edge Function
   PERFORM net.http_post(

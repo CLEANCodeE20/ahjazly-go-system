@@ -69,7 +69,7 @@ class BookingRemoteDataSourceImpl implements BookingRemoteDataSource {
   Future<BookingModel> createBooking(Map<String, dynamic> bookingData) async {
      try {
        final response = await client.rpc('create_booking_v3', params: {
-         'p_auth_id': bookingData['user_id'], // Updated to p_auth_id
+         'p_auth_id': bookingData['auth_id'], // Corrected key to match CreateBookingParams
          'p_trip_id': bookingData['trip_id'],
          'p_payment_method': (bookingData['payment_method'] as String).toLowerCase(),
          'p_passengers_json': bookingData['passengers'],

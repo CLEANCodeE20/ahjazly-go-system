@@ -267,6 +267,11 @@ const TripsManagement = () => {
     setShowSeatManager(true);
   };
 
+  const handleOpenDisruption = (trip: TripRecord) => {
+    setSelectedTripForDisruption(trip);
+    setShowDisruptionModal(true);
+  };
+
   const handleSubmit = async () => {
     if (!formData.route_id || !formData.departure_time || !formData.base_price) {
       toast({ title: "خطأ", description: "يرجى ملء الحقول المطلوبة", variant: "destructive" });

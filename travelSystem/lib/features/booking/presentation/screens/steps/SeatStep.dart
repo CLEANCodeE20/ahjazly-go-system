@@ -240,17 +240,52 @@ class SeatStep extends StatelessWidget {
     required Color tableColor,
   }) {
     final bool isTaken = seat.type == SeatType.taken;
-    final bool isTable = seat.type == SeatType.table || seat.layoutNumber == null;
+    final bool isInteractive = !isTaken && (seat.type == SeatType.standard || seat.type == SeatType.premium);
+    
+    // Non-seat elements (Decorations/Facilities)
+    if (!isInteractive && !isTaken) {
+      IconData? icon;
+      Color? iconColor = theme.colorScheme.outline.withOpacity(0.5);
+      String? label;
 
-    if (isTable) {
+      switch (seat.type) {
+        case SeatType.driver:
+          icon = Icons.directions_bus_filled;
+          label = seat.code ?? "السائق";
+          iconColor = theme.colorScheme.primary;
+          break;
+        case SeatType.door:
+          icon = Icons.exit_to_app;
+          break;
+        case SeatType.toilet:
+          icon = Icons.wc;
+          break;
+        case SeatType.stairs:
+          icon = Icons.unfold_more;
+          break;
+        case SeatType.table:
+          icon = Icons.table_bar;
+          break;
+        case SeatType.empty:
+          return Container(width: 44, height: 44, margin: const EdgeInsets.symmetric(horizontal: 6));
+        default:
+          break;
+      }
+
       return Container(
         width: 44, height: 44,
         margin: const EdgeInsets.symmetric(horizontal: 6),
         decoration: BoxDecoration(
-          color: tableColor.withOpacity(0.5),
+          color: seat.type == SeatType.driver ? iconColor!.withOpacity(0.1) : tableColor.withOpacity(0.5),
           borderRadius: BorderRadius.circular(8),
         ),
-        child: const Center(child: Icon(Icons.table_bar, size: 16, color: Colors.grey)),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            if (icon != null) Icon(icon, size: 18, color: iconColor),
+            if (label != null) Text(label, style: TextStyle(fontSize: 8, color: iconColor, fontWeight: FontWeight.bold)),
+          ],
+        ),
       );
     }
 

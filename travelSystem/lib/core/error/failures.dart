@@ -3,6 +3,9 @@ abstract class Failure {
   const Failure(this.message);
 
   @override
+  String toString() => message;
+
+  @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       other is Failure &&
@@ -12,6 +15,7 @@ abstract class Failure {
   @override
   int get hashCode => message.hashCode;
 }
+
 
 class ServerFailure extends Failure {
   const ServerFailure(super.message);

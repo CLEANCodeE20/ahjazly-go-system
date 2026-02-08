@@ -9,13 +9,12 @@ class PaymentMapper {
         return 'bank_transfer';
       case PaymentMethodType.jawaly:
       case PaymentMethodType.wallet:
+      case PaymentMethodType.ahjazly_wallet:
         return 'wallet';
       case PaymentMethodType.card:
         return 'card';
       case PaymentMethodType.stc_pay:
         return 'stc_pay';
-      case PaymentMethodType.ahjazly_wallet:
-        return 'ahjazly_wallet';
       case PaymentMethodType.cash:
       default:
         return 'cash';
