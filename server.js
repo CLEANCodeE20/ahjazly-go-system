@@ -1,4 +1,5 @@
 import express from 'express';
+import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import compression from 'compression';
@@ -10,6 +11,13 @@ const app = express();
 
 // Enable Gzip compression
 app.use(compression());
+
+// Enable CORS for development
+app.use(cors({
+    origin: '*',
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-client-info', 'apikey', 'x-customer-id', 'x-request-id']
+}));
 
 // CSP and Security headers
 app.use((req, res, next) => {
@@ -25,6 +33,7 @@ app.use((req, res, next) => {
         "font-src 'self' data: https://fonts.gstatic.com https://cdn.jsdelivr.net; " +
         "img-src 'self' data: https: blob:; " +
         "media-src 'self' data:; " +
+        "frame-src 'self' https://*.supabase.co; " +
         "connect-src 'self' https://*.supabase.co https://*.googleapis.com https://*.firebaseio.com https://o4510671251177472.ingest.us.sentry.io wss://*.supabase.co;"
     );
     next();

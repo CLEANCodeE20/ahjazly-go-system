@@ -329,53 +329,54 @@ const PartnersManagement = () => {
 
             if (partnerError) throw partnerError;
 
-            if (application.auth_user_id) {
-                const { error: roleError } = await supabase
-                    .from('user_roles')
-                    .upsert({
-                        auth_id: application.auth_user_id,
-                        role: 'PARTNER_ADMIN', // Reverted to 'PARTNER_ADMIN' as per user preference
-                        partner_id: partner.partner_id
-                    } as any);
+            // Updated Role Assignment with onConflict to avoid 409 errors
+            const { error: roleError } = await supabase
+                .from('user_roles')
+                .upsert({
+                    auth_id: application.auth_user_id,
+                    role: 'PARTNER_ADMIN',
+                    partner_id: partner.partner_id
+                } as any, {
+                    onConflict: 'auth_id'
+                });
 
-                if (roleError) console.error('Error assigning role:', roleError);
+            if (roleError) console.error('Error assigning role:', roleError);
 
-                await supabase
-                    .from('users')
-                    .update({ account_status: 'active' })
-                    .eq('auth_id', application.auth_user_id);
+            await supabase
+                .from('users')
+                .update({ account_status: 'active' })
+                .eq('auth_id', application.auth_user_id);
 
-                // Insert Documents (Migrate from Application to Documents Table)
-                const newDocs = [];
-                if (application.commercial_register_url) {
-                    newDocs.push({
-                        partner_id: partner.partner_id,
-                        auth_id: application.auth_user_id,
-                        document_type: 'registration',
-                        document_url: application.commercial_register_url,
-                        document_number: application.commercial_registration || 'N/A',
-                        verification_status: 'approved',
-                        upload_date: new Date().toISOString()
-                    });
-                }
-                if (application.tax_certificate_url) {
-                    newDocs.push({
-                        partner_id: partner.partner_id,
-                        auth_id: application.auth_user_id,
-                        document_type: 'other', // 'tax_certificate' not in Enum, using 'other'
-                        document_url: application.tax_certificate_url,
-                        document_number: application.tax_number || 'N/A',
-                        verification_status: 'approved',
-                        upload_date: new Date().toISOString()
-                    });
-                }
+            // Insert Documents (Migrate from Application to Documents Table)
+            const newDocs = [];
+            if (application.commercial_register_url) {
+                newDocs.push({
+                    partner_id: partner.partner_id,
+                    auth_id: application.auth_user_id,
+                    document_type: 'registration',
+                    document_url: application.commercial_register_url,
+                    document_number: application.commercial_registration || 'N/A',
+                    verification_status: 'approved',
+                    upload_date: new Date().toISOString()
+                });
+            }
+            if (application.tax_certificate_url) {
+                newDocs.push({
+                    partner_id: partner.partner_id,
+                    auth_id: application.auth_user_id,
+                    document_type: 'other',
+                    document_url: application.tax_certificate_url,
+                    document_number: application.tax_number || 'N/A',
+                    verification_status: 'approved',
+                    upload_date: new Date().toISOString()
+                });
+            }
 
-                if (newDocs.length > 0) {
-                    const { error: docsError } = await supabase
-                        .from('documents')
-                        .insert(newDocs as any);
-                    if (docsError) console.error('Error migrating documents:', docsError);
-                }
+            if (newDocs.length > 0) {
+                const { error: docsError } = await supabase
+                    .from('documents')
+                    .insert(newDocs as any);
+                if (docsError) console.error('Error migrating documents:', docsError);
             }
 
             const { error: updateError } = await supabase
@@ -1516,7 +1517,7 @@ const PartnersManagement = () => {
                         <Button
                             variant="destructive"
                             onClick={() => {
-                                if (selectedApplication) handleRejectApp(selectedApplication);
+                                if (selectedApplication) handleRejectApp();
                             }}
                             disabled={!rejectionReason.trim() || processing}
                         >
