@@ -7,6 +7,7 @@ export interface Permission {
     code: string;
 }
 
+
 // Helper function to get default permissions based on role
 function getRoleDefaultPermissions(role: string): string[] {
     switch (role) {
