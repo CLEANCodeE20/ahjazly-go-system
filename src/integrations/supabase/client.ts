@@ -23,8 +23,8 @@ if (useProxy) {
 console.log(`[Supabase] Initializing client. Proxy Mode: ${useProxy}, URL: ${SUPABASE_URL}`);
 
 // Import the supabase client like this:
-// import { supabase as _supabase } from "@/integrations/supabase/client";
-const supabase: any = _supabase;
+// import { supabase } from "@/integrations/supabase/client";
+
 
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
