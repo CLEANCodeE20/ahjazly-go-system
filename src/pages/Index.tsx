@@ -1,4 +1,5 @@
 import Header from "@/components/layout/Header";
+import { Seo } from "@/components/Seo";
 import Footer from "@/components/layout/Footer";
 import { WhatsAppButton } from "@/components/ui/WhatsAppButton";
 import { SDUIPage } from "@/components/sdui/SDUIPage";
@@ -80,6 +81,12 @@ const Index = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-background overflow-x-hidden">
+      <Seo
+        title="احجزلي | منصة حجز تذاكر الحافلات وإدارة شركات النقل"
+        description="منصة سحابية متكاملة لشركات النقل والمسافرين: إدارة الأسطول، الرحلات، الحجوزات، المدفوعات والتقارير المالية."
+        path="/"
+      />
+      <h1 className="sr-only">احجزلي - منصة حجز تذاكر الحافلات وإدارة شركات النقل</h1>
       <Header />
       <WhatsAppButton />
 
