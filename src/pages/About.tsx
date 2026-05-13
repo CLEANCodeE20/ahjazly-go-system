@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import Header from "@/components/layout/Header";
+import { Seo } from "@/components/Seo";
 import Footer from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
@@ -99,6 +100,11 @@ const About = () => {
 
     return (
         <div className="min-h-screen flex flex-col bg-background selection:bg-primary/20" dir="rtl">
+            <Seo
+                title="عن منصة احجزلي | قصتنا ورؤيتنا"
+                description="تعرّف على احجزلي: قصة المنصة، رؤيتنا ورسالتنا، فريقنا وإحصاءات نمونا في قطاع النقل البري."
+                path="/about"
+            />
             <Header />
             <WhatsAppButton />
 
