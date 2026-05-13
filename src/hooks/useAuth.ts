@@ -148,7 +148,7 @@ export const useAuth = () => {
       const { data: roleData } = await supabase
         .from('user_roles')
         .select('role, partner_id')
-        .eq('auth_id', userId)
+        .eq('user_id', userId as any)
         .maybeSingle();
 
       if (roleData) {

@@ -46,7 +46,7 @@ export default function TripSeatManager({ isOpen, onClose, tripId, busId, routeI
                     .select('capacity')
                     .eq('bus_id', busId)
                     .single(),
-                supabase
+                (supabase as any)
                     .from('trips')
                     .select('blocked_seats')
                     .eq('trip_id', tripId)
@@ -57,7 +57,7 @@ export default function TripSeatManager({ isOpen, onClose, tripId, busId, routeI
 
             const capacity = busRes.data?.capacity || 44;
             setBusCapacity(capacity);
-            setBlockedSeats(tripRes.data?.blocked_seats || []);
+            setBlockedSeats(((tripRes as any).data?.blocked_seats) || []);
 
             // Generate a default layout based on capacity
             const defaultLayout = generateDefaultLayout(capacity);

@@ -60,7 +60,7 @@ export const DriverPerformanceDialog = ({ driverId, open, onOpenChange }: Driver
                                         {latestPerformance.average_rating?.toFixed(1) || "N/A"}
                                     </div>
                                     <p className="text-xs text-muted-foreground mt-1">
-                                        من {latestPerformance.total_ratings} تقييم
+                                        من {(latestPerformance as any).total_ratings ?? 0} تقييم
                                     </p>
                                 </CardContent>
                             </Card>

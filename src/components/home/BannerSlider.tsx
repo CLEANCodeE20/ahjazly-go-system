@@ -20,14 +20,14 @@ export const BannerSlider = () => {
     useEffect(() => {
         const fetchBanners = async () => {
             try {
-                const { data, error } = await supabase
+                const { data, error } = await (supabase as any)
                     .from("banners")
                     .select("*")
                     .eq("is_active", true)
                     .order("display_order", { ascending: true });
 
                 if (error) throw error;
-                setBanners(data || []);
+                setBanners((data as Banner[]) || []);
             } catch (err) {
                 console.error("Error fetching banners:", err);
             } finally {
