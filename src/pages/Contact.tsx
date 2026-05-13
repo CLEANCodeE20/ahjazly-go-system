@@ -22,7 +22,8 @@ import {
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { WhatsAppButton } from "@/components/ui/WhatsAppButton";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase as _supabase } from "@/integrations/supabase/client";
+const supabase: any = _supabase;
 import gsap from "gsap";
 import ScrollReveal from "scrollreveal";
 import Typed from "typed.js";

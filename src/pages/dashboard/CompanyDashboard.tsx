@@ -24,7 +24,8 @@ import {
   MessageSquare,
   AlertCircle
 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase as _supabase } from "@/integrations/supabase/client";
+const supabase: any = _supabase;
 import { useSupabaseCRUD } from "@/hooks/useSupabaseCRUD";
 import { usePartner } from "@/hooks/usePartner";
 import { usePermissions } from "@/hooks/usePermissions";

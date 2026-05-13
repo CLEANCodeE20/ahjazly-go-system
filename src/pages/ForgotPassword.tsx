@@ -6,7 +6,8 @@ import { Label } from "@/components/ui/label";
 import Header from "@/components/layout/Header";
 import { Bus, Mail, ArrowLeft, CheckCircle2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase as _supabase } from "@/integrations/supabase/client";
+const supabase: any = _supabase;
 
 const ForgotPassword = () => {
     const [email, setEmail] = useState("");

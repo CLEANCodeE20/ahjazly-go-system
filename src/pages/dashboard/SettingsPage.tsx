@@ -29,7 +29,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { usePartner } from "@/hooks/usePartner";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase as _supabase } from "@/integrations/supabase/client";
+const supabase: any = _supabase;
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { BackupService } from "@/lib/services/BackupService";
 

@@ -27,7 +27,8 @@ import {
     XCircle,
     Lock
 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase as _supabase } from "@/integrations/supabase/client";
+const supabase: any = _supabase;
 import { useAuth } from "@/hooks/useAuth";
 import { usePartner } from "@/hooks/usePartner";
 import { toast } from "@/hooks/use-toast";

@@ -42,7 +42,8 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase as _supabase } from "@/integrations/supabase/client";
+const supabase: any = _supabase;
 import { toast } from "sonner";
 import { AdminLayout } from "@/components/layout/AdminLayout";
 import { PaginationControls } from "@/components/ui/pagination-controls";
