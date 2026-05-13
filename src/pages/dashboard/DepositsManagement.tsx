@@ -23,6 +23,7 @@ import {
     DialogDescription
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
 import { supabase as _supabase } from "@/integrations/supabase/client";
 const supabase: any = _supabase;

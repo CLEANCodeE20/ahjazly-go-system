@@ -99,10 +99,11 @@ const WalletPage = () => {
         }
     };
 
+    const w = wallet as any;
     return (
         <DashboardLayout
-            title={wallet?.partner_id ? "محفظة الشركة" : "المحفظة الإلكترونية"}
-            subtitle={wallet?.partner_id ? "إدارة الرصيد التشغيلي للمكتب" : "إدارة رصيدك المالي والعمليات المستردة"}
+            title={w?.partner_id ? "محفظة الشركة" : "المحفظة الإلكترونية"}
+            subtitle={w?.partner_id ? "إدارة الرصيد التشغيلي للمكتب" : "إدارة رصيدك المالي والعمليات المستردة"}
         >
             <div className="space-y-6">
                 {/* Balance Card */}
@@ -115,7 +116,7 @@ const WalletPage = () => {
                             <div className="flex justify-between items-start mb-8">
                                 <div>
                                     <p className="text-primary-foreground/70 text-sm font-medium mb-1">
-                                        {wallet?.partner_id ? "رصيد المكتب الحالي" : "الرصيد الحالي"}
+                                        {w?.partner_id ? "رصيد المكتب الحالي" : "الرصيد الحالي"}
                                     </p>
                                     <h2 className="text-5xl font-black">
                                         {isLoading ? <Skeleton className="h-12 w-32 bg-white/20" /> : `${wallet?.balance?.toLocaleString() || '0'} ${wallet?.currency || 'ر.س'}`}

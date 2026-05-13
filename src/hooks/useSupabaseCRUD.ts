@@ -14,6 +14,7 @@ export interface UseSupabaseCRUDOptions {
   select?: string;
   pageSize?: number;
   filter?: (query: any) => any;
+  [key: string]: any;
 }
 
 export function useSupabaseCRUD<T>({
