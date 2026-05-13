@@ -191,10 +191,10 @@ export const useCreateDriver = () => {
             licenseFile?: File; // Added licenseFile for initial upload
         }) => {
             // 1. Create Auth User via Edge Function
-            const session = await supabase.auth.getSession();
+            const session = await (supabase as any).auth.getSession();
             console.log("Current Session Token:", session.data.session?.access_token ? "Present" : "Missing");
 
-            const { data: authData, error: authError } = await supabase.functions.invoke('create-user', {
+            const { data: authData, error: authError } = await (supabase as any).functions.invoke('create-user', {
                 body: {
                     email: driverData.email,
                     password: driverData.password,
@@ -245,7 +245,7 @@ export const useCreateDriver = () => {
                     } else {
                         // 2. Try RPC recovery (Plan B)
                         console.log("[Auth] User not in public.users, trying RPC recovery...");
-                        const { data: recoveredId, error: recoveryError } = await supabase.rpc('get_auth_id_by_email', {
+                        const { data: recoveredId, error: recoveryError } = await (supabase as any).rpc('get_auth_id_by_email', {
                             p_email: driverData.email
                         });
 
@@ -263,7 +263,7 @@ export const useCreateDriver = () => {
             }
 
             // 2. Create Driver Record via RPC
-            const { data, error } = await supabase.rpc("create_driver_with_account", {
+            const { data, error } = await (supabase as any).rpc("create_driver_with_account", {
                 p_full_name: driverData.full_name,
                 p_email: driverData.email,
                 p_phone_number: driverData.phone_number,
@@ -302,16 +302,16 @@ export const useCreateDriver = () => {
                 const fileExt = file.name.split(".").pop();
                 const fileName = `${data.driver_id}/license_${Date.now()}.${fileExt}`;
 
-                const { error: uploadError } = await supabase.storage
+                const { error: uploadError } = await (supabase as any).storage
                     .from("driver-documents")
                     .upload(fileName, file);
 
                 if (!uploadError) {
-                    const { data: urlData } = supabase.storage
+                    const { data: urlData } = (supabase as any).storage
                         .from("driver-documents")
                         .getPublicUrl(fileName);
 
-                    await supabase.from("driver_documents").insert({
+                    await (supabase as any).from("driver_documents").insert({
                         driver_id: data.driver_id,
                         auth_id: authId,
                         document_type: 'license',
@@ -420,14 +420,14 @@ export const useUploadDriverDocument = () => {
             const fileExt = file.name.split(".").pop();
             const fileName = `${driverId}/${documentType}_${Date.now()}.${fileExt}`;
 
-            const { error: uploadError } = await supabase.storage
+            const { error: uploadError } = await (supabase as any).storage
                 .from("driver-documents")
                 .upload(fileName, file);
 
             if (uploadError) throw uploadError;
 
             // الحصول على URL العام
-            const { data: urlData } = supabase.storage
+            const { data: urlData } = (supabase as any).storage
                 .from("driver-documents")
                 .getPublicUrl(fileName);
 
