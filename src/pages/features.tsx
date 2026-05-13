@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
+import { Seo } from "@/components/Seo";
 import { WhatsAppButton } from "@/components/ui/WhatsAppButton";
 import {
     Bus,
@@ -101,6 +102,19 @@ const Features = () => {
 
     return (
         <div className="min-h-screen flex flex-col bg-background overflow-x-hidden">
+            <Seo
+                title="مميزات احجزلي | إدارة الأسطول والرحلات والحجوزات"
+                description="اكتشف مميزات منصة احجزلي: إدارة الأسطول، الرحلات، الحجوزات، المدفوعات، التقارير المالية والمحفظة لشركات النقل."
+                path="/features"
+                jsonLd={{
+                    "@context": "https://schema.org",
+                    "@type": "Service",
+                    "name": "Ahjazly Bus Booking Platform",
+                    "provider": { "@type": "Organization", "name": "Ahjazly" },
+                    "areaServed": "Arab World",
+                    "description": "منصة سحابية لإدارة شركات النقل البري وحجوزات تذاكر الحافلات."
+                }}
+            />
             <Header />
             <WhatsAppButton />
 

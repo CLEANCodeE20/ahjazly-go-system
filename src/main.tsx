@@ -4,6 +4,7 @@ import App from "./App.tsx";
 import "./index.css";
 
 import { GlobalErrorBoundary } from "./components/error/GlobalErrorBoundary";
+import { HelmetProvider } from "react-helmet-async";
 import * as Sentry from "@sentry/react";
 
 // Only enable Sentry in production
@@ -28,6 +29,8 @@ if (import.meta.env.PROD) {
 
 createRoot(document.getElementById("root")!).render(
     <GlobalErrorBoundary>
-        <App />
+        <HelmetProvider>
+            <App />
+        </HelmetProvider>
     </GlobalErrorBoundary>
 );

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import Header from "@/components/layout/Header";
+import { Seo } from "@/components/Seo";
 import Footer from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -126,6 +127,20 @@ const Contact = () => {
 
     return (
         <div className="min-h-screen flex flex-col bg-background selection:bg-primary/20" dir="rtl">
+            <Seo
+                title="تواصل مع احجزلي | الدعم والمبيعات"
+                description="تواصل مع فريق احجزلي عبر البريد الإلكتروني، الهاتف، أو زورنا في مقرنا. الدعم متاح 24/7 للشركات الشريكة."
+                path="/contact"
+                jsonLd={{
+                    "@context": "https://schema.org",
+                    "@type": "LocalBusiness",
+                    "name": "Ahjazly",
+                    "url": "https://ahjazly-go-system.lovable.app/contact",
+                    "image": "https://ahjazly-go-system.lovable.app/logo.PNG",
+                    "telephone": "+970",
+                    "address": { "@type": "PostalAddress", "addressCountry": "PS" }
+                }}
+            />
             <Header />
             <WhatsAppButton />
 
