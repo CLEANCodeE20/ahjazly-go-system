@@ -107,12 +107,16 @@ export const BannerSlider = () => {
                 {banners.length > 1 && (
                     <>
                         <button
+                            type="button"
+                            aria-label="البانر السابق"
                             onClick={prev}
                             className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-white hover:bg-white/20 transition-all opacity-0 group-hover:opacity-100 z-20"
                         >
                             <ChevronRight className="w-6 h-6" />
                         </button>
                         <button
+                            type="button"
+                            aria-label="البانر التالي"
                             onClick={next}
                             className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-white hover:bg-white/20 transition-all opacity-0 group-hover:opacity-100 z-20"
                         >
@@ -127,6 +131,9 @@ export const BannerSlider = () => {
                         {banners.map((_, i) => (
                             <button
                                 key={i}
+                                type="button"
+                                aria-label={`الانتقال إلى البانر رقم ${i + 1}`}
+                                aria-current={i === currentIndex}
                                 onClick={() => setCurrentIndex(i)}
                                 className={`h-1.5 rounded-full transition-all duration-300 ${i === currentIndex ? "w-8 bg-primary" : "w-1.5 bg-white/30"
                                     }`}
