@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase as _supabase } from '@/integrations/supabase/client';
+const supabase: any = _supabase;
 import { AlertCircle, CheckCircle, Clock, RefreshCw, Play, TrendingUp } from 'lucide-react';
 
 

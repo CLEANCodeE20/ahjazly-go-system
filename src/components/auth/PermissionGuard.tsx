@@ -12,13 +12,13 @@ export const PermissionGuard: React.FC<PermissionGuardProps> = ({
     children,
     fallback = null
 }) => {
-    const { hasPermission, isLoading } = usePermissions();
+    const { can, loading } = usePermissions();
 
-    if (isLoading) {
-        return null; // Or a skeleton if needed, but usually we want to just hide
+    if (loading) {
+        return null;
     }
 
-    if (hasPermission(permission)) {
+    if (can(permission)) {
         return <>{children}</>;
     }
 

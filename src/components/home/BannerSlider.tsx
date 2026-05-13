@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase as _supabase } from "@/integrations/supabase/client";
+const supabase: any = _supabase;
 import { ChevronRight, ChevronLeft, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -20,14 +21,14 @@ export const BannerSlider = () => {
     useEffect(() => {
         const fetchBanners = async () => {
             try {
-                const { data, error } = await supabase
+                const { data, error } = await (supabase as any)
                     .from("banners")
                     .select("*")
                     .eq("is_active", true)
                     .order("display_order", { ascending: true });
 
                 if (error) throw error;
-                setBanners(data || []);
+                setBanners((data as Banner[]) || []);
             } catch (err) {
                 console.error("Error fetching banners:", err);
             } finally {

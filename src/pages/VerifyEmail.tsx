@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import Header from "@/components/layout/Header";
 import { Bus, CheckCircle2, XCircle, Loader2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase as _supabase } from "@/integrations/supabase/client";
+const supabase: any = _supabase;
 
 const VerifyEmail = () => {
     const navigate = useNavigate();

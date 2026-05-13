@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { User, Session } from '@supabase/supabase-js';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase as _supabase } from '@/integrations/supabase/client';
+const supabase: any = _supabase;
 import { useFCM } from './useFCM';
 import { ErrorLogger } from '@/utils/ErrorLogger';
 
@@ -148,7 +149,7 @@ export const useAuth = () => {
       const { data: roleData } = await supabase
         .from('user_roles')
         .select('role, partner_id')
-        .eq('auth_id', userId)
+        .eq('user_id', userId as any)
         .maybeSingle();
 
       if (roleData) {

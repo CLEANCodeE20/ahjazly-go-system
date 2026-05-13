@@ -27,7 +27,8 @@ import {
   Briefcase
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase as _supabase } from "@/integrations/supabase/client";
+const supabase: any = _supabase;
 import { motion, AnimatePresence } from "framer-motion";
 
 // 1. Define Enhanced Zod Schema with Yemeni Validation

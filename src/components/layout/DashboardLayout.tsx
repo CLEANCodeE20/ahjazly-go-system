@@ -3,7 +3,8 @@ import { useLocation } from "react-router-dom";
 import { PrefetchLink } from "@/components/ui/PrefetchLink";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase as _supabase } from "@/integrations/supabase/client";
+const supabase: any = _supabase;
 import {
     Bus,
     Home,

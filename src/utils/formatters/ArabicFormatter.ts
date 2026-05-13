@@ -95,7 +95,7 @@ export class ArabicFormatter {
     ): string {
         const d = typeof date === 'string' ? new Date(date) : date;
 
-        const options: Intl.DateTimeFormatOptions = {
+        const options = ({
             short: { year: 'numeric', month: '2-digit', day: '2-digit' },
             medium: { year: 'numeric', month: 'long', day: 'numeric' },
             long: {
@@ -104,7 +104,7 @@ export class ArabicFormatter {
                 month: 'long',
                 day: 'numeric',
             },
-        }[format];
+        } as Record<string, Intl.DateTimeFormatOptions>)[format];
 
         return new Intl.DateTimeFormat(this.LOCALE, options).format(d);
     }

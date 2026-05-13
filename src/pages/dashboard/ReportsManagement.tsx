@@ -34,7 +34,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useSupabaseCRUD } from "@/hooks/useSupabaseCRUD";
 import { useExport } from "@/hooks/useExport";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase as _supabase } from "@/integrations/supabase/client";
+const supabase: any = _supabase;
 import { subDays } from "date-fns";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 

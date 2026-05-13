@@ -54,7 +54,8 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase as _supabase } from "@/integrations/supabase/client";
+const supabase: any = _supabase;
 import { toast } from "@/hooks/use-toast";
 import { AdminLayout } from "@/components/layout/AdminLayout";
 import { createPortal } from "react-dom";

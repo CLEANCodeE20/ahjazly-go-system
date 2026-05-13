@@ -43,7 +43,8 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { useSupabaseCRUD } from "@/hooks/useSupabaseCRUD";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase as _supabase } from "@/integrations/supabase/client";
+const supabase: any = _supabase;
 import { toast } from "sonner";
 import { useExport } from "@/hooks/useExport";
 

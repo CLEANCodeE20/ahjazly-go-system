@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Loader2, Ban, CheckCircle, AlertTriangle } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase as _supabase } from "@/integrations/supabase/client";
+const supabase: any = _supabase;
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
@@ -46,7 +47,7 @@ export default function TripSeatManager({ isOpen, onClose, tripId, busId, routeI
                     .select('capacity')
                     .eq('bus_id', busId)
                     .single(),
-                supabase
+                (supabase as any)
                     .from('trips')
                     .select('blocked_seats')
                     .eq('trip_id', tripId)
@@ -57,7 +58,7 @@ export default function TripSeatManager({ isOpen, onClose, tripId, busId, routeI
 
             const capacity = busRes.data?.capacity || 44;
             setBusCapacity(capacity);
-            setBlockedSeats(tripRes.data?.blocked_seats || []);
+            setBlockedSeats(((tripRes as any).data?.blocked_seats) || []);
 
             // Generate a default layout based on capacity
             const defaultLayout = generateDefaultLayout(capacity);

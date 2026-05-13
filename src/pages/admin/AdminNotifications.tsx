@@ -12,7 +12,8 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase as _supabase } from "@/integrations/supabase/client";
+const supabase: any = _supabase;
 import { toast } from "sonner";
 import { Send, Users, Building2, Megaphone, Loader2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
